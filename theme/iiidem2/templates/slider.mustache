@@ -1,0 +1,57 @@
+{{!
+    @template theme_iiidem2/slider
+
+    Homepage hero carousel (Bootstrap 4 — matches theme AMD carousel).
+}}
+<div id="homepageSlider"
+     class="carousel slide iiidem-hero-carousel"
+     data-interval="5000"
+     data-pause="false"
+     data-wrap="true"
+     aria-label="Homepage highlights">
+
+    <ol class="carousel-indicators">
+        {{#slides}}
+        <li data-target="#homepageSlider"
+            data-slide-to="{{index}}"
+            class="{{#active}}active{{/active}}"></li>
+        {{/slides}}
+    </ol>
+
+    <div class="carousel-inner">
+        {{#slides}}
+        <div class="carousel-item {{#active}}active{{/active}}">
+            <img src="{{image}}"
+                 class="d-block w-100 iiidem-hero-carousel__image"
+                 alt="{{title}}">
+            <div class="carousel-caption iiidem-hero-carousel__caption">
+               <!--  <div class="container">
+                    <div class="iiidem-hero-carousel__caption-inner">
+                        <h1 class="iiidem-hero-carousel__title">{{title}}</h1>
+                        {{#description}}
+                        <div class="iiidem-hero-carousel__desc">{{{description}}}</div>
+                        {{/description}}
+                        {{#buttontext}}
+                        <a href="{{buttonurl}}" class="btn btn-light btn-lg iiidem-btn mt-3">{{buttontext}}</a>
+                        {{/buttontext}}
+                    </div>
+                </div> -->
+            </div>
+        </div>
+        {{/slides}}
+    </div>
+
+    <a class="carousel-control-prev" href="#homepageSlider" role="button" data-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="sr-only">Previous</span>
+    </a>
+    <a class="carousel-control-next" href="#homepageSlider" role="button" data-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="sr-only">Next</span>
+    </a>
+</div>
+{{#js}}
+require(['theme_iiidem2/frontpage_slider'], function(slider) {
+    slider.init();
+});
+{{/js}}

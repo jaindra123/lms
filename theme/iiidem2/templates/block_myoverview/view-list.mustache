@@ -1,0 +1,49 @@
+{{!
+    @template block_myoverview/view-list
+    IIIDEM theme override — list view styling.
+}}
+<ul class="list-group iiidem-mycourses-list shadow-sm rounded-3 overflow-hidden border-0">
+    {{#courses}}
+        <li class="list-group-item course-listitem iiidem-mycourses-list__item border-0 border-bottom px-3 py-3"
+            data-region="course-content"
+            data-course-id="{{{id}}}">
+            <div class="row align-items-center g-3">
+                <div class="col-12 col-md-3 col-lg-2">
+                    <a href="{{viewurl}}" tabindex="-1" class="d-block iiidem-mycourses-list__thumb">
+                        <div class="iiidem-course-card__image rounded-3"
+                            style="background-image: url('{{{courseimage}}}'); min-height: 100px;">
+                            <span class="sr-only">{{fullname}}</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-12 col-md-8 col-lg-9 d-flex flex-column">
+                    {{#showshortname}}
+                        <div class="text-muted small mb-1">{{{shortname}}}</div>
+                    {{/showshortname}}
+                    <a href="{{viewurl}}" class="aalink coursename h5 mb-2 text-decoration-none">
+                        {{> core_course/favouriteicon }}
+                        <span class="sr-only">{{#str}}aria:coursename, core_course{{/str}}</span>
+                        {{{fullname}}}
+                    </a>
+                    {{#showcoursecategory}}
+                        <div class="text-muted small mb-2">
+                            <span class="badge bg-light text-dark border">{{{coursecategory}}}</span>
+                        </div>
+                    {{/showcoursecategory}}
+                    {{^visible}}
+                        <span class="badge bg-info text-white align-self-start mb-2">{{#str}}hiddenfromstudents{{/str}}</span>
+                    {{/visible}}
+                    {{#hasprogress}}
+                        <div class="mt-auto">{{> block_myoverview/progress-bar}}</div>
+                    {{/hasprogress}}
+                    <a href="{{viewurl}}" class="btn btn-primary btn-sm rounded-pill align-self-start mt-2">
+                        {{#str}}entercourse, theme_iiidem2{{/str}}
+                    </a>
+                </div>
+                <div class="col-12 col-md-1 d-flex justify-content-md-end menu">
+                    {{> block_myoverview/course-action-menu }}
+                </div>
+            </div>
+        </li>
+    {{/courses}}
+</ul>

@@ -1,0 +1,36 @@
+{{!
+    @template block_myoverview/view-cards
+    IIIDEM theme override — card view (uses themed core_course/coursecards).
+}}
+{{< core_course/coursecards }}
+    {{$classes}}iiidem-mycourses-deck{{/classes}}
+    {{$menu}}
+        <div class="card-footer menu border-0 bg-transparent p-0 w-100">
+            {{> block_myoverview/course-action-menu }}
+        </div>
+    {{/menu}}
+    {{$progress}}
+        {{#hasprogress}}
+            <div class="iiidem-course-card__progress w-100">
+                {{> block_myoverview/progress-bar}}
+            </div>
+        {{/hasprogress}}
+    {{/progress}}
+    {{$coursename}}
+        <span class="iiidem-course-card__name" title="{{fullname}}">
+            <span class="sr-only">{{{fullname}}}</span>
+            <span aria-hidden="true">
+                {{#shortentext}}80, {{{fullname}}}{{/shortentext}}
+            </span>
+        </span>
+    {{/coursename}}
+    {{$coursecategory}}
+        {{#showcoursecategory}}
+            <span class="sr-only">{{#str}}aria:coursecategory, core_course{{/str}}</span>
+            <span class="iiidem-course-card__category badge bg-light text-dark border">
+                {{{coursecategory}}}
+            </span>
+        {{/showcoursecategory}}
+    {{/coursecategory}}
+    {{$divider}}{{/divider}}
+{{/core_course/coursecards }}

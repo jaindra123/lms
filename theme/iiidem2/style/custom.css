@@ -1,0 +1,857 @@
+/*
+ * Moodle hides .moremenu until JS adds .observed (opacity:0 in moodle.css).
+ * If core JS fails or loads late, menus exist in DOM but are invisible.
+ */
+.moremenu {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Header is taller than default Boost navbar (extra padding). */
+:root {
+    --navbar-height: 72px;
+}
+
+/* Fixed site header — stays visible while scrolling (Boost-compatible). */
+.iiidem-site-header.navbar.fixed-top {
+    z-index: 1030;
+    width: 100%;
+    padding: 0;
+    min-height: var(--navbar-height);
+    background-color: #000 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    align-items: center;
+}
+
+/* Vertically center logo, primary menu, and user area in the header bar. */
+.iiidem-site-header .container-fluid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: var(--navbar-height);
+}
+
+.iiidem-site-header .navbar-brand,
+.iiidem-site-header .primary-navigation,
+.iiidem-site-header #usernavigation {
+    display: flex;
+    align-items: center;
+}
+
+.iiidem-site-header .primary-navigation .moremenu {
+    height: auto;
+    display: flex;
+    align-items: center;
+}
+
+.iiidem-site-header .moremenu .nav-tabs {
+    align-items: center;
+    height: auto;
+    margin-bottom: 0;
+}
+
+.iiidem-site-header .primary-navigation .moremenu .nav-link,
+.iiidem-site-header .primary-navigation .navigation .nav-link {
+    height: var(--navbar-height);
+    min-height: var(--navbar-height);
+    display: flex;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+    box-sizing: border-box;
+}
+
+.iiidem-site-header #usernavigation .nav-link,
+.iiidem-site-header #usernavigation .btn,
+.iiidem-site-header #usernavigation .usermenu-container {
+    display: flex;
+    align-items: center;
+}
+
+/* Marketing / front page layouts have no #page; offset main content below fixed header. */
+.iiidem-site-header.fixed-top ~ main,
+.iiidem-site-header.fixed-top ~ .iiidem-frontpage,
+.iiidem-site-header.fixed-top ~ .iiidem-marketing-page {
+    padding-top: var(--navbar-height, 60px);
+}
+
+/* Keep site footer at the bottom on short pages. */
+#page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#page-wrapper > #page,
+#page-wrapper > #page.drawers {
+    flex: 1 0 auto;
+}
+
+#page-wrapper .iiidem-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* Primary navbar (dark blue top bar #004274). */
+.top-nav.navbar-light .navbar-nav .nav-link,
+.top-nav .primary-navigation .moremenu .nav-link,
+.top-nav .primary-navigation .navigation .nav-link,
+.top-nav .primary-navigation .moremenu .dropdown-toggle,
+.top-nav #usernavigation .nav-link,
+.top-nav #usernavigation a,
+.top-nav .usermenu .dropdown-toggle,
+.top-nav .usermenu .login a,
+.top-nav .usermenu .login {
+    color: #fff !important;
+    background-color: transparent !important;
+}
+
+/* Remove white tab bar strip under primary menu (Boost moremenu default). */
+.top-nav .moremenu .nav-tabs,
+.top-nav .primary-navigation .moremenu .nav-tabs {
+    background-color: transparent !important;
+    border-bottom: none !important;
+    border-top: none !important;
+}
+
+/* Bootstrap nav-tabs adds 1px borders on all sides — causes white line above menu. */
+.top-nav .primary-navigation .moremenu .nav-link,
+.top-nav .primary-navigation .navigation .nav-link {
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 3px solid transparent !important;
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+}
+
+.top-nav .usermenu .login a:hover,
+.top-nav .usermenu .login a:focus,
+.top-nav #usernavigation a:hover,
+.top-nav #usernavigation a:focus {
+    color: #fff !important;
+    text-decoration: underline;
+}
+
+.top-nav #usernavigation .iiidem-nav-login {
+    color: #fff !important;
+    background-color: transparent !important;
+    border-color: #fff !important;
+}
+
+.top-nav #usernavigation .iiidem-nav-login:hover,
+.top-nav #usernavigation .iiidem-nav-login:focus {
+    color: #004274 !important;
+    background-color: #fff !important;
+    border-color: #fff !important;
+}
+
+.top-nav .primary-navigation .moremenu .nav-link:hover,
+.top-nav .primary-navigation .moremenu .nav-link:focus,
+.top-nav .primary-navigation .navigation .nav-link:hover,
+.top-nav .primary-navigation .navigation .nav-link:focus,
+.top-nav .primary-navigation .moremenu .dropdown-toggle:hover,
+.top-nav .primary-navigation .moremenu .dropdown-toggle:focus,
+.top-nav #usernavigation .nav-link:hover,
+.top-nav #usernavigation .nav-link:focus,
+.top-nav .usermenu .dropdown-toggle:hover,
+.top-nav .usermenu .dropdown-toggle:focus {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom-color: transparent !important;
+}
+
+/* Active page: lighter bar background + accent underline. */
+.top-nav .primary-navigation .moremenu .nav-link.active,
+.top-nav .primary-navigation .navigation .nav-link.active,
+.top-nav .primary-navigation .moremenu .nav-link.active:hover,
+.top-nav .primary-navigation .moremenu .nav-link.active:focus,
+.top-nav .primary-navigation .navigation .nav-link.active:hover,
+.top-nav .primary-navigation .navigation .nav-link.active:focus {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom-color: #5eb8ff !important;
+}
+
+/* Prevent Boost/BS li wrappers from painting a white hover block. */
+.top-nav .navbar-nav > .nav-item:hover,
+.top-nav .navbar-nav > li:hover,
+.top-nav .primary-navigation .nav-tabs > .nav-item:hover {
+    background-color: transparent !important;
+}
+
+/* "More" dropdown: light panel, dark text (not white-on-white). */
+.top-nav .moremenu .dropdown-menu,
+.top-nav .moremenu .dropdownmoremenu > .dropdown-menu {
+    background-color: #fff !important;
+}
+
+.top-nav .moremenu .dropdown-menu .dropdown-item,
+.top-nav .moremenu .dropdownmoremenu .dropdown-menu .dropdown-item {
+    color: #212529 !important;
+    background-color: #fff !important;
+}
+
+.top-nav .moremenu .dropdown-menu .dropdown-item:hover,
+.top-nav .moremenu .dropdown-menu .dropdown-item:focus,
+.top-nav .moremenu .dropdownmoremenu .dropdown-menu .dropdown-item:hover,
+.top-nav .moremenu .dropdownmoremenu .dropdown-menu .dropdown-item:focus {
+    color: #004274 !important;
+    background-color: #e8f0f8 !important;
+}
+
+/* Secondary navigation (admin tabs, course settings, etc.). */
+.secondary-navigation .moremenu .nav-link {
+    color: #212529 !important;
+}
+
+.secondary-navigation .moremenu .nav-link:hover,
+.secondary-navigation .moremenu .nav-link:focus {
+    color: #0b3d91 !important;
+}
+
+.secondary-navigation .moremenu .nav-link.active {
+    color: #0b3d91 !important;
+    border-bottom-color: #0b3d91 !important;
+    font-weight: 600;
+}
+
+/* Course curriculum media preview */
+.iiidem-curriculum .iiidem-curriculum-media,
+.iiidem-curriculum .mediaplugin,
+.iiidem-curriculum .mediaplugin video,
+.iiidem-curriculum .mediaplugin iframe {
+    max-width: 100%;
+    border-radius: 6px;
+}
+
+.iiidem-curriculum .mediaplugin {
+    margin: 0;
+}
+
+/* Course FAQ & curriculum accordions (Bootstrap 5). */
+.iiidem-accordion .accordion-item {
+    border: 1px solid rgba(11, 61, 145, 0.15);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-accordion .accordion-button {
+    color: #0b3d91;
+    font-weight: 600;
+    background-color: #f0f5ff;
+}
+
+.iiidem-accordion .accordion-button:not(.collapsed) {
+    color: #1356c5;
+    background-color: #e8efff;
+    box-shadow: none;
+}
+
+.iiidem-accordion .accordion-button:focus {
+    box-shadow: 0 0 0 0.2rem rgba(11, 61, 145, 0.25);
+}
+
+.iiidem-footer .footer-quick-links li {
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-footer .footer-social li {
+    margin-left: 0.75rem;
+}
+
+.iiidem-footer .copyRights {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+/*
+ * File manager: after load, Moodle only shows the drag-and-drop zone when .fm-noitems
+ * is set (after the draftfiles AJAX call). If that call is slow or fails, the area
+ * stays blank while the toolbar is visible. Show the empty state while loaded.
+ */
+.filemanager.fm-loaded:not(.fm-updating) .fm-empty-container {
+    display: block;
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    border: 2px dashed #bbb;
+    padding-top: 85px;
+    text-align: center;
+    z-index: 1;
+}
+
+.filemanager.fm-loaded .fp-content:not(:empty) ~ .fm-empty-container,
+.filemanager.fm-loaded:not(.fm-noitems) .filemanager-container .fp-content:not(:empty) ~ .fm-empty-container {
+    display: none !important;
+}
+
+.filemanager.fm-loaded.fm-noitems .fm-empty-container {
+    display: block !important;
+}
+
+/* Role dashboards */
+.iiidem-dashboard .card-title {
+    color: #0b3d91;
+}
+
+.iiidem-dashboard-announcements .card-header {
+    background-color: #f8fafc;
+}
+
+.iiidem-announcement-item h3 a {
+    color: #004274;
+    text-decoration: none;
+}
+
+.iiidem-announcement-item h3 a:hover {
+    text-decoration: underline;
+}
+
+.iiidem-announcement-list .badge {
+    font-weight: 500;
+}
+
+.iiidem-dashboard-welcome h1 {
+    color: #0b3d91;
+    font-weight: 700;
+}
+
+.iiidem-footer .footer-version {
+    color: rgb(7, 48, 89);
+}
+
+/* ===== My courses (/my/courses.php) ===== */
+.page-mycourses #region-main {
+    background: linear-gradient(180deg, #f0f5ff 0%, #f8f9fc 120px, #fff 280px);
+    border-radius: 12px;
+    padding: 1.5rem 1.25rem 2rem;
+}
+
+.page-mycourses #page-header {
+    margin-bottom: 0.5rem;
+}
+
+.page-mycourses #page-header h1 {
+    color: #0b3d91;
+    font-weight: 700;
+}
+
+.page-mycourses .iiidem-mycourses__toolbar .card-body {
+    background: #fff;
+}
+
+.page-mycourses .iiidem-mycourses__toolbar .dropdown-toggle,
+.page-mycourses .iiidem-mycourses__toolbar .form-control {
+    border-radius: 8px;
+}
+
+.page-mycourses .block_myoverview {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+
+.page-mycourses .block_myoverview > .card-body {
+    padding: 0 !important;
+}
+
+.page-mycourses .iiidem-course-card {
+    border-radius: 16px !important;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    height: 100%;
+}
+
+.page-mycourses .iiidem-course-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(11, 61, 145, 0.15) !important;
+}
+
+.page-mycourses .iiidem-course-card__image,
+.page-mycourses .iiidem-course-card .card-img-top {
+    height: 200px;
+    min-height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 0 !important;
+}
+
+.page-mycourses .iiidem-course-card__title .coursename {
+    color: #0b3d91;
+    font-weight: 600;
+}
+
+.page-mycourses .iiidem-course-card__title .coursename:hover {
+    color: #1356c5;
+}
+
+.page-mycourses .iiidem-course-card__enter {
+    background-color: #0b3d91;
+    border-color: #0b3d91;
+    font-weight: 600;
+    padding: 0.45rem 1.25rem;
+}
+
+.page-mycourses .iiidem-course-card__enter:hover {
+    background-color: #1356c5;
+    border-color: #1356c5;
+}
+
+.page-mycourses .iiidem-course-card__footer .progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.page-mycourses .iiidem-course-card__progress .progress-text {
+    font-size: 0.85rem;
+    color: #5c6b7a;
+}
+
+.page-mycourses .iiidem-mycourses-list__item:last-child {
+    border-bottom: none !important;
+}
+
+.page-mycourses .iiidem-mycourses-list__thumb .iiidem-course-card__image {
+    min-height: 120px;
+}
+
+@media (max-width: 767.98px) {
+    .page-mycourses #region-main {
+        padding: 1rem 0.75rem 1.5rem;
+    }
+
+    .page-mycourses .iiidem-course-card__image {
+        height: 160px;
+        min-height: 160px;
+    }
+}
+
+/* ===== Front page (site home) ===== */
+body.pagelayout-frontpage,
+body.pagelayout-marketing {
+    background-color: #f4f7fc;
+}
+
+body.pagelayout-marketing #page {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.iiidem-marketing-page {
+    overflow-x: hidden;
+}
+
+.iiidem-page-hero {
+    padding: 2.5rem 0 2rem;
+    background: linear-gradient(135deg, #004274 0%, #0b3d91 55%, #1356c5 100%);
+    color: #fff;
+}
+
+.iiidem-breadcrumb {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.iiidem-breadcrumb a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.iiidem-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.iiidem-breadcrumb span[aria-hidden="true"] {
+    margin: 0 0.35rem;
+    opacity: 0.7;
+}
+
+.iiidem-page-hero__title {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-page-hero__lead {
+    font-size: 1.1rem;
+    max-width: 640px;
+    margin-bottom: 0;
+    opacity: 0.92;
+}
+
+.iiidem-about-section--page {
+    padding: 2.5rem 0 4rem;
+}
+
+.iiidem-contact-section {
+    padding: 2.5rem 0 4rem;
+}
+
+.iiidem-contact-card .card-body h2 {
+    color: #004274;
+    font-weight: 700;
+}
+
+.iiidem-contact-item a {
+    color: #0b3d91;
+    text-decoration: none;
+}
+
+.iiidem-contact-item a:hover {
+    text-decoration: underline;
+}
+
+.iiidem-contact-form .fitem {
+    margin-bottom: 1rem;
+}
+
+.iiidem-contact-form .fdescription.required {
+    margin-bottom: 1rem;
+}
+
+body.pagelayout-frontpage #page {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.iiidem-frontpage {
+    overflow-x: hidden;
+}
+
+/* Hero slider: one slide visible, auto-advance (Bootstrap 4 carousel). */
+.iiidem-hero-carousel {
+    --iiidem-hero-height: 650px;
+    min-height: var(--iiidem-hero-height);
+    margin-top: 0;
+}
+
+.iiidem-hero-carousel .carousel-inner {
+    overflow: hidden;
+    position: relative;
+    min-height: var(--iiidem-hero-height);
+}
+
+/* Let Bootstrap carousel control slide visibility; only hide inactive when JS has not run yet. */
+.iiidem-hero-carousel .carousel-item {
+    min-height: var(--iiidem-hero-height);
+}
+
+.iiidem-hero-carousel .carousel-item:not(.active):not(.carousel-item-next):not(.carousel-item-prev) {
+    display: none;
+}
+
+.iiidem-hero-carousel .carousel-indicators {
+    z-index: 3;
+}
+
+.iiidem-hero-carousel .carousel-indicators li {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin: 0 5px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 0;
+}
+
+.iiidem-hero-carousel .carousel-indicators li.active {
+    background-color: #fff;
+}
+
+.iiidem-hero-carousel .carousel-control-prev,
+.iiidem-hero-carousel .carousel-control-next {
+    z-index: 3;
+    width: 8%;
+}
+
+.iiidem-hero-carousel__image {
+    display: block;
+    width: 100%;
+    height: var(--iiidem-hero-height);
+    min-height: var(--iiidem-hero-height);
+    object-fit: cover;
+    object-position: center center;
+}
+
+.iiidem-hero-carousel__caption {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+    text-align: left;
+}
+
+.iiidem-hero-carousel__caption-inner {
+    max-width: 720px;
+}
+
+.iiidem-hero-carousel__title {
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 700;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    margin-bottom: 0.75rem;
+}
+
+.iiidem-hero-carousel__desc {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    opacity: 0.95;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+}
+
+.iiidem-hero-carousel__desc p:last-child {
+    margin-bottom: 0;
+}
+
+.iiidem-features {
+    padding: 3.5rem 0;
+    background: #fff;
+    margin-top: -2rem;
+    position: relative;
+    z-index: 2;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -8px 32px rgba(11, 61, 145, 0.08);
+}
+
+.iiidem-feature-card {
+    height: 100%;
+    padding: 1.75rem 1.5rem;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #f8fbff 0%, #fff 100%);
+    border: 1px solid rgba(11, 61, 145, 0.1);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.iiidem-feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(11, 61, 145, 0.12);
+}
+
+.iiidem-feature-card__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0b3d91 0%, #1356c5 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+}
+
+.iiidem-feature-card__title {
+    color: #0b3d91;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-feature-card__text {
+    color: #5c6b7a;
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.iiidem-about-section {
+    padding: 3rem 0 2rem;
+    background: #f4f7fc;
+}
+
+.iiidem-about-section .iiidem-tabs-wrapper {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 24px rgba(11, 61, 145, 0.08);
+}
+
+.iiidem-about-section .custom-tabs .nav-link {
+    color: #0b3d91;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.iiidem-about-section .custom-tabs .nav-link.active {
+    background-color: #0b3d91;
+    color: #fff;
+}
+
+.iiidem-courses-section {
+    padding: 3.5rem 0 4rem;
+    background: linear-gradient(180deg, #eef3fb 0%, #f4f7fc 100%);
+}
+
+.iiidem-section-header__eyebrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #1356c5;
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-section-header__title {
+    color: #0b3d91;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-section-header__lead {
+    color: #5c6b7a;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.iiidem-section-header--left .iiidem-section-header__lead {
+    margin-left: 0;
+}
+
+.iiidem-course-card__media {
+    overflow: hidden;
+}
+
+.iiidem-course-card__image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+
+.iiidem-course-card:hover .iiidem-course-card__image {
+    transform: scale(1.04);
+}
+
+.iiidem-course-card__title {
+    color: #0b3d91;
+    font-weight: 700;
+}
+
+.iiidem-course-card__btn {
+    background-color: #0b3d91;
+    border-color: #0b3d91;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.iiidem-course-card__btn:hover {
+    background-color: #1356c5;
+    border-color: #1356c5;
+}
+
+.iiidem-cta {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #004274 0%, #0b3d91 55%, #1356c5 100%);
+}
+
+.iiidem-cta__title {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-bottom: 0.75rem;
+}
+
+.iiidem-cta__text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.05rem;
+    max-width: 520px;
+    margin: 0 auto 1.5rem;
+}
+
+.iiidem-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.iiidem-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.iiidem-btn--outline {
+    border-width: 2px;
+}
+
+/* Student & teacher dashboards */
+.iiidem-student-dashboard .iiidem-dash-panel .card-header,
+.iiidem-teacher-dashboard .iiidem-dash-panel .card-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.iiidem-student-dashboard .iiidem-course-card__image,
+.iiidem-teacher-dashboard .iiidem-course-card__image {
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    background-color: #e9ecef;
+}
+
+.iiidem-student-dashboard .iiidem-stat-card__icon,
+.iiidem-teacher-dashboard .iiidem-stat-card__icon {
+    font-size: 1.5rem;
+    color: #004274;
+}
+
+.iiidem-student-dashboard .iiidem-stat-card__value,
+.iiidem-teacher-dashboard .iiidem-stat-card__value {
+    color: #004274;
+    font-weight: 700;
+}
+
+.iiidem-student-dashboard .iiidem-dash-list .list-group-item,
+.iiidem-teacher-dashboard .iiidem-dash-list .list-group-item {
+    border-left: 0;
+    border-right: 0;
+}
+
+.iiidem-student-dashboard .iiidem-dash-list .list-group-item:first-child,
+.iiidem-teacher-dashboard .iiidem-dash-list .list-group-item:first-child {
+    border-top: 0;
+}
+
+.iiidem-teacher-dashboard .iiidem-quick-action {
+    text-align: center;
+    line-height: 1.3;
+}
+
+@media (max-width: 767.98px) {
+    .iiidem-hero-carousel {
+        --iiidem-hero-height: 360px;
+    }
+
+    .iiidem-features {
+        margin-top: 0;
+        border-radius: 0;
+    }
+
+    .iiidem-hero-carousel__caption {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+}

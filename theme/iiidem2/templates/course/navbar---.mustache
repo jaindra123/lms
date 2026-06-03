@@ -1,0 +1,25 @@
+<nav class="navbar fixed-top navbar-light bg-white navbar-expand jaindra" aria-label="Site navigation">
+    <div class="container-fluid">
+
+        <button class="navbar-toggler aabtn d-block d-md-none px-1 my-1 border-0"
+                data-toggler="drawers" data-action="toggle" data-target="theme_boost-drawers-primary">
+            <span class="navbar-toggler-icon"></span>
+            <span class="sr-only">Side panel</span>
+        </button>
+
+        <a href="{{{ config.wwwroot }}}" class="navbar-brand d-flex align-items-center m-0 me-4 p-0 aabtn">
+            <img src="/theme/iiidem/pix/iiidem_about_logo.PNG" style="width: 18%;" alt="IIIDEM" class="site-logo">
+        </a>
+        <div class="primary-navigation d-flex flex-wrap">
+            {{# primarymoremenu }}
+                {{> core/moremenu }}
+            {{/ primarymoremenu }}
+        </div>
+
+        <div id="usernavigation" class="navbar-nav ms-auto h-100">
+            {{{ navbar_plugin_output }}}
+            {{{ user_menu }}}
+        </div>
+
+    </div>
+</nav>

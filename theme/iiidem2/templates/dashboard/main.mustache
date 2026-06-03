@@ -1,0 +1,29 @@
+{{!
+    @template theme_iiidem2/dashboard/main
+
+    Role-based dashboard shell (student / teacher / admin).
+}}
+<div class="iiidem-dashboard container-fluid py-4">
+    <div class="iiidem-dashboard-welcome mb-4">
+        <h1 class="h2 mb-1">{{#str}}dashboardwelcome, theme_iiidem2, {{fullname}}{{/str}}</h1>
+        <p class="text-muted mb-0">
+            {{#isadmin}}{{#str}}dashboardroleadmin, theme_iiidem2{{/str}}{{/isadmin}}
+            {{#isteacher}}{{#str}}dashboardroleteacher, theme_iiidem2{{/str}}{{/isteacher}}
+            {{#isstudent}}{{#str}}dashboardrolestudent, theme_iiidem2{{/str}}{{/isstudent}}
+        </p>
+    </div>
+
+    {{#isstudent}}
+        {{> theme_iiidem2/dashboard/student }}
+    {{/isstudent}}
+
+    {{#isteacher}}
+        {{> theme_iiidem2/dashboard/teacher }}
+    {{/isteacher}}
+
+    {{#isadmin}}
+        {{> theme_iiidem2/dashboard/admin }}
+    {{/isadmin}}
+
+    {{{ output.main_content }}}
+</div>

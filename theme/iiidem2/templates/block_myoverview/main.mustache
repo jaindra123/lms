@@ -1,0 +1,39 @@
+{{!
+    @template block_myoverview/main
+    IIIDEM theme override — filters + course grid wrapper.
+}}
+<div class="iiidem-mycourses block-myoverview block-cards" id="block-myoverview-{{uniqid}}" data-region="myoverview">
+    <div class="iiidem-mycourses__toolbar card border-0 shadow-sm mb-4"
+        role="search"
+        data-region="filter"
+        aria-label="{{#str}}aria:controls, block_myoverview{{/str}}">
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-center flex-wrap">
+                {{> block_myoverview/nav-grouping-selector }}
+                {{> block_myoverview/nav-search-widget }}
+                {{> block_myoverview/nav-sort-selector }}
+                {{#displaydropdown}}
+                    {{> block_myoverview/nav-display-selector }}
+                {{/displaydropdown}}
+            </div>
+        </div>
+    </div>
+
+    <div class="iiidem-mycourses__content container-fluid p-0">
+        {{> block_myoverview/courses-view }}
+    </div>
+</div>
+{{#js}}
+require(
+[
+    'jquery',
+    'block_myoverview/main',
+],
+function(
+    $,
+    Main
+) {
+    var root = $('#block-myoverview-{{uniqid}}');
+    Main.init(root);
+});
+{{/js}}

@@ -1,0 +1,23 @@
+{{!
+    @template theme_iiidem2/courses
+
+    Front page course cards. Expects: courses[] with fullname, summary, viewurl, courseimage.
+}}
+<div class="iiidem-course-grid row g-4">
+    {{#courses}}
+    <div class="col-sm-6 col-lg-4">
+        <article class="iiidem-course-card card h-100 border-0 shadow-sm">
+            <div class="iiidem-course-card__media">
+                <img src="{{courseimage}}" class="iiidem-course-card__image" alt="">
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h3 class="iiidem-course-card__title h5">{{fullname}}</h3>
+                <p class="iiidem-course-card__summary text-muted flex-grow-1">{{summary}}</p>
+                <a href="{{viewurl}}" class="btn btn-primary iiidem-course-card__btn align-self-start">
+                    View course
+                </a>
+            </div>
+        </article>
+    </div>
+    {{/courses}}
+</div>

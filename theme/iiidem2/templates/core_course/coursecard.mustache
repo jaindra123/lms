@@ -1,0 +1,45 @@
+{{!
+    @template core_course/coursecard
+    IIIDEM theme override — course card for My courses / overview.
+}}
+<div class="card iiidem-course-card w-100 border-0 shadow-sm"
+    role="listitem"
+    data-region="course-content"
+    data-course-id="{{{id}}}">
+    <a href="{{viewurl}}" class="iiidem-course-card__imagewrap d-block" tabindex="-1">
+        <div class="iiidem-course-card__image card-img-top border-0"
+            style="background-image: url('{{{courseimage}}}');">
+            <span class="sr-only">{{fullname}}</span>
+        </div>
+    </a>
+    <div class="card-body iiidem-course-card__body course-info-container" id="course-info-container-{{id}}-{{uniqid}}">
+        {{#showshortname}}
+            <div class="iiidem-course-card__shortname text-muted small mb-1">
+                <span class="sr-only">{{#str}}aria:courseshortname, core_course{{/str}}</span>
+                {{{shortname}}}
+            </div>
+        {{/showshortname}}
+        <h3 class="iiidem-course-card__title h5 mb-2">
+            <a href="{{viewurl}}" class="aalink coursename text-decoration-none">
+                {{> core_course/favouriteicon }}
+                <span class="sr-only">{{#str}}aria:coursename, core_course{{/str}}</span>
+                {{$coursename}}{{/coursename}}
+            </a>
+        </h3>
+        <div class="iiidem-course-card__meta text-muted small mb-2">
+            {{$coursecategory}}{{/coursecategory}}
+        </div>
+        {{^visible}}
+            <span class="badge bg-info text-white mb-2">{{#str}}hiddenfromstudents{{/str}}</span>
+        {{/visible}}
+        <a href="{{viewurl}}" class="btn btn-primary btn-sm iiidem-course-card__enter rounded-pill">
+            {{#str}}entercourse, theme_iiidem2{{/str}}
+        </a>
+    </div>
+    <div class="card-footer iiidem-course-card__footer bg-white border-0 pt-0 d-flex flex-column gap-2">
+        {{$progress}}{{/progress}}
+        <div class="iiidem-course-card__menu ms-auto">
+            {{$menu}}{{/menu}}
+        </div>
+    </div>
+</div>

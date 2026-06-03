@@ -1,0 +1,37 @@
+{{!
+    @template theme_iiidem2/pages/course-detail
+
+    Public course detail (no login required).
+}}
+{{> theme_iiidem2/navbar }}
+
+<main class="iiidem-marketing-page iiidem-course-detail-page">
+
+    {{> theme_iiidem2/course/hero }}
+
+    <section class="iiidem-course-detail-cta py-4">
+        <div class="container">
+            <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
+                <div class="d-flex flex-wrap gap-2">
+                    {{#isloggedin}}
+                    <a href="{{entercourseurl}}" class="btn btn-primary">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
+                    {{/isloggedin}}
+                    {{^isloggedin}}
+                    <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
+                    {{/isloggedin}}
+                    <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{> theme_iiidem2/course/curriculum }}
+    {{> theme_iiidem2/course/instructors }}
+    {{#hasfaqs}}
+    {{> theme_iiidem2/course/faq }}
+    {{/hasfaqs}}
+
+</main>
+
+{{> theme_iiidem2/page_end }}

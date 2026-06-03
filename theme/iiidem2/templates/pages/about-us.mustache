@@ -1,0 +1,32 @@
+{{!
+    @template theme_iiidem2/pages/about-us
+
+    Public About Us page (/about-us/).
+}}
+{{> theme_iiidem2/navbar }}
+
+<main class="iiidem-marketing-page" id="about-us-page">
+
+    <section class="iiidem-page-hero">
+        <div class="container">
+            <nav class="iiidem-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{config.wwwroot}}">{{#str}}home{{/str}}</a>
+                <span aria-hidden="true">/</span>
+                <span>{{pagetitle}}</span>
+            </nav>
+            <h1 class="iiidem-page-hero__title">{{pagetitle}}</h1>
+            <p class="iiidem-page-hero__lead">{{pagesubtitle}}</p>
+        </div>
+    </section>
+
+    <section class="iiidem-about-section iiidem-about-section--page">
+        {{> theme_iiidem2/about }}
+    </section>
+
+</main>
+
+<div class="d-none" aria-hidden="true">
+    {{{ output.main_content }}}
+</div>
+
+{{> theme_iiidem2/page_end }}

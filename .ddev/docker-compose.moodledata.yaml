@@ -1,0 +1,13 @@
+# Moodle dataroot on a Docker volume (fast). Project moodledata/ on Windows is slow.
+services:
+  web:
+    volumes:
+      - type: volume
+        source: moodledata
+        target: /var/moodledata
+        volume:
+          nocopy: true
+
+volumes:
+  moodledata:
+    name: iiidem-certification-moodledata

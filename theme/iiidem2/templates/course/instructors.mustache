@@ -1,0 +1,31 @@
+<section class="course-instructors">
+    <div class="container">
+        <div class="section-heading">
+            <h2>Meet Your Instructors </h2>
+        </div>
+
+        <div class="career-grid">
+            {{#instructordata}}
+            <div class="career-card">
+                <div class="career-image">
+                    {{#profileurl}}
+                    <a href="{{{profileurl}}}">
+                        <img src="{{{image}}}" alt="{{name}}" class="instructor-photo">
+                    </a>
+                    {{/profileurl}}
+                    {{^profileurl}}
+                    <img src="{{{image}}}" alt="{{name}}" class="instructor-photo">
+                    {{/profileurl}}
+                </div>
+                <div class="career-content">
+                    <h3>{{name}}</h3>
+                    <span>{{role}}</span>
+                    <p>{{bio}}</p>
+                </div>
+            </div>
+            {{/instructordata}}
+        </div>
+
+    </div>
+</section>
+

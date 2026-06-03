@@ -1,0 +1,64 @@
+
+<div class="container">
+    <div class="iiidem-curriculum">
+        <div class="curriculum-header mb-3">
+            <div class='ws-info'>
+              <div class="course-description"> {{{ coursesummary }}}  </div>
+            </div>
+            <h2>Course content</h2>
+            <span>
+                {{totalsections}} sections •
+                {{totalactivities}} lectures
+            </span>
+        </div>
+
+        <div class="accordion iiidem-accordion" id="courseAccordion">
+          {{#sections}}
+            <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="heading{{id}}">
+                    <button class="accordion-button collapsed"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#collapse{{id}}"
+                            aria-expanded="false"
+                            aria-controls="collapse{{id}}">
+                        <div class="w-100 d-flex justify-content-between">
+                            <strong>{{name}}</strong>
+                            <span>{{activitycount}} lectures</span>
+                        </div>
+                    </button>
+                </h2>
+
+                <div id="collapse{{id}}" class="accordion-collapse collapse" data-bs-parent="#courseAccordion">
+                    <div class="accordion-body">
+                        {{#activities}}
+                        <div class="lecture-item mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div> ▶ {{title}}  </div>
+                                <div>
+                                    {{#preview}}
+                                    <button class="btn btn-sm btn-primary" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#preview{{id}}">
+                                        Preview
+                                    </button>
+                                    {{/preview}}
+                                </div>
+                            </div>
+
+                            {{#previewcontent}}
+                            <div class="collapse mt-2" id="preview{{id}}">
+                                <div class="card card-body">
+                                    {{{previewcontent}}}
+                                </div>
+                            </div>
+                            {{/previewcontent}}
+                        </div>
+                        {{/activities}}
+                    </div>
+                </div>
+            </div>
+        {{/sections}}
+        </div>
+    </div>
+</div>
