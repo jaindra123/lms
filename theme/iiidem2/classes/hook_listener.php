@@ -46,6 +46,38 @@ class hook_listener {
      *
      * @param \core\hook\navigation\primary_extend $hook
      */
+    /**
+     * Build course layout data before header/layout (avoids add_body_class errors in layout).
+     *
+     * @param \core\hook\output\before_http_headers $hook
+     */
+    public static function before_http_headers(\core\hook\output\before_http_headers $hook): void {
+        global $CFG, $PAGE, $COURSE;
+
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        if (\theme_iiidem2_is_quiz_attempt_page($PAGE) && \theme_iiidem2_use_custom_quiz_ui($PAGE)) {
+            if ($PAGE->state < \moodle_page::STATE_IN_BODY) {
+                $PAGE->set_pagelayout('quizattempt');
+            }
+            \theme_iiidem2_apply_custom_quiz_page_assets($PAGE);
+        } else if (\theme_iiidem2_is_custom_quiz_page($PAGE)) {
+            \theme_iiidem2_apply_custom_quiz_page_assets($PAGE);
+        } else if (\theme_iiidem2_is_live_class_page($PAGE)) {
+            \theme_iiidem2_apply_live_class_page_assets($PAGE);
+        }
+
+        if ($PAGE->pagelayout !== 'course' || empty($COURSE->id) || (int) $COURSE->id === SITEID) {
+            return;
+        }
+
+        if (!$PAGE->url->compare(new \moodle_url('/course/view.php'), URL_MATCH_BASE)) {
+            return;
+        }
+
+        \theme_iiidem2_preload_course_layout_context($COURSE);
+    }
+
     public static function primary_extend(\core\hook\navigation\primary_extend $hook): void {
         $view = $hook->get_primaryview();
         $view->add(
@@ -62,5 +94,14 @@ class hook_listener {
             null,
             'contactus'
         );
+
+        if (!empty($view->children)) {
+            foreach ($view->children as $child) {
+                if ($child->key === 'register' && (int) $child->type === \navigation_node::TYPE_CUSTOM) {
+                    $child->remove();
+                    break;
+                }
+            }
+        }
     }
 }

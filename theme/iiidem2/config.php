@@ -28,7 +28,7 @@ require_once(__DIR__ . '/lib.php');
 
 $THEME->name = 'iiidem2';
 $THEME->parents = ['boost']; 
-$THEME->sheets = ['custom'];
+$THEME->sheets = ['custom', 'quiz-mcq'];
 $string['pluginname'] = 'IIIDEM 2';
 
 $THEME->editor_sheets = [];
@@ -76,6 +76,17 @@ $THEME->layouts = [
         'regions' => array('side-pre'),
         'defaultregion' => 'side-pre',
     ),
+    // Custom full-screen MCQ UI for mod/quiz/attempt.php (set in theme hook).
+    'quizattempt' => array(
+        'file' => 'quizattempt.php',
+        'regions' => array(),
+        'defaultregion' => '',
+        'options' => array(
+            'nofooter' => true,
+            'nonavbar' => true,
+            'noactivityheader' => true,
+        ),
+    ),
     // The site home page.
     'frontpage' => array(
         'file' => 'frontpage.php',
@@ -88,6 +99,12 @@ $THEME->layouts = [
     // Public marketing pages (about-us, etc.) — set template via theme_iiidem2_set_marketing_template().
     'marketing' => array(
         'file' => 'marketing.php',
+        'regions' => [],
+        'defaultregion' => '',
+    ),
+    // Custom registration form (/register/).
+    'register' => array(
+        'file' => 'register.php',
         'regions' => [],
         'defaultregion' => '',
     ),

@@ -3,6 +3,10 @@
 
     Site home: hero slider, features, about, courses, CTA, footer.
 }}
+{{> theme_iiidem2/head }}
+<body {{{ bodyattributes }}}>
+{{> core/local/toast/wrapper}}
+{{{ output.standard_top_of_body_html }}}
 {{> theme_iiidem2/navbar }}
 
 <main class="iiidem-frontpage" id="iiidem-frontpage-main">
@@ -48,6 +52,35 @@
         {{> theme_iiidem2/about }}
     </section>
 
+    <section class="advisors-section-idea" id="about-idea">
+        {{{aboutideahtml}}}
+    </section>
+
+    <section class="advisors-section" id="program_governance">
+        <div class="container">
+            <div class="section-header-governance">
+                <h2>{{governancetitle}}</h2>
+            </div>
+            <div class="advisors-grid">
+                {{#advisors}}
+                <div class="advisor-card">
+                    <div class="advisor-image">
+                        <img src="{{imageurl}}" alt="{{imagealt}}">
+                    </div>
+                    <div class="advisor-content">
+                        <h3>{{name}}</h3>
+                        {{#hasroles}}
+                        {{#roles}}
+                        <span>{{text}}</span>
+                        {{/roles}}
+                        {{/hasroles}}
+                    </div>
+                </div>
+                {{/advisors}}
+            </div>
+        </div>
+    </section>
+
     {{#hascourses}}
     <section class="iiidem-courses-section" id="courses">
         <div class="container">
@@ -71,7 +104,8 @@
                         <a href="{{coursesurl}}" class="btn btn-light btn-lg iiidem-btn">My courses</a>
                     {{/isrealuser}}
                     {{^isrealuser}}
-                        <a href="{{loginurl}}" class="btn btn-light btn-lg iiidem-btn">Login to portal</a>
+                        <a href="{{registerurl}}" class="btn btn-light btn-lg iiidem-btn">Create account</a>
+                        <a href="{{loginurl}}" class="btn btn-outline-light btn-lg iiidem-btn iiidem-btn--outline">Login to portal</a>
                         <a href="{{coursesurl}}" class="btn btn-outline-light btn-lg iiidem-btn iiidem-btn--outline">Browse courses</a>
                     {{/isrealuser}}
                 </div>
@@ -80,9 +114,3 @@
     </section>
 
 </main>
-
-<div class="d-none" aria-hidden="true">
-    {{{ output.main_content }}}
-</div>
-
-{{> theme_iiidem2/page_end }}

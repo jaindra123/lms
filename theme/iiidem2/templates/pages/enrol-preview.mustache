@@ -1,43 +1,31 @@
 {{!
-    @template theme_iiidem2/pages/course-detail
+    @template theme_iiidem2/pages/enrol-preview
 
-    Public course detail (no login required).
+    Public course preview on /enrol/index.php (no login required).
 }}
 {{> theme_iiidem2/navbar }}
 
-<main class="iiidem-marketing-page iiidem-course-detail-page">
+<main class="iiidem-marketing-page iiidem-enrol-preview-page">
 
     {{> theme_iiidem2/course/hero }}
+
+    {{> theme_iiidem2/course/summary }}
+
+    {{#hasinstructors}}
+    {{> theme_iiidem2/course/instructors }}
+    {{/hasinstructors}}
 
     <section class="iiidem-course-detail-cta py-4">
         <div class="container">
             <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
                 <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
                 <div class="d-flex flex-wrap gap-2">
-                    {{#isloggedin}}
-                    <a href="{{entercourseurl}}" class="btn btn-primary">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
-                    {{/isloggedin}}
-                    {{^isloggedin}}
                     <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
-                    {{/isloggedin}}
                     <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
                 </div>
             </div>
         </div>
     </section>
-
-    {{#hasquizzes}}
-    {{> theme_iiidem2/course/quizzes }}
-    {{/hasquizzes}}
-
-    {{> theme_iiidem2/course/curriculum }}
-
-    {{#hasinstructors}}
-    {{> theme_iiidem2/course/instructors }}
-    {{/hasinstructors}}
-    {{#hasfaqs}}
-    {{> theme_iiidem2/course/faq }}
-    {{/hasfaqs}}
 
 </main>
 

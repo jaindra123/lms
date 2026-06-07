@@ -66,7 +66,18 @@
                     {{#headercontent}}
                         {{> core/activity_header }}
                     {{/headercontent}}
-                    {{{ output.main_content }}}
+                    {{#iiidemcustomliveclass}}
+                        {{> theme_iiidem2/liveclass/activity_wrapper }}
+                        <div class="iiidem-live-class-main-slot visually-hidden" aria-hidden="true">{{{ output.main_content }}}</div>
+                    {{/iiidemcustomliveclass}}
+                    {{^iiidemcustomliveclass}}
+                        {{#iiidemcustomquiz}}
+                            {{> theme_iiidem2/quiz/activity_wrapper }}
+                        {{/iiidemcustomquiz}}
+                        {{^iiidemcustomquiz}}
+                            {{{ output.main_content }}}
+                        {{/iiidemcustomquiz}}
+                    {{/iiidemcustomliveclass}}
                     {{{ output.course_content_footer }}}
 
                 </div>

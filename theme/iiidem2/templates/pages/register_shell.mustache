@@ -1,0 +1,27 @@
+{{!
+    @template theme_iiidem2/pages/register_shell
+
+    Registration page shell; the Moodle form is rendered in PHP below the hero.
+}}
+{{> theme_iiidem2/navbar }}
+
+<main class="iiidem-marketing-page iiidem-register-page" id="register-page">
+
+    <section class="iiidem-page-hero">
+        <div class="container">
+            <nav class="iiidem-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{config.wwwroot}}">{{#str}}home{{/str}}</a>
+                <span aria-hidden="true">/</span>
+                <span>{{pagetitle}}</span>
+            </nav>
+            <h1 class="iiidem-page-hero__title">{{pagetitle}}</h1>
+            <p class="iiidem-page-hero__lead">{{pagesubtitle}}</p>
+        </div>
+    </section>
+
+    <p class="container text-center text-muted pb-2 mb-0">
+        {{#str}}registerhaveaccount, theme_iiidem2{{/str}}
+        <a href="{{loginurl}}">{{#str}}login{{/str}}</a>
+    </p>
+
+</main>

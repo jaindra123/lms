@@ -1,0 +1,293 @@
+/**
+ * Live virtual classroom UI for mod/page (Webex join pages).
+ */
+
+body.iiidem-live-class {
+    background: #0a1628 !important;
+}
+
+body.iiidem-live-class #page-wrapper,
+body.iiidem-live-class #page {
+    background: #0a1628;
+}
+
+body.iiidem-live-class #page-content,
+body.iiidem-live-class #region-main,
+body.iiidem-live-class #region-main-box {
+    background: transparent;
+    max-width: none;
+    padding: 0;
+}
+
+body.iiidem-live-class #page-header,
+body.iiidem-live-class .page-context-header,
+body.iiidem-live-class .page-header-headings,
+body.iiidem-live-class .breadcrumb,
+body.iiidem-live-class .secondary-navigation,
+body.iiidem-live-class .tertiary-navigation,
+body.iiidem-live-class .activity-header,
+body.iiidem-live-class .drawer-toggles,
+body.iiidem-live-class .activity-navigation,
+body.iiidem-live-class .modified {
+    display: none !important;
+}
+
+body.iiidem-live-class .main-inner {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+body.iiidem-live-class #region-main {
+    padding: 0;
+}
+
+.iiidem-live-class {
+    color: #fff;
+    padding: 2.5rem 1.5rem 3.5rem;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+}
+
+.iiidem-live-class__inner {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.iiidem-live-class__header {
+    margin-bottom: 2.5rem;
+}
+
+.iiidem-live-class__eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #e8a317;
+}
+
+.iiidem-live-class__title {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    line-height: 1.15;
+    color: #fff;
+}
+
+.iiidem-live-class__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 2.5rem;
+    align-items: start;
+}
+
+.iiidem-live-class__stage {
+    position: relative;
+    background: #0f2138;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem 1rem 0.75rem;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+.iiidem-live-class__rec {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.iiidem-live-class__rec-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: iiidem-live-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes iiidem-live-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+.iiidem-live-class__screen {
+    min-height: 260px;
+    border-radius: 8px;
+    background: linear-gradient(160deg, #132a47 0%, #0c1d33 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iiidem-live-class__presenter {
+    text-align: center;
+}
+
+.iiidem-live-class__presenter-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(20, 184, 166, 0.18);
+    color: #5eead4;
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.iiidem-live-class__presenter-label {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.iiidem-live-class__thumbs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+}
+
+.iiidem-live-class__thumb {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: #132a47;
+    position: relative;
+}
+
+.iiidem-live-class__thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 42%;
+    height: 42%;
+    border-radius: 50%;
+}
+
+.iiidem-live-class__thumb--1::after { background: #eab308; }
+.iiidem-live-class__thumb--2::after { background: #14b8a6; }
+.iiidem-live-class__thumb--3::after { background: #38bdf8; }
+.iiidem-live-class__thumb--4::after { background: #eab308; }
+.iiidem-live-class__thumb--5::after { background: #14b8a6; }
+
+.iiidem-live-class__controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.85rem 0 0.35rem;
+}
+
+.iiidem-live-class__control-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.iiidem-live-class__control-dot--active {
+    background: #eab308;
+}
+
+.iiidem-live-class__actions {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.iiidem-live-class__join-btn {
+    display: inline-block;
+    padding: 0.9rem 2.25rem;
+    border-radius: 6px;
+    background: #7f1d1d;
+    color: #fff !important;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.iiidem-live-class__join-btn:hover,
+.iiidem-live-class__join-btn:focus {
+    background: #991b1b;
+    color: #fff !important;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.iiidem-live-class__no-link {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.iiidem-live-class__modified {
+    margin: 0.85rem 0 0;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.iiidem-live-class__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+.iiidem-live-class__feature {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.iiidem-live-class__feature-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #eab308;
+    color: #0a1628;
+    font-size: 1rem;
+}
+
+.iiidem-live-class__feature-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.iiidem-live-class__feature-desc {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 991px) {
+    .iiidem-live-class {
+        padding: 1.5rem 1rem 2.5rem;
+    }
+
+    .iiidem-live-class__grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .iiidem-live-class__screen {
+        min-height: 220px;
+    }
+}

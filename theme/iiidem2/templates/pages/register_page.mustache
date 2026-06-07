@@ -1,0 +1,51 @@
+{{!
+    @template theme_iiidem2/pages/register_page
+
+    Registration page layout shell with visible form area.
+}}
+{{> theme_iiidem2/head }}
+<body {{{ bodyattributes }}}>
+{{> core/local/toast/wrapper}}
+{{{ output.standard_top_of_body_html }}}
+{{> theme_iiidem2/navbar }}
+
+<main class="iiidem-marketing-page iiidem-register-page" id="register-page">
+
+    <section class="iiidem-page-hero">
+        <div class="container">
+            <nav class="iiidem-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{config.wwwroot}}">{{#str}}home{{/str}}</a>
+                <span aria-hidden="true">/</span>
+                <span>{{pagetitle}}</span>
+            </nav>
+            <h1 class="iiidem-page-hero__title">{{pagetitle}}</h1>
+            <p class="iiidem-page-hero__lead">{{pagesubtitle}}</p>
+        </div>
+    </section>
+
+    <p class="container text-center text-muted pb-2 mb-0">
+        {{#str}}registerhaveaccount, theme_iiidem2{{/str}}
+        <a href="{{loginurl}}">{{#str}}login{{/str}}</a>
+    </p>
+
+</main>
+
+<section class="iiidem-register-section py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="iiidem-register-card card border-0 shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="iiidem-register-form">
+                            {{{ output.main_content }}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{{> theme_iiidem2/page_end }}
+</body>
+</html>

@@ -1,0 +1,367 @@
+/* Student dashboard v2 — sidebar layout matching IIIDEM design */
+
+.pagelayout-mydashboard #page.drawers .main-inner {
+    max-width: none;
+    padding: 0;
+}
+
+.pagelayout-mydashboard #page.drawers .activity-header,
+.pagelayout-mydashboard #page.drawers div[role="main"] > .activity-header {
+    display: none;
+}
+
+.iiidem-student-dashboard-v2 {
+    display: flex;
+    min-height: calc(100vh - 120px);
+    background: #f1f4f8;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(12, 45, 76, 0.08);
+}
+
+.iiidem-student-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #0a2540 0%, #0c2d4c 100%);
+    color: #fff;
+    padding: 1.5rem 0;
+}
+
+.iiidem-student-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0 1.25rem 1.5rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 1rem;
+}
+
+.iiidem-student-sidebar__brand .fa {
+    color: #f07b20;
+    font-size: 1.35rem;
+}
+
+.iiidem-student-sidebar__item a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    color: rgba(255, 255, 255, 0.88);
+    text-decoration: none;
+    font-weight: 500;
+    border-left: 4px solid transparent;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.iiidem-student-sidebar__item a:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.iiidem-student-sidebar__item.is-active a {
+    background: rgba(255, 255, 255, 0.1);
+    border-left-color: #f07b20;
+    color: #fff;
+}
+
+.iiidem-student-sidebar__item .fa {
+    width: 1.25rem;
+    text-align: center;
+    opacity: 0.95;
+}
+
+.iiidem-student-main {
+    flex: 1;
+    min-width: 0;
+    padding: 1.5rem 1.75rem 2rem;
+}
+
+.iiidem-student-topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.iiidem-student-topbar__title {
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+.iiidem-student-topbar__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.iiidem-student-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.35rem 1rem;
+    min-width: 220px;
+}
+
+.iiidem-student-search .fa {
+    color: #94a3b8;
+}
+
+.iiidem-student-search .form-control {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+    font-size: 0.95rem;
+}
+
+.iiidem-student-icon-btn {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #0a2540;
+    text-decoration: none;
+}
+
+.iiidem-student-icon-btn__badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #f07b20;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.iiidem-student-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #f07b20;
+    display: inline-flex;
+}
+
+.iiidem-student-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.iiidem-student-stat {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.35rem 1.5rem;
+    box-shadow: 0 4px 14px rgba(12, 45, 76, 0.06);
+    border-left: 5px solid #004274;
+    height: 100%;
+}
+
+.iiidem-student-stat--orange {
+    border-left-color: #f07b20;
+}
+
+.iiidem-student-stat--teal {
+    border-left-color: #1aa898;
+}
+
+.iiidem-student-stat--navy {
+    border-left-color: #004274;
+}
+
+.iiidem-student-stat__value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0a2540;
+    line-height: 1.1;
+}
+
+.iiidem-student-stat__label {
+    margin-top: 0.35rem;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.iiidem-student-panel {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(12, 45, 76, 0.07);
+    height: 100%;
+    overflow: hidden;
+}
+
+.iiidem-student-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.35rem;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.iiidem-student-panel__title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.iiidem-student-panel__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(240, 123, 32, 0.12);
+    color: #f07b20;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iiidem-student-panel__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+.iiidem-student-btn-join {
+    background: #f07b20;
+    border: 0;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.9rem;
+}
+
+.iiidem-student-btn-join:hover {
+    background: #d96812;
+    color: #fff;
+}
+
+.iiidem-student-panel__body {
+    padding: 0.5rem 1rem 1rem;
+}
+
+.iiidem-student-list__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0.75rem;
+    margin-bottom: 0.5rem;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.iiidem-student-list__title {
+    font-weight: 600;
+    color: #0a2540;
+    margin-bottom: 0.15rem;
+}
+
+.iiidem-student-list__link {
+    text-decoration: none;
+}
+
+.iiidem-student-list__link:hover {
+    color: #004274;
+    text-decoration: underline;
+}
+
+.iiidem-student-list__meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-student-pill {
+    flex-shrink: 0;
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.iiidem-student-pill--success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.iiidem-student-pill--teal {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.iiidem-student-pill--navy {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.iiidem-student-pill--orange {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.iiidem-student-pill--muted {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.iiidem-student-empty {
+    color: #64748b;
+    padding: 1rem 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+    .iiidem-student-dashboard-v2 {
+        flex-direction: column;
+    }
+
+    .iiidem-student-sidebar {
+        width: 100%;
+        padding-bottom: 0.5rem;
+    }
+
+    .iiidem-student-sidebar__nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0 0.75rem 0.75rem;
+    }
+
+    .iiidem-student-sidebar__item a {
+        border-left: 0;
+        border-radius: 999px;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.85rem;
+    }
+
+    .iiidem-student-sidebar__item.is-active a {
+        background: rgba(240, 123, 32, 0.2);
+    }
+
+    .iiidem-student-main {
+        padding: 1rem;
+    }
+}

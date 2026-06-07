@@ -1,0 +1,22 @@
+{{!
+    @template theme_iiidem2/course/quizzes
+
+    All quiz activities in the course (loaded from course modules, not a fixed cmid).
+}}
+<section class="iiidem-course-quizzes py-5" id="course-quizzes">
+    <div class="container">
+        <div class="iiidem-section-header mb-4">
+            <span class="iiidem-section-header__eyebrow">{{#str}}coursequizzes_eyebrow, theme_iiidem2{{/str}}</span>
+            <h2 class="iiidem-section-header__title">{{#str}}coursequizzes_title, theme_iiidem2{{/str}}</h2>
+            <p class="iiidem-section-header__lead mb-0">{{coursequizzeslead}}</p>
+        </div>
+
+        <div class="row g-4">
+            {{#quizzes}}
+            <div class="col-12" id="{{anchor}}">
+                {{> theme_iiidem2/quiz/course_quiz_card }}
+            </div>
+            {{/quizzes}}
+        </div>
+    </div>
+</section>

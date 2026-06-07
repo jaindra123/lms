@@ -1,0 +1,39 @@
+{{!
+    @template theme_iiidem2/layout/quizattempt
+
+    Full-screen custom MCQ attempt UI (no Boost drawers).
+}}
+{{> theme_iiidem2/head }}
+<body {{{ bodyattributes }}}>
+{{> core/local/toast/wrapper}}
+
+<div id="page-wrapper" class="iiidem-quiz-page">
+    {{{ output.standard_top_of_body_html }}}
+
+    <div class="iiidem-quiz-mcq iiidem-quiz-activity" data-cmid="{{quizcmid}}">
+        <div class="iiidem-quiz-mcq__stage">
+            <a href="{{quizviewurl}}" class="iiidem-quiz-mcq__back-link" title="{{#str}}back, moodle{{/str}}">
+                <i class="icon fa fa-arrow-left" aria-hidden="true"></i>
+                <span class="visually-hidden">{{#str}}back, moodle{{/str}}</span>
+            </a>
+            <div class="iiidem-quiz-mcq__card"{{#hasquizwatermark}} style="--iiidem-quiz-watermark-url: url('{{quizwatermarkurl}}')"{{/hasquizwatermark}}>
+                {{{ output.main_content }}}
+            </div>
+        </div>
+    </div>
+
+    {{> theme_iiidem2/page_end }}
+</div>
+
+{{{ output.standard_end_of_body_html }}}
+</body>
+</html>
+{{#js}}
+require(['theme_iiidem2/quiz_mcq'], function(QuizMcq) {
+    QuizMcq.init();
+});
+M.util.js_pending('theme_iiidem2/loader');
+require(['theme_iiidem2/loader'], function() {
+    M.util.js_complete('theme_iiidem2/loader');
+});
+{{/js}}

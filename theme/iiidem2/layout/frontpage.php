@@ -18,13 +18,12 @@ defined('MOODLE_INTERNAL') || die();
 
 global $USER;
 
-$primary = new core\navigation\output\primary($PAGE);
-$renderer = $PAGE->get_renderer('core');
-$primarymenu = $primary->export_for_template($renderer);
+$primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
 $templatecontext = [
     'sitename' => format_string($SITE->fullname),
     'output' => $OUTPUT,
+    'bodyattributes' => $OUTPUT->body_attributes(['pagelayout-frontpage']),
     'primarymoremenu' => $primarymenu['moremenu'],
     'mobileprimarynav' => $primarymenu['mobileprimarynav'],
     'usermenu' => $primarymenu['user'],
@@ -32,6 +31,7 @@ $templatecontext = [
     'isrealuser' => ($USER->id > 1),
     'slides' => theme_iiidem2_get_frontpage_slides(),
     'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+    'registerurl' => theme_iiidem2_get_register_url(),
     'coursesurl' => (new moodle_url('/course/index.php'))->out(false),
 ];
 
@@ -40,20 +40,24 @@ $templatecontext['courses'] = $frontpagecourses;
 $templatecontext['hascourses'] = !empty($frontpagecourses);
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
+$governancecontext = theme_iiidem2_get_program_governance_context();
+$ideacontext = theme_iiidem2_get_about_idea_context();
+
+$templatecontext = array_merge(
+    $templatecontext,
+    $governancecontext ?? [],
+    $ideacontext ?? []
+);
+
+$templatecontext['aboutideahtml'] = $OUTPUT->render_from_template('theme_iiidem2/about_idea', $ideacontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_slider', 'init');
 
-echo $OUTPUT->doctype();
-?>
-<html <?php echo $OUTPUT->htmlattributes(); ?>>
-<head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
-</head>
-<body <?php echo $OUTPUT->body_attributes(['pagelayout-frontpage']); ?>>
-<?php echo $OUTPUT->standard_top_of_body_html(); ?>
-
-<?php
 echo $OUTPUT->render_from_template('theme_iiidem2/frontpage', $templatecontext);
+?>
+<div class="d-none" aria-hidden="true"><?php echo $OUTPUT->main_content(); ?></div>
+<?php
+echo $OUTPUT->render_from_template('theme_iiidem2/page_end', $templatecontext);
 ?>
 </body>
 </html>

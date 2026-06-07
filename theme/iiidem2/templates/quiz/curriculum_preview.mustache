@@ -1,0 +1,17 @@
+{{!
+    @template theme_iiidem2/quiz/curriculum_preview
+
+    Quiz preview block inside course curriculum accordion.
+    Context: title, questioncount, timelimit, haspreview, previewcontent (HTML), attempturl
+}}
+<div class="iiidem-quiz-preview">
+    <h4 class="h5">{{title}}</h4>
+    <p class="mb-1"><strong>{{#str}}numquestions, quiz{{/str}}:</strong> {{questioncount}}</p>
+    <p class="mb-3"><strong>{{#str}}timelimit, quiz{{/str}}:</strong> {{timelimit}}</p>
+    {{#previewcontent}}
+    <div class="iiidem-quiz-preview__questions mb-3">
+        {{{previewcontent}}}
+    </div>
+    {{/previewcontent}}
+    <a href="{{attempturl}}" class="btn btn-primary">{{#str}}attemptquiznow, quiz{{/str}}</a>
+</div>

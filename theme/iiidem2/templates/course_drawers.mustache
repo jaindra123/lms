@@ -159,8 +159,30 @@
                             </div>
                         {{/overflow}}
                         {{> theme_iiidem2/course/hero }}
+
+                        {{#ispubliccourseview}}
+                        <section class="iiidem-course-detail-cta py-4">
+                            <div class="container">
+                                <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                                    <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
+                                        <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        {{/ispubliccourseview}}
+
+                        {{#hasquizzes}}
+                        {{> theme_iiidem2/course/quizzes }}
+                        {{/hasquizzes}}
+
                         {{> theme_iiidem2/course/curriculum }}
+
+                        {{#hasinstructors}}
                         {{> theme_iiidem2/course/instructors }}
+                        {{/hasinstructors}}
                         {{> theme_iiidem2/course/faq }}
                         {{{ output.activity_navigation }}}
                         {{{ output.course_content_footer }}}

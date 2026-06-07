@@ -298,6 +298,25 @@ class core_renderer extends \core_renderer {
     public function footer_data() {
         // Deprecated: use theme_iiidem2_get_footer_context() in layouts instead.
         return \theme_iiidem2_get_footer_context();
+    }
+
+    /**
+     * Always load quiz-mcq.css on attempt pages (theme sheets are not always emitted).
+     *
+     * @return string
+     */
+    public function standard_head_html() {
+        $html = parent::standard_head_html();
+        if (\theme_iiidem2_is_quiz_attempt_page($this->page)) {
+            $url = new moodle_url('/theme/iiidem2/style/quiz-mcq.css');
+            $html .= html_writer::empty_tag('link', [
+                'rel' => 'stylesheet',
+                'type' => 'text/css',
+                'href' => $url->out(false),
+                'id' => 'iiidem-quiz-mcq-css',
+            ]);
+        }
+        return $html;
     } 
 
 

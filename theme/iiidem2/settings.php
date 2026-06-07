@@ -102,6 +102,18 @@ if ($ADMIN->fulltree) {
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
+    $name = 'theme_iiidem2/customquizcmids';
+    $title = get_string('customquizcmids', 'theme_iiidem2');
+    $description = get_string('customquizcmids_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
+    $page->add($setting);
+
+    $name = 'theme_iiidem2/liveclasscmids';
+    $title = get_string('liveclasscmids', 'theme_iiidem2');
+    $description = get_string('liveclasscmids_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
+    $page->add($setting);
+
     // Must add the page after definiting all the settings!
     $settings->add($page);
 
@@ -187,6 +199,94 @@ if ($ADMIN->fulltree) {
     }
 
     // Add page into theme tabs
+    $settings->add($page);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Program Governance (homepage advisors)
+    |--------------------------------------------------------------------------
+    */
+    $page = new admin_settingpage(
+        'theme_iiidem2_governance',
+        get_string('governancesettings', 'theme_iiidem2')
+    );
+
+    $page->add(new admin_setting_configtext(
+        'theme_iiidem2/governancetitle',
+        get_string('governancetitle', 'theme_iiidem2'),
+        get_string('governancetitle_desc', 'theme_iiidem2'),
+        'Program Governance'
+    ));
+
+    $maxadvisors = 5;
+    for ($i = 1; $i <= $maxadvisors; $i++) {
+        $page->add(new admin_setting_heading(
+            'theme_iiidem2/governanceheading' . $i,
+            get_string('governanceadvisorheading', 'theme_iiidem2', $i),
+            get_string('governanceadvisorheading_desc', 'theme_iiidem2')
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'theme_iiidem2/advisorname' . $i,
+            get_string('advisorname', 'theme_iiidem2'),
+            '',
+            ''
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'theme_iiidem2/advisorrole1' . $i,
+            get_string('advisorrole1', 'theme_iiidem2'),
+            '',
+            '',
+            PARAM_TEXT
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'theme_iiidem2/advisorrole2' . $i,
+            get_string('advisorrole2', 'theme_iiidem2'),
+            get_string('advisorrole2_desc', 'theme_iiidem2'),
+            '',
+            PARAM_TEXT
+        ));
+
+        $setting = new admin_setting_configstoredfile(
+            'theme_iiidem2/advisorimage' . $i,
+            get_string('advisorimage', 'theme_iiidem2'),
+            get_string('advisorimage_desc', 'theme_iiidem2'),
+            'advisorimage' . $i,
+            0,
+            ['maxfiles' => 1, 'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp']]
+        );
+        $setting->set_updatedcallback('theme_reset_all_caches');
+        $page->add($setting);
+    }
+
+    $settings->add($page);
+
+    /*
+    |--------------------------------------------------------------------------
+    | About International IDEA (homepage)
+    |--------------------------------------------------------------------------
+    */
+    $page = new admin_settingpage(
+        'theme_iiidem2_aboutidea',
+        get_string('aboutideasettings', 'theme_iiidem2')
+    );
+
+    $page->add(new admin_setting_configtext(
+        'theme_iiidem2/aboutideatitle',
+        get_string('aboutideatitle', 'theme_iiidem2'),
+        get_string('aboutideatitle_desc', 'theme_iiidem2'),
+        'About International IDEA'
+    ));
+
+    $page->add(new admin_setting_confightmleditor(
+        'theme_iiidem2/aboutideabody',
+        get_string('aboutideabody', 'theme_iiidem2'),
+        get_string('aboutideabody_desc', 'theme_iiidem2'),
+        '<p>The International Institute for Democracy and Electoral Assistance (International IDEA) is an intergovernmental organization that supports democracy worldwide.</p>'
+    ));
+
     $settings->add($page);
 
 

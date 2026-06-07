@@ -26,7 +26,25 @@ defined('MOODLE_INTERNAL') || die();
 
 $blockshtml = $OUTPUT->blocks('side-pre');
 $hasblocks = strpos($blockshtml, 'data-block=') !== false;
-$bodyattributes = $OUTPUT->body_attributes();
+
+$extraclasses = [];
+if (theme_iiidem2_is_custom_quiz_page()) {
+    $quizcm = theme_iiidem2_resolve_quiz_cm_from_page($PAGE);
+    $extraclasses[] = 'iiidem-custom-quiz';
+    if ($quizcm) {
+        $extraclasses[] = 'iiidem-custom-quiz-cmid-' . (int) $quizcm->id;
+    }
+    theme_iiidem2_apply_custom_quiz_page_assets($PAGE);
+} else if (theme_iiidem2_is_live_class_page()) {
+    $pagecm = theme_iiidem2_resolve_page_cm_from_page($PAGE);
+    $extraclasses[] = 'iiidem-live-class';
+    if ($pagecm) {
+        $extraclasses[] = 'iiidem-live-class-cmid-' . (int) $pagecm->id;
+    }
+    theme_iiidem2_apply_live_class_page_assets($PAGE);
+}
+
+$bodyattributes = $OUTPUT->body_attributes($extraclasses);
 
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
@@ -43,6 +61,11 @@ if (empty($PAGE->layout_options['noactivityheader'])) {
 }
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
+$templatecontext = array_merge(
+    $templatecontext,
+    theme_iiidem2_get_custom_quiz_template_context(),
+    theme_iiidem2_get_live_class_template_context()
+);
 
 echo $OUTPUT->render_from_template('theme_iiidem2/secure', $templatecontext);
 

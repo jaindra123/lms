@@ -24,6 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Quiz attempt: full-screen MCQ layout (pagelayout may still be incourse when this runs).
+if (theme_iiidem2_is_quiz_attempt_page($PAGE) && theme_iiidem2_use_custom_quiz_ui($PAGE)) {
+    theme_iiidem2_apply_custom_quiz_page_assets($PAGE);
+    require(__DIR__ . '/quizattempt.php');
+    return;
+}
+
 require_once($CFG->libdir . '/behat/lib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 
@@ -43,8 +50,36 @@ if (defined('BEHAT_SITE_RUNNING') && get_user_preferences('behat_keep_drawer_clo
 }
 
 $extraclasses = ['uses-drawers'];
+$isenrolpage = theme_iiidem2_is_enrol_index_page($PAGE)
+    && !empty($COURSE->id)
+    && (int) $COURSE->id !== SITEID;
+if ($isenrolpage) {
+    $extraclasses[] = 'iiidem-enrol-index';
+}
 if ($courseindexopen) {
     $extraclasses[] = 'drawer-open-index';
+}
+if (theme_iiidem2_is_quiz_attempt_url($PAGE)) {
+    $extraclasses[] = 'iiidem-quiz-attempt-active';
+    $quizcm = theme_iiidem2_resolve_quiz_cm_from_page($PAGE);
+    if ($quizcm) {
+        $extraclasses[] = 'iiidem-custom-quiz-cmid-' . (int) $quizcm->id;
+    }
+    $PAGE->requires->js_call_amd('theme_iiidem2/quiz_mcq', 'init');
+} else if (theme_iiidem2_is_custom_quiz_page()) {
+    $quizcm = theme_iiidem2_resolve_quiz_cm_from_page($PAGE);
+    $extraclasses[] = 'iiidem-custom-quiz';
+    if ($quizcm) {
+        $extraclasses[] = 'iiidem-custom-quiz-cmid-' . (int) $quizcm->id;
+    }
+    theme_iiidem2_apply_custom_quiz_page_assets($PAGE);
+} else if (theme_iiidem2_is_live_class_page()) {
+    $pagecm = theme_iiidem2_resolve_page_cm_from_page($PAGE);
+    $extraclasses[] = 'iiidem-live-class';
+    if ($pagecm) {
+        $extraclasses[] = 'iiidem-live-class-cmid-' . (int) $pagecm->id;
+    }
+    theme_iiidem2_apply_live_class_page_assets($PAGE);
 }
 
 $blockshtml = $OUTPUT->blocks('side-pre');
@@ -73,15 +108,19 @@ if ($PAGE->has_secondary_navigation()) {
     }
 }
 
-$primary = new core\navigation\output\primary($PAGE);
-$renderer = $PAGE->get_renderer('core');
-$primarymenu = $primary->export_for_template($renderer);
+$primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 $buildregionmainsettings = !$PAGE->include_region_main_settings_in_header_actions() && !$PAGE->has_secondary_navigation();
 // If the settings menu will be included in the header then don't add it here.
 $regionmainsettingsmenu = $buildregionmainsettings ? $OUTPUT->region_main_settings_menu() : false;
 
 $header = $PAGE->activityheader;
-$headercontent = $header->export_for_template($renderer);
+$headercontent = $header->export_for_template($OUTPUT);
+
+$enrolcontext = [];
+if ($isenrolpage) {
+    $enrolcontext = theme_iiidem2_get_course_display_context($COURSE);
+    $enrolcontext['isenrolpage'] = true;
+}
 
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
@@ -106,5 +145,11 @@ $templatecontext = [
 ];
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
+$templatecontext = array_merge(
+    $templatecontext,
+    theme_iiidem2_get_custom_quiz_template_context(),
+    theme_iiidem2_get_live_class_template_context(),
+    $enrolcontext
+);
 
 echo $OUTPUT->render_from_template('theme_iiidem2/drawers', $templatecontext);

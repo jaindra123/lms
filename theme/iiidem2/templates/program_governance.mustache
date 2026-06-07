@@ -1,0 +1,27 @@
+{{!
+    @template theme_iiidem2/program_governance
+
+    Program Governance advisors (data from Site administration → Theme → IIIDEM2 → Program Governance).
+}}
+<div class="container">
+    <div class="section-header-governance">
+        <h2>{{governancetitle}}</h2>
+    </div>
+    <div class="advisors-grid">
+        {{#advisors}}
+        <div class="advisor-card">
+            <div class="advisor-image">
+                <img src="{{imageurl}}" alt="{{imagealt}}">
+            </div>
+            <div class="advisor-content">
+                <h3>{{name}}</h3>
+                {{#hasroles}}
+                {{#roles}}
+                <span>{{text}}</span>
+                {{/roles}}
+                {{/hasroles}}
+            </div>
+        </div>
+        {{/advisors}}
+    </div>
+    </div>

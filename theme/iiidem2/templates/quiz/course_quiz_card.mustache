@@ -1,0 +1,62 @@
+{{!
+    @template theme_iiidem2/quiz/course_quiz_card
+
+    MCQ on course page — Moodle-style layout (CSS), live form when attempt is open.
+}}
+<div class="iiidem-course-mcq" id="{{anchor}}">
+    <div class="iiidem-course-mcq__head">
+        <span class="iiidem-course-mcq__section">{{sectionname}}</span>
+        <h3 class="iiidem-course-mcq__title">{{name}}</h3>
+        {{#hasintro}}
+        <p class="iiidem-course-mcq__intro">{{{intro}}}</p>
+        {{/hasintro}}
+        <p class="iiidem-course-mcq__meta">
+            {{#str}}coursequiz_numquestions, theme_iiidem2{{/str}}: <strong>{{questioncount}}</strong>
+            · {{#str}}timelimit, quiz{{/str}}: <strong>{{timelimit}}</strong>
+        </p>
+    </div>
+
+    {{#hasattempthtml}}
+    <div class="iiidem-course-mcq__live">
+        {{{attempthtml}}}
+    </div>
+    {{/hasattempthtml}}
+
+    {{^hasattempthtml}}
+    {{#hasquestions}}
+    {{#questions}}
+    <div class="iiidem-mcq-que">
+        <aside class="iiidem-mcq-que__info">
+            <p class="iiidem-mcq-que__info-title">Question {{number}}</p>
+            <p class="iiidem-mcq-que__info-line">{{#str}}notanswered, question{{/str}}</p>
+            <p class="iiidem-mcq-que__info-line">{{#str}}markedoutof, question, 1.00{{/str}}</p>
+        </aside>
+        <div class="iiidem-mcq-que__body">
+            <div class="iiidem-mcq-que__qtext">{{{text}}}</div>
+            {{#hasanswers}}
+            <div class="iiidem-mcq-que__answers" role="group">
+                {{#answers}}
+                <label class="iiidem-mcq-answer">
+                    <span class="iiidem-mcq-answer__control" aria-hidden="true"></span>
+                    <span class="iiidem-mcq-answer__letter">{{letter}}.</span>
+                    <span class="iiidem-mcq-answer__text">{{{text}}}</span>
+                </label>
+                {{/answers}}
+            </div>
+            {{/hasanswers}}
+        </div>
+    </div>
+    {{/questions}}
+    {{/hasquestions}}
+    {{/hasattempthtml}}
+
+    <div class="iiidem-course-mcq__actions">
+        {{#hasunfinished}}
+        <a href="{{attemptpageurl}}" class="iiidem-course-mcq__btn btn btn-primary">{{#str}}continueattemptquiz, quiz{{/str}}</a>
+        {{/hasunfinished}}
+        {{^hasunfinished}}
+        <a href="{{attemptpageurl}}" class="iiidem-course-mcq__btn btn btn-primary">{{#str}}attemptquiznow, quiz{{/str}}</a>
+        {{/hasunfinished}}
+        <a href="{{viewurl}}" class="iiidem-course-mcq__link">{{#str}}coursequiz_open_full, theme_iiidem2{{/str}}</a>
+    </div>
+</div>

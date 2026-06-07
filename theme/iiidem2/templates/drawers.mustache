@@ -158,7 +158,25 @@
                                 </div>
                             </div>
                         {{/overflow}}
-                        {{{ output.main_content }}}
+                        {{#isenrolpage}}
+                        {{> theme_iiidem2/course/hero }}
+                        {{> theme_iiidem2/course/summary }}
+                        {{#hasinstructors}}
+                        {{> theme_iiidem2/course/instructors }}
+                        {{/hasinstructors}}
+                        {{/isenrolpage}}
+                        {{#iiidemcustomliveclass}}
+                            {{> theme_iiidem2/liveclass/activity_wrapper }}
+                            <div class="iiidem-live-class-main-slot visually-hidden" aria-hidden="true">{{{ output.main_content }}}</div>
+                        {{/iiidemcustomliveclass}}
+                        {{^iiidemcustomliveclass}}
+                            {{#iiidemcustomquiz}}
+                                {{> theme_iiidem2/quiz/activity_wrapper }}
+                            {{/iiidemcustomquiz}}
+                            {{^iiidemcustomquiz}}
+                                {{{ output.main_content }}}
+                            {{/iiidemcustomquiz}}
+                        {{/iiidemcustomliveclass}}
                         {{{ output.activity_navigation }}}
                         {{{ output.course_content_footer }}}
 

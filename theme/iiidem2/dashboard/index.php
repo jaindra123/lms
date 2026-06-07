@@ -27,6 +27,10 @@ $PAGE->set_title(get_string('dashboard', 'theme_iiidem2'));
 $PAGE->set_heading(get_string('dashboard', 'theme_iiidem2'));
 
 $templatecontext = theme_iiidem2_get_dashboard_context();
+if (!empty($templatecontext['isstudent'])) {
+    $PAGE->add_body_class('iiidem-student-dashboard-page');
+    $PAGE->requires->css(new moodle_url('/theme/iiidem2/style/student-dashboard.css'));
+}
 $templatecontext['output'] = $OUTPUT;
 
 echo $OUTPUT->header();

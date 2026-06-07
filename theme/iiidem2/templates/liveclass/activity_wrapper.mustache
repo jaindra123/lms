@@ -1,0 +1,76 @@
+{{!
+    @template theme_iiidem2/liveclass/activity_wrapper
+
+    Live virtual classroom — mod/page Webex join layout.
+}}
+<div class="iiidem-live-class" data-cmid="{{liveclasscmid}}">
+    <div class="iiidem-live-class__inner">
+        <header class="iiidem-live-class__header">
+            <p class="iiidem-live-class__eyebrow">{{#str}}liveclasseyebrow, theme_iiidem2{{/str}}</p>
+            <h1 class="iiidem-live-class__title">{{#str}}liveclasstitle, theme_iiidem2{{/str}}</h1>
+        </header>
+
+        <div class="iiidem-live-class__grid">
+            <div class="iiidem-live-class__stage-col">
+                <div class="iiidem-live-class__stage" aria-hidden="true">
+                    <div class="iiidem-live-class__rec">
+                        <span class="iiidem-live-class__rec-dot" aria-hidden="true"></span>
+                        {{#str}}liveclassrec, theme_iiidem2{{/str}}
+                    </div>
+                    <div class="iiidem-live-class__screen">
+                        <div class="iiidem-live-class__presenter">
+                            <span class="iiidem-live-class__presenter-icon" aria-hidden="true">
+                                <i class="fa fa-chalkboard-teacher" aria-hidden="true"></i>
+                            </span>
+                            <p class="iiidem-live-class__presenter-label">{{#str}}liveclasspresenter, theme_iiidem2{{/str}}</p>
+                        </div>
+                    </div>
+                    <div class="iiidem-live-class__thumbs">
+                        <span class="iiidem-live-class__thumb iiidem-live-class__thumb--1"></span>
+                        <span class="iiidem-live-class__thumb iiidem-live-class__thumb--2"></span>
+                        <span class="iiidem-live-class__thumb iiidem-live-class__thumb--3"></span>
+                        <span class="iiidem-live-class__thumb iiidem-live-class__thumb--4"></span>
+                        <span class="iiidem-live-class__thumb iiidem-live-class__thumb--5"></span>
+                    </div>
+                    <div class="iiidem-live-class__controls" aria-hidden="true">
+                        <span class="iiidem-live-class__control-dot"></span>
+                        <span class="iiidem-live-class__control-dot"></span>
+                        <span class="iiidem-live-class__control-dot iiidem-live-class__control-dot--active"></span>
+                        <span class="iiidem-live-class__control-dot"></span>
+                        <span class="iiidem-live-class__control-dot"></span>
+                    </div>
+                </div>
+
+                <div class="iiidem-live-class__actions">
+                    {{#hasliveclassjoinurl}}
+                    <a href="{{liveclassjoinurl}}" class="iiidem-live-class__join-btn" target="_blank" rel="noopener noreferrer">
+                        {{#str}}liveclassjoin, theme_iiidem2{{/str}}
+                    </a>
+                    {{/hasliveclassjoinurl}}
+                    {{^hasliveclassjoinurl}}
+                    <p class="iiidem-live-class__no-link">{{#str}}liveclassnojoin, theme_iiidem2{{/str}}</p>
+                    {{/hasliveclassjoinurl}}
+                    {{#hasliveclassmodified}}
+                    <p class="iiidem-live-class__modified">{{#str}}lastmodified, moodle{{/str}}: {{liveclassmodified}}</p>
+                    {{/hasliveclassmodified}}
+                </div>
+            </div>
+
+            <div class="iiidem-live-class__features-col">
+                <ul class="iiidem-live-class__features">
+                    {{#liveclassfeatures}}
+                    <li class="iiidem-live-class__feature">
+                        <span class="iiidem-live-class__feature-icon" aria-hidden="true">
+                            <i class="fa {{iconclass}}" aria-hidden="true"></i>
+                        </span>
+                        <div class="iiidem-live-class__feature-text">
+                            <h3 class="iiidem-live-class__feature-title">{{title}}</h3>
+                            <p class="iiidem-live-class__feature-desc">{{description}}</p>
+                        </div>
+                    </li>
+                    {{/liveclassfeatures}}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

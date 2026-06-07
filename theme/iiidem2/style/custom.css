@@ -206,6 +206,46 @@
     background-color: #e8f0f8 !important;
 }
 
+/* User menu dropdown: light panel, dark text (#usernavigation a is white for the toggle). */
+.top-nav .usermenu .dropdown-menu,
+.top-nav #usernavigation .usermenu .dropdown-menu,
+.top-nav #user-action-menu {
+    background-color: #fff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.top-nav .usermenu .dropdown-menu .dropdown-item,
+.top-nav #usernavigation .usermenu .dropdown-menu .dropdown-item,
+.top-nav #user-action-menu .dropdown-item,
+.top-nav #user-action-menu .carousel-navigation-link {
+    color: #212529 !important;
+    background-color: #fff !important;
+}
+
+.top-nav .usermenu .dropdown-menu .dropdown-item:hover,
+.top-nav .usermenu .dropdown-menu .dropdown-item:focus,
+.top-nav #usernavigation .usermenu .dropdown-menu .dropdown-item:hover,
+.top-nav #usernavigation .usermenu .dropdown-menu .dropdown-item:focus,
+.top-nav #user-action-menu .dropdown-item:hover,
+.top-nav #user-action-menu .dropdown-item:focus,
+.top-nav #user-action-menu .carousel-navigation-link:hover,
+.top-nav #user-action-menu .carousel-navigation-link:focus {
+    color: #004274 !important;
+    background-color: #e8f0f8 !important;
+}
+
+.top-nav .usermenu .dropdown-menu .dropdown-divider,
+.top-nav #user-action-menu .dropdown-divider {
+    border-top-color: rgba(0, 0, 0, 0.12);
+}
+
+.top-nav .usermenu .dropdown-menu .carousel-item .header,
+.top-nav .usermenu .dropdown-menu .carousel-item .header span,
+.top-nav #user-action-menu .carousel-item .header,
+.top-nav #user-action-menu .carousel-item .header span {
+    color: #212529 !important;
+}
+
 /* Secondary navigation (admin tabs, course settings, etc.). */
 .secondary-navigation .moremenu .nav-link {
     color: #212529 !important;
@@ -840,6 +880,65 @@ body.pagelayout-frontpage #page {
     line-height: 1.3;
 }
 
+/* Custom quiz wrapper (cmid 28 etc.) on attempt/view pages */
+.iiidem-quiz-activity__header {
+    background: linear-gradient(135deg, #004274 0%, #0b3d91 100%);
+    color: #fff;
+}
+
+.iiidem-quiz-activity__header .text-muted,
+.iiidem-quiz-activity__eyebrow {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.iiidem-quiz-activity__title {
+    color: #fff;
+}
+
+.iiidem-quiz-activity__intro {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.iiidem-quiz-activity__content .que {
+    margin-bottom: 1.5rem;
+}
+
+.iiidem-quiz-preview .quiz-question {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.iiidem-quiz-preview .quiz-question:last-child {
+    border-bottom: 0;
+}
+
+.iiidem-course-quizzes {
+    background: #f4f7fc;
+}
+
+.iiidem-course-quiz-card {
+    border-left: 4px solid #004274;
+}
+
+.iiidem-course-quiz-question {
+    background: #fff;
+}
+
+.iiidem-course-quiz-live {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem 1.25rem;
+}
+
+.iiidem-course-quiz-live .que {
+    margin-bottom: 1.5rem;
+}
+
+.iiidem-course-quiz-live .formulation .answer input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
 @media (max-width: 767.98px) {
     .iiidem-hero-carousel {
         --iiidem-hero-height: 360px;
@@ -854,4 +953,179 @@ body.pagelayout-frontpage #page {
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
+}
+
+/* Quiz attempt MCQ UI — bundled with custom.css so rules apply even if quiz-mcq.css is not requested separately. */
+@import url("quiz-mcq.css");
+
+
+
+.advisors-section{
+    padding: 80px 0 100px;
+    background-color: #fff;
+}
+section#program_governance {
+    background-color: #fff;
+}
+.container {
+    max-width: 1320px;
+    margin: auto;
+    padding: 0 15px;
+}
+
+.section-header-governance {
+    text-align: center;
+    margin-bottom: 160px;
+}
+
+.section-header-governance h2 {
+    font-size: 56px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #000;
+}
+
+.section-header-governance p {
+    max-width: 700px;
+    margin: auto;
+    color: #666;
+    line-height: 1.8;
+    font-size: 18px;
+}
+
+.advisors-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+}
+
+.advisor-card {
+    position: relative;
+    border-radius: 12px;
+    text-align: center;
+    padding-top: 140px;
+    padding-bottom: 25px;
+}
+
+.advisor-image {
+    position: absolute;
+    top: -125px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    padding: 8px;
+    border: 4px dotted #0b3d91;
+    background: #fff;
+}
+
+.advisor-image img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.advisor-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.advisor-content span {
+    color: #777;
+    font-size: 16px;
+    display: block;
+    margin-bottom: 25px;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+}
+
+.social-links a {
+    width: 36px;
+    height: 36px;
+    background: #14d67c;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: .3s;
+}
+
+.social-links a:hover {
+    transform: translateY(-3px);
+}
+
+/* Enrol page: theme hero/summary/instructors replace Moodle course_info_box. */
+body.iiidem-enrol-index #region-main > .generalbox.info {
+    display: none;
+}
+
+/* ===== Login signup CTA ===== */
+.iiidem-login-signup__btn {
+    border-radius: 999px;
+    padding: 0.55rem 2rem;
+    font-weight: 600;
+    min-width: 10rem;
+}
+
+/* ===== Registration (/register/) ===== */
+.iiidem-register-form .fitem {
+    margin-bottom: 1rem;
+}
+
+.iiidem-register-form .fitem .col-form-label {
+    font-weight: 600;
+}
+
+.iiidem-register-form .fitem input.form-control,
+.iiidem-register-form .fitem select.form-control {
+    border-radius: 8px;
+    min-height: 44px;
+}
+
+.iiidem-register-form .fdescription {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.iiidem-register-form .form-group.fitem_action {
+    margin-top: 1.5rem;
+}
+
+.iiidem-register-form #id_submitbutton {
+    border-radius: 999px;
+    padding: 0.6rem 2rem;
+    font-weight: 600;
+}
+
+.iiidem-register-form #fitem_id_occupation_working,
+.iiidem-register-form #fitem_id_occupation_student,
+.iiidem-register-form #fitem_id_occupation_instructor {
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-register-form #fgroup_id_workingheader,
+.iiidem-register-form #fgroup_id_studentheader,
+.iiidem-register-form #fgroup_id_instructorheader {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.iiidem-register-form #fgroup_id_workingheader .col-form-label,
+.iiidem-register-form #fgroup_id_studentheader .col-form-label,
+.iiidem-register-form #fgroup_id_instructorheader .col-form-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #212529;
 }

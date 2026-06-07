@@ -16,6 +16,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
 /**
  * A login page layout for the iiidem2 theme.
  *
@@ -26,9 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $bodyattributes = $OUTPUT->body_attributes();
 
-$primary = new core\navigation\output\primary($PAGE);
-$renderer = $PAGE->get_renderer('core');
-$primarymenu = $primary->export_for_template($renderer);
+$primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
@@ -41,6 +41,8 @@ $templatecontext = [
 ];
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
+$templatecontext['registerurl'] = theme_iiidem2_get_register_url();
+$templatecontext['loginsignuplabel'] = get_string('loginsignup', 'theme_iiidem2');
 
 echo $OUTPUT->render_from_template('theme_iiidem2/login', $templatecontext);
 
