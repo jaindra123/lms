@@ -130,8 +130,6 @@ img.gov-logo {
 }
 
 .iiidem-course-hero {
-    background: #f6f7fb;
-    padding: 80px 0;
     position: relative;
     overflow: hidden;
 }
@@ -267,7 +265,7 @@ img.gov-logo {
     display: flex;
     align-items: center;
     overflow: hidden;
-    border-radius: 20px;
+    border-radius: 0;
 }
 
 .iiidem-course-hero .hero-overlay {
@@ -279,7 +277,7 @@ img.gov-logo {
         rgba(4, 16, 40, 0.78) 40%,
         rgba(4, 16, 40, 0.35) 100%
     );
-    border-radius: 20px;
+    border-radius: 0;
 }
 
 .iiidem-course-hero .container {

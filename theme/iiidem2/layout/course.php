@@ -9,6 +9,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$PAGE->add_body_class('iiidem-course-hero-layout');
+
 require_once($CFG->libdir . '/behat/lib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 

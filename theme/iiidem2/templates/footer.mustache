@@ -128,6 +128,7 @@
             <div class="logininfo">{{{ output.login_info }}}</div>
             <div class="tool_usertours-resettourcontainer"></div>
             {{{ output.standard_footer_html }}}
+            {{{ output.standard_end_of_body_html }}}
         </div>
         <div class="footer-section p-3">
             <div>{{#str}}poweredbymoodle, core{{/str}}</div>
@@ -136,11 +137,10 @@
             {{/output.moodle_release}}
         </div>
     </div>
-    <div class="footer-content-debugging footer-dark bg-dark text-light">
-        <div class="container-fluid footer-dark-inner">
-            {{{ output.debug_footer_html }}}
-        </div>
-    </div>
 </footer>
 
-{{{ output.standard_end_of_body_html }}}
+{{#js}}
+require(['theme_iiidem2/footer-popover'], function(FooterPopover) {
+    FooterPopover.init();
+});
+{{/js}}

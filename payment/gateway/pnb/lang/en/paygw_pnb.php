@@ -45,4 +45,5 @@ $string['unknowncourse'] = 'Unknown course';
 $string['notransactions'] = 'No PNB transactions recorded yet.';
 $string['transactioncount'] = '{$a} transaction(s) listed.';
 $string['bankreference'] = 'Bank reference';
+$string['paymentnotallowed'] = 'Course fee payment is only available for registered university students. EMB participants are enrolled by course administrators without online payment.';
 $string['paymenttxnreflabel'] = 'Transaction reference';

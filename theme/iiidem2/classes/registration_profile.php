@@ -90,6 +90,55 @@ class registration_profile {
     ];
 
     /**
+     * Read a custom profile field value for a user.
+     *
+     * @param int $userid
+     * @param string $shortname
+     * @return string
+     */
+    public static function get_profile_value(int $userid, string $shortname): string {
+        global $DB;
+
+        $field = $DB->get_record('user_info_field', ['shortname' => $shortname], 'id', IGNORE_MISSING);
+        if (!$field) {
+            return '';
+        }
+
+        $data = $DB->get_record('user_info_data', ['fieldid' => $field->id, 'userid' => $userid], 'data', IGNORE_MISSING);
+        return $data ? (string) $data->data : '';
+    }
+
+    /**
+     * User registered as Election Management Body (EMB) official.
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_is_emb(int $userid): bool {
+        return self::get_profile_value($userid, 'iiidem_emb') === '1';
+    }
+
+    /**
+     * User registered with occupation "University student".
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_is_university_student(int $userid): bool {
+        return self::get_profile_value($userid, 'iiidem_occupation') === 'student';
+    }
+
+    /**
+     * Whether the user must pay the course fee (students only; EMB/working/instructor exempt).
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_requires_course_fee_payment(int $userid): bool {
+        return self::user_is_university_student($userid) && !self::user_is_emb($userid);
+    }
+
+    /**
      * Ensure profile category and fields exist (idempotent).
      */
     public static function ensure_fields(): void {

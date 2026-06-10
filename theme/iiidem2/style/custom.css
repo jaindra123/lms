@@ -1016,6 +1016,113 @@ section#program_governance {
     padding-bottom: 25px;
 }
 
+/* Course view — full-width hero flush to navbar (no white side/top gaps) */
+body.path-course-view.iiidem-course-hero-layout #page.drawers,
+body.iiidem-course-hero-layout #page.drawers {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+body.path-course-view.iiidem-course-hero-layout #page.drawers .main-inner,
+body.iiidem-course-hero-layout #page.drawers .main-inner,
+body.limitedwidth.iiidem-course-hero-layout #page.drawers .main-inner,
+body.pagelayout-course.iiidem-course-hero-layout #page.drawers .main-inner,
+.pagelayout-course.iiidem-course-hero-layout #page.drawers .main-inner {
+    max-width: none !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+@media (min-width: 576px) {
+    body.iiidem-course-hero-layout #page.drawers .main-inner {
+        margin-top: 0 !important;
+    }
+}
+
+@media (min-width: 768px) {
+    body.iiidem-course-hero-layout #page.drawers {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    body.iiidem-course-hero-layout #page.drawers .main-inner {
+        padding: 0 !important;
+    }
+
+    body.iiidem-course-hero-layout #page.drawers div[role="main"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
+body.iiidem-course-hero-layout #page.drawers div[role="main"] {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+body.iiidem-course-hero-layout #page-content {
+    padding-bottom: 0;
+}
+
+body.iiidem-course-hero-layout #page-header,
+body.iiidem-public-course-view .drawer-toggles {
+    display: none;
+}
+
+body.iiidem-course-hero-layout .iiidem-course-secondary-nav {
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 0;
+    width: 100%;
+}
+
+body.iiidem-course-hero-layout .iiidem-course-secondary-nav .navigation {
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+body.iiidem-course-hero-layout .iiidem-course-secondary-nav .nav-tabs {
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+body.iiidem-course-hero-layout .drawer-toggles {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    top: 0.75rem;
+    pointer-events: none;
+    height: 0;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+}
+
+body.iiidem-course-hero-layout .drawer-toggles .drawer-toggler {
+    pointer-events: auto;
+}
+
+body.iiidem-course-hero-layout #topofscroll.main-inner {
+    position: relative;
+}
+
+body.iiidem-course-hero-layout .iiidem-course-hero {
+    border-radius: 0;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+}
+
+body.iiidem-course-hero-layout .iiidem-course-hero .hero-overlay {
+    border-radius: 0;
+}
+
 /* Course view — fee / PNB payment card in hero */
 .iiidem-course-payment-card {
     background: #fff;

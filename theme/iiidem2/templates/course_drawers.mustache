@@ -129,10 +129,12 @@
                     </div>
                 {{/hasblocks}}
             </div>
-            {{{ output.full_header }}}
+            {{> theme_iiidem2/course/hero }}
             {{#secondarymoremenu}}
-                <div class="secondary-navigation d-print-none">
-                    {{> core/moremenu}}
+                <div class="secondary-navigation iiidem-course-secondary-nav d-print-none">
+                    <div class="container-fluid px-3 px-md-4">
+                        {{> core/moremenu}}
+                    </div>
                 </div>
             {{/secondarymoremenu}}
             <div id="page-content" class="pb-3 d-print-block">
@@ -158,8 +160,6 @@
                                 </div>
                             </div>
                         {{/overflow}}
-                        {{> theme_iiidem2/course/hero }}
-
                         {{#ispubliccourseview}}
                         <section class="iiidem-course-detail-cta py-4">
                             <div class="container">

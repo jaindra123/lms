@@ -64,18 +64,25 @@ if (isset($_POST['upgradekey'])) {
     die();
 }
 
-if ((isset($_GET['cache']) and $_GET['cache'] === '0')
+// DDEV: default to cached admin on local dev. The normal cold path runs a full upgrade
+// scan with all caches disabled and opcache_reset(), which takes 60–90s on Windows and
+// causes 502 Bad Gateway. Visit admin/index.php?cache=0 when upgrading Moodle.
+if (!empty(getenv('IS_DDEV_PROJECT')) && !isset($_GET['cache']) && !isset($_POST['cache'])) {
+    $cache = 1;
+} else if ((isset($_GET['cache']) and $_GET['cache'] === '0')
         or (isset($_POST['cache']) and $_POST['cache'] === '0')
         or (!isset($_POST['cache']) and !isset($_GET['cache']) and empty($_GET['sesskey']) and empty($_POST['sesskey']))) {
     // Prevent caching at all cost when visiting this page directly,
     // we redirect to self once we known no upgrades are necessary.
     // Note: $_GET and $_POST are used here intentionally because our param cleaning is not loaded yet.
     // Note2: the sesskey is present in all block editing hacks, we can not redirect there, so enable caching.
-    define('CACHE_DISABLE_ALL', true);
+    if (empty(getenv('IS_DDEV_PROJECT'))) {
+        define('CACHE_DISABLE_ALL', true);
+    }
 
     // Force OPcache reset if used, we do not want any stale caches
     // when detecting if upgrade necessary or when running upgrade.
-    if (function_exists('opcache_reset')) {
+    if (function_exists('opcache_reset') && empty(getenv('IS_DDEV_PROJECT'))) {
         opcache_reset();
     }
     $cache = 0;

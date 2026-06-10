@@ -11,6 +11,7 @@ use core_external\external_value;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_payment\helper;
+use paygw_pnb\fee_access;
 use paygw_pnb\pnb_helper;
 
 class get_redirect_form extends external_api {
@@ -35,6 +36,10 @@ class get_redirect_form extends external_api {
         ]);
 
         require_login();
+
+        if (!fee_access::user_can_pay_course_fee((int) $USER->id)) {
+            throw new \moodle_exception('paymentnotallowed', 'paygw_pnb');
+        }
 
         $payable = helper::get_payable($component, $paymentarea, $itemid);
         $config = (object) helper::get_gateway_configuration($component, $paymentarea, $itemid, 'pnb');

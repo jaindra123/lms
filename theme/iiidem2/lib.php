@@ -2214,6 +2214,47 @@ function theme_iiidem2_is_student_dashboard_page(?moodle_page $page = null): boo
 }
 
 /**
+ * Replace Moodle footer placeholders (%%PERFORMANCEINFO%%, %%ENDHTML%%) with real output.
+ *
+ * Full-page Mustache templates that bypass $OUTPUT->footer() leave these tokens visible.
+ *
+ * @param string $html
+ * @return string
+ */
+function theme_iiidem2_finalize_page_html(string $html): string {
+    global $PAGE;
+
+    $renderer = $PAGE->get_renderer('core');
+    $reflection = new ReflectionClass($renderer);
+
+    $perfprop = $reflection->getProperty('unique_performance_info_token');
+    $perfprop->setAccessible(true);
+    $html = str_replace((string) $perfprop->getValue($renderer), '', $html);
+
+    $endprop = $reflection->getProperty('unique_end_html_token');
+    $endprop->setAccessible(true);
+    $html = str_replace((string) $endprop->getValue($renderer), $PAGE->requires->get_end_code(), $html);
+
+    if ($PAGE->state !== moodle_page::STATE_DONE) {
+        $PAGE->set_state(moodle_page::STATE_DONE);
+    }
+
+    return $html;
+}
+
+/**
+ * Render a full-page Mustache template and resolve Moodle footer placeholders.
+ *
+ * @param string $templatename
+ * @param array|stdClass $context
+ * @return void
+ */
+function theme_iiidem2_echo_page_template(string $templatename, $context): void {
+    global $OUTPUT;
+    echo theme_iiidem2_finalize_page_html($OUTPUT->render_from_template($templatename, $context));
+}
+
+/**
  * Render /course/view.php for visitors without enrolment (hero, curriculum, instructors).
  *
  * @param stdClass $course
@@ -2241,7 +2282,7 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $loginurl = new moodle_url('/login/index.php');
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
-    $bodyattributes = $OUTPUT->body_attributes(['uses-drawers', 'iiidem-public-course-view']);
+    $bodyattributes = $OUTPUT->body_attributes(['uses-drawers', 'iiidem-public-course-view', 'iiidem-course-hero-layout']);
 
     $wantsurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
 
@@ -2294,8 +2335,8 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         $PAGE->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
     }
 
-    // course_drawers is a full-page template (head, body, page_end) — do not wrap or append page_end again.
-    echo $OUTPUT->render_from_template('theme_iiidem2/course_drawers', $templatecontext);
+    // course_drawers is a full-page template (head, body, page_end) — finalize Moodle footer tokens.
+    theme_iiidem2_echo_page_template('theme_iiidem2/course_drawers', $templatecontext);
 }
 
 /**
@@ -2913,6 +2954,11 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
         ];
     }
 
+    // Fee payment is for registered university students only (not EMB / working / instructor).
+    if (!\theme_iiidem2\registration_profile::user_requires_course_fee_payment((int) $USER->id)) {
+        return $defaults;
+    }
+
     // Hide payment only when fee enrolment is currently active (suspended users can pay again).
     if (theme_iiidem2_user_has_active_fee_enrolment((int) $USER->id, (int) $feeinstance->id)) {
         return $defaults;
@@ -3124,6 +3170,9 @@ function theme_iiidem2_page_init($page) {
             || $page->url->get_path(false) === '/course-detail'
             || strpos($page->url->get_path(false), '/course-detail/') === 0)) {
         $page->requires->css($coursequizcss);
+        if ($page->url->compare(new moodle_url('/course/view.php'), URL_MATCH_BASE)) {
+            $page->add_body_class('iiidem-course-hero-layout');
+        }
     }
 
     // BS5 accordions/tabs only where templates use data-bs-* (not site home — avoids slow CDN on every visit).
