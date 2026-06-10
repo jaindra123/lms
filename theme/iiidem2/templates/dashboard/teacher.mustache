@@ -1,210 +1,344 @@
 {{!
     @template theme_iiidem2/dashboard/teacher
 
-    Teacher dashboard: courses, actions, pending work, performance, analytics, schedule, communication.
+    Instructor dashboard — sidebar, stats, live class control, grading queue.
 }}
-<div class="iiidem-teacher-dashboard">
+<div class="iiidem-teacher-dashboard-v2">
+    <aside class="iiidem-teacher-sidebar" aria-label="{{#str}}dashboardteacherlabel, theme_iiidem2{{/str}}">
+        <div class="iiidem-teacher-sidebar__brand">
+            <span class="fa fa-chalkboard-user" aria-hidden="true"></span>
+            <span>{{#str}}dashboardteacherlabel, theme_iiidem2{{/str}}</span>
+        </div>
+        <nav class="iiidem-teacher-sidebar__nav">
+            <ul class="list-unstyled mb-0">
+                {{#sidenav}}
+                <li class="iiidem-teacher-sidebar__item{{#active}} is-active{{/active}}">
+                    <a href="{{{url}}}">
+                        <span class="fa {{icon}}" aria-hidden="true"></span>
+                        <span>{{label}}</span>
+                    </a>
+                </li>
+                {{/sidenav}}
+            </ul>
+        </nav>
+    </aside>
 
-    <div class="row g-4 mb-4">
-        <div class="col-lg-7">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">📘 {{#str}}dashboardteachercourses, theme_iiidem2{{/str}}</h2>
-                    <a class="btn btn-sm btn-outline-primary" href="{{coursesurl}}">{{#str}}viewall, theme_iiidem2{{/str}}</a>
-                </div>
-                <div class="card-body">
-                    {{#hasteachercourses}}
-                    <div class="row g-3">
-                        {{#teachercourses}}
-                        <div class="col-md-6">
-                            <article class="iiidem-course-card border rounded overflow-hidden h-100">
-                                <div class="iiidem-course-card__image" style="background-image:url('{{{courseimage}}}')"></div>
-                                <div class="p-3">
-                                    <h3 class="h6 mb-1">{{fullname}}</h3>
-                                    <p class="small text-muted mb-2">{{studentcountlabel}}</p>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <a class="btn btn-primary btn-sm" href="{{viewurl}}">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
-                                        <a class="btn btn-outline-secondary btn-sm" href="{{editurl}}">{{#str}}edit{{/str}}</a>
-                                        <a class="btn btn-outline-primary btn-sm" href="{{participantsurl}}">{{#str}}dashboardteacherstudentslink, theme_iiidem2{{/str}}</a>
+    <div class="iiidem-teacher-main">
+        <header class="iiidem-teacher-topbar">
+            <div class="iiidem-teacher-topbar__heading">
+                <h1 class="iiidem-teacher-topbar__title">{{#str}}dashboardwelcomeback, theme_iiidem2, {{firstname}}{{/str}}</h1>
+                <p class="iiidem-teacher-topbar__subtitle">{{cohortlabel}}</p>
+            </div>
+            <div class="iiidem-teacher-topbar__actions">
+                <form class="iiidem-teacher-search" action="{{{searchurl}}}" method="get" role="search">
+                    <span class="fa fa-search" aria-hidden="true"></span>
+                    <input type="search" name="q" class="form-control" placeholder="{{#str}}dashboardsearchplaceholder, theme_iiidem2{{/str}}" aria-label="{{#str}}search, core{{/str}}">
+                </form>
+                <a href="{{{messagesurl}}}" class="iiidem-teacher-icon-btn" aria-label="{{#str}}dashboardnotifications, theme_iiidem2{{/str}}">
+                    <span class="fa fa-bell" aria-hidden="true"></span>
+                    {{#hasnotifications}}
+                    <span class="iiidem-teacher-icon-btn__badge">{{notificationcount}}</span>
+                    {{/hasnotifications}}
+                </a>
+            </div>
+        </header>
+
+        <section class="iiidem-teacher-stats row g-3 g-lg-4 mb-4" aria-label="{{#str}}dashboardteacheranalytics, theme_iiidem2{{/str}}">
+            {{#statcards}}
+            <div class="col-md-4">
+                <article class="iiidem-teacher-stat iiidem-teacher-stat--{{accent}}">
+                    <div class="iiidem-teacher-stat__value">{{value}}</div>
+                    <div class="iiidem-teacher-stat__label">{{label}}</div>
+                </article>
+            </div>
+            {{/statcards}}
+        </section>
+
+        <section class="row g-4">
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-video" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherlivecontrol, theme_iiidem2{{/str}}</h2>
+                        </div>
+                        {{#haslaunchurl}}
+                        <a href="{{{launchurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal">{{#str}}dashboardteacherlaunch, theme_iiidem2{{/str}}</a>
+                        {{/haslaunchurl}}
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#haslivecontrolitems}}
+                        <ul class="iiidem-teacher-queue list-unstyled mb-0">
+                            {{#livecontrolitems}}
+                            <li class="iiidem-teacher-queue__item">
+                                <div class="iiidem-teacher-queue__content">
+                                    <div class="iiidem-teacher-queue__title">{{title}}</div>
+                                    <div class="iiidem-teacher-queue__meta">{{meta}}</div>
+                                </div>
+                                <a href="{{{url}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--{{buttonclass}} btn-sm">{{buttonlabel}}</a>
+                            </li>
+                            {{/livecontrolitems}}
+                        </ul>
+                        {{/haslivecontrolitems}}
+                        {{^haslivecontrolitems}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernolive, theme_iiidem2{{/str}}</p>
+                        {{/haslivecontrolitems}}
+                    </div>
+                </article>
+            </div>
+
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-pen-nib" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteachergradingqueue, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasgradingqueueitems}}
+                        <ul class="iiidem-teacher-queue list-unstyled mb-0">
+                            {{#gradingqueueitems}}
+                            <li class="iiidem-teacher-queue__item">
+                                <div class="iiidem-teacher-queue__content">
+                                    <div class="iiidem-teacher-queue__title">{{title}}</div>
+                                    <div class="iiidem-teacher-queue__meta">{{meta}}</div>
+                                </div>
+                                <a href="{{{url}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--{{buttonclass}} btn-sm">{{buttonlabel}}</a>
+                            </li>
+                            {{/gradingqueueitems}}
+                        </ul>
+                        {{/hasgradingqueueitems}}
+                        {{^hasgradingqueueitems}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernopending, theme_iiidem2{{/str}}</p>
+                        {{/hasgradingqueueitems}}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-book-open" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteachercourses, theme_iiidem2{{/str}}</h2>
+                        </div>
+                        <a href="{{{coursesurl}}}" class="iiidem-teacher-section__link">{{#str}}viewall, theme_iiidem2{{/str}}</a>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasteachercourses}}
+                        <div class="row g-3">
+                            {{#teachercourses}}
+                            <div class="col-md-6">
+                                <article class="iiidem-teacher-course-card">
+                                    <div class="iiidem-teacher-course-card__image" style="background-image:url('{{{courseimage}}}')"></div>
+                                    <div class="iiidem-teacher-course-card__body">
+                                        <h3 class="iiidem-teacher-course-card__title">{{fullname}}</h3>
+                                        <p class="iiidem-teacher-course-card__meta">{{studentcountlabel}}</p>
+                                        <div class="iiidem-teacher-course-card__actions">
+                                            <a class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm" href="{{viewurl}}">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
+                                            <a class="btn btn-outline-secondary btn-sm" href="{{editurl}}">{{#str}}edit{{/str}}</a>
+                                            <a class="btn btn-outline-secondary btn-sm" href="{{participantsurl}}">{{#str}}dashboardteacherstudentslink, theme_iiidem2{{/str}}</a>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                            {{/teachercourses}}
+                        </div>
+                        {{/hasteachercourses}}
+                        {{^hasteachercourses}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernocourses, theme_iiidem2{{/str}}</p>
+                        {{/hasteachercourses}}
+                    </div>
+                </article>
+            </div>
+
+            <div class="col-lg-5">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-bolt" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherquickactions, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasquickactions}}
+                        <div class="iiidem-teacher-quickactions">
+                            {{#quickactions}}
+                            <a href="{{{url}}}" class="iiidem-teacher-quickactions__item">
+                                <span class="fa {{icon}}" aria-hidden="true"></span>
+                                <span>{{label}}</span>
+                            </a>
+                            {{/quickactions}}
+                        </div>
+                        {{/hasquickactions}}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-clipboard-list" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherpending, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#haspendingtasks}}
+                        <ul class="iiidem-teacher-dash-list list-unstyled mb-0">
+                            {{#pendingtasks}}
+                            <li class="iiidem-teacher-dash-list__item">
+                                <div>
+                                    <span class="iiidem-teacher-dash-list__badge">{{typelabel}}</span>
+                                    <div class="iiidem-teacher-queue__title">{{title}}</div>
+                                    <div class="iiidem-teacher-queue__meta">{{coursefullname}} · {{date}}</div>
+                                </div>
+                                <a class="btn iiidem-teacher-btn iiidem-teacher-btn--orange btn-sm" href="{{{url}}}">{{#str}}dashboardteachergrade, theme_iiidem2{{/str}}</a>
+                            </li>
+                            {{/pendingtasks}}
+                        </ul>
+                        {{/haspendingtasks}}
+                        {{^haspendingtasks}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernopending, theme_iiidem2{{/str}}</p>
+                        {{/haspendingtasks}}
+                    </div>
+                </article>
+            </div>
+
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-user-graduate" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherperformance, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasstudentperformance}}
+                        <ul class="iiidem-teacher-dash-list list-unstyled mb-0">
+                            {{#studentperformance}}
+                            <li class="iiidem-teacher-dash-list__item iiidem-teacher-dash-list__item--stack">
+                                <div class="iiidem-teacher-performance">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="iiidem-teacher-queue__title">{{coursename}}</div>
+                                        <span class="iiidem-teacher-performance__badge">{{studentcountlabel}}</span>
+                                    </div>
+                                    {{#hascompletion}}
+                                    <div class="iiidem-teacher-progress mb-2">
+                                        <div class="iiidem-teacher-progress__bar" style="width: {{completion}}%;"></div>
+                                    </div>
+                                    {{/hascompletion}}
+                                    <p class="iiidem-teacher-queue__meta mb-2">{{completionlabel}}</p>
+                                    <div class="iiidem-teacher-course-card__actions">
+                                        <a class="btn btn-outline-secondary btn-sm" href="{{participantsurl}}">{{#str}}dashboardteacherstudentslink, theme_iiidem2{{/str}}</a>
+                                        <a class="btn btn-outline-secondary btn-sm" href="{{gradebookurl}}">{{#str}}dashboardteachergradebook, theme_iiidem2{{/str}}</a>
+                                        {{#hasattendance}}
+                                        <a class="btn btn-outline-secondary btn-sm" href="{{attendanceurl}}">{{#str}}dashboardteacherattendance, theme_iiidem2{{/str}}</a>
+                                        {{/hasattendance}}
                                     </div>
                                 </div>
-                            </article>
-                        </div>
-                        {{/teachercourses}}
+                            </li>
+                            {{/studentperformance}}
+                        </ul>
+                        {{/hasstudentperformance}}
+                        {{^hasstudentperformance}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernocourses, theme_iiidem2{{/str}}</p>
+                        {{/hasstudentperformance}}
                     </div>
-                    {{/hasteachercourses}}
-                    {{^hasteachercourses}}
-                    <p class="text-muted mb-0">{{#str}}dashboardteachernocourses, theme_iiidem2{{/str}}</p>
-                    {{/hasteachercourses}}
-                </div>
-            </section>
-        </div>
+                </article>
+            </div>
+        </section>
 
-        <div class="col-lg-5">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">⚡ {{#str}}dashboardteacherquickactions, theme_iiidem2{{/str}}</h2>
-                </div>
-                <div class="card-body">
-                    {{#hasquickactions}}
-                    <div class="row g-2">
-                        {{#quickactions}}
-                        <div class="col-6">
-                            <a href="{{{url}}}" class="iiidem-quick-action btn btn-outline-primary w-100 h-100 py-3">
-                                <span class="fa {{icon}} d-block mb-2" aria-hidden="true"></span>
-                                <span class="small">{{label}}</span>
-                            </a>
+        <section class="row g-4">
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-chart-bar" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacheranalytics, theme_iiidem2{{/str}}</h2>
                         </div>
-                        {{/quickactions}}
-                    </div>
-                    {{/hasquickactions}}
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">📝 {{#str}}dashboardteacherpending, theme_iiidem2{{/str}}</h2>
-                </div>
-                <div class="card-body p-0">
-                    {{#haspendingtasks}}
-                    <ul class="list-group list-group-flush iiidem-dash-list">
-                        {{#pendingtasks}}
-                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <div>
-                                <span class="badge bg-warning text-dark me-1">{{typelabel}}</span>
-                                <strong>{{title}}</strong>
-                                <div class="small text-muted">{{coursefullname}} · {{date}}</div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasanalytics}}
+                        <div class="row g-3">
+                            {{#analytics}}
+                            <div class="col-6">
+                                <div class="iiidem-teacher-analytic-card">
+                                    <div class="iiidem-teacher-analytic-card__icon"><span class="fa {{icon}}" aria-hidden="true"></span></div>
+                                    <div class="iiidem-teacher-analytic-card__value">{{value}}</div>
+                                    <div class="iiidem-teacher-analytic-card__label">{{label}}</div>
+                                </div>
                             </div>
-                            <a class="btn btn-sm btn-primary" href="{{{url}}}">{{#str}}dashboardteachergrade, theme_iiidem2{{/str}}</a>
-                        </li>
-                        {{/pendingtasks}}
-                    </ul>
-                    {{/haspendingtasks}}
-                    {{^haspendingtasks}}
-                    <p class="text-muted p-3 mb-0">{{#str}}dashboardteachernopending, theme_iiidem2{{/str}}</p>
-                    {{/haspendingtasks}}
-                </div>
-            </section>
-        </div>
-
-        <div class="col-lg-6">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">🧑‍🎓 {{#str}}dashboardteacherperformance, theme_iiidem2{{/str}}</h2>
-                </div>
-                <div class="card-body p-0">
-                    {{#hasstudentperformance}}
-                    <ul class="list-group list-group-flush iiidem-dash-list">
-                        {{#studentperformance}}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <strong>{{coursename}}</strong>
-                                <span class="badge bg-light text-dark border">{{studentcountlabel}}</span>
-                            </div>
-                            {{#hascompletion}}
-                            <div class="progress mb-2" style="height:8px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{completion}}%;" aria-valuenow="{{completion}}" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <p class="small text-muted mb-2">{{completionlabel}}</p>
-                            {{/hascompletion}}
-                            {{^hascompletion}}
-                            <p class="small text-muted mb-2">{{completionlabel}}</p>
-                            {{/hascompletion}}
-                            <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-sm btn-outline-primary" href="{{participantsurl}}">{{#str}}dashboardteacherstudentslink, theme_iiidem2{{/str}}</a>
-                                <a class="btn btn-sm btn-outline-secondary" href="{{gradebookurl}}">{{#str}}dashboardteachergradebook, theme_iiidem2{{/str}}</a>
-                                {{#hasattendance}}
-                                <a class="btn btn-sm btn-outline-secondary" href="{{attendanceurl}}">{{#str}}dashboardteacherattendance, theme_iiidem2{{/str}}</a>
-                                {{/hasattendance}}
-                            </div>
-                        </li>
-                        {{/studentperformance}}
-                    </ul>
-                    {{/hasstudentperformance}}
-                    {{^hasstudentperformance}}
-                    <p class="text-muted p-3 mb-0">{{#str}}dashboardteachernocourses, theme_iiidem2{{/str}}</p>
-                    {{/hasstudentperformance}}
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">📊 {{#str}}dashboardteacheranalytics, theme_iiidem2{{/str}}</h2>
-                </div>
-                <div class="card-body">
-                    {{#hasanalytics}}
-                    <div class="row g-3">
-                        {{#analytics}}
-                        <div class="col-6">
-                            <div class="iiidem-stat-card text-center p-3 rounded border h-100">
-                                <div class="iiidem-stat-card__icon mb-2"><span class="fa {{icon}}" aria-hidden="true"></span></div>
-                                <div class="iiidem-stat-card__value h4 mb-0">{{value}}</div>
-                                <div class="iiidem-stat-card__label small text-muted">{{label}}</div>
-                            </div>
+                            {{/analytics}}
                         </div>
-                        {{/analytics}}
+                        {{/hasanalytics}}
                     </div>
-                    {{/hasanalytics}}
-                </div>
-            </section>
-        </div>
+                </article>
+            </div>
 
-        <div class="col-lg-6">
-            <section class="iiidem-dash-panel card shadow-sm h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">📅 {{#str}}dashboardteacherschedule, theme_iiidem2{{/str}}</h2>
-                    <a class="btn btn-sm btn-link" href="{{{calendarurl}}}">{{#str}}calendar, core_calendar{{/str}}</a>
-                </div>
-                <div class="card-body p-0">
-                    {{#hasschedule}}
-                    <ul class="list-group list-group-flush iiidem-dash-list">
-                        {{#schedule}}
-                        <li class="list-group-item">
-                            <span class="badge bg-secondary me-2">{{typelabel}}</span>
-                            <a href="{{{url}}}" class="fw-semibold">{{title}}</a>
-                            <div class="small text-muted">{{coursefullname}} · {{date}}</div>
-                        </li>
-                        {{/schedule}}
-                    </ul>
-                    {{/hasschedule}}
-                    {{^hasschedule}}
-                    <p class="text-muted p-3 mb-0">{{#str}}dashboardteachernoschedule, theme_iiidem2{{/str}}</p>
-                    {{/hasschedule}}
-                </div>
-            </section>
-        </div>
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-calendar-days" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherschedule, theme_iiidem2{{/str}}</h2>
+                        </div>
+                        <a href="{{{calendarurl}}}" class="iiidem-teacher-section__link">{{#str}}calendar, core_calendar{{/str}}</a>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasschedule}}
+                        <ul class="iiidem-teacher-dash-list list-unstyled mb-0">
+                            {{#schedule}}
+                            <li class="iiidem-teacher-dash-list__item iiidem-teacher-dash-list__item--stack">
+                                <div>
+                                    <span class="iiidem-teacher-dash-list__badge iiidem-teacher-dash-list__badge--muted">{{typelabel}}</span>
+                                    <a href="{{{url}}}" class="iiidem-teacher-queue__title iiidem-teacher-queue__link">{{title}}</a>
+                                    <div class="iiidem-teacher-queue__meta">{{coursefullname}} · {{date}}</div>
+                                </div>
+                            </li>
+                            {{/schedule}}
+                        </ul>
+                        {{/hasschedule}}
+                        {{^hasschedule}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernoschedule, theme_iiidem2{{/str}}</p>
+                        {{/hasschedule}}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-4 mt-0">
+            <div class="col-12">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-comments" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteachercommunication, theme_iiidem2{{/str}}</h2>
+                        </div>
+                        <a href="{{{messagesurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm">{{#str}}dashboardteacheractionmessages, theme_iiidem2{{/str}}</a>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hascommunications}}
+                        <ul class="iiidem-teacher-comm-list list-unstyled mb-0">
+                            {{#communications}}
+                            <li class="iiidem-teacher-comm-list__item">
+                                <span class="fa {{icon}} iiidem-teacher-comm-list__icon" aria-hidden="true"></span>
+                                <div>
+                                    <a href="{{{url}}}" class="iiidem-teacher-comm-list__title">{{title}}</a>
+                                    <div class="iiidem-teacher-queue__meta">{{meta}}</div>
+                                </div>
+                            </li>
+                            {{/communications}}
+                        </ul>
+                        {{/hascommunications}}
+                    </div>
+                </article>
+            </div>
+        </section>
     </div>
-
-    <div class="row g-4 mt-0">
-        <div class="col-12">
-            <section class="iiidem-dash-panel card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">💬 {{#str}}dashboardteachercommunication, theme_iiidem2{{/str}}</h2>
-                    <a class="btn btn-sm btn-outline-primary" href="{{{messagesurl}}}">{{#str}}dashboardteacheractionmessages, theme_iiidem2{{/str}}</a>
-                </div>
-                <div class="card-body p-0">
-                    {{#hascommunications}}
-                    <ul class="list-group list-group-flush iiidem-dash-list">
-                        {{#communications}}
-                        <li class="list-group-item">
-                            <span class="fa {{icon}} me-2 text-primary" aria-hidden="true"></span>
-                            <a href="{{{url}}}">{{title}}</a>
-                            <div class="small text-muted">{{meta}}</div>
-                        </li>
-                        {{/communications}}
-                    </ul>
-                    {{/hascommunications}}
-                </div>
-            </section>
-        </div>
-    </div>
-
 </div>

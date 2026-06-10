@@ -28,16 +28,25 @@ require_once("$CFG->libdir/formslib.php");
 $id = required_param('id', PARAM_INT);
 $returnurl = optional_param('returnurl', 0, PARAM_LOCALURL);
 
-if (!isloggedin()) {
-    $referer = get_local_referer();
-    if (empty($referer)) {
-        // A user that is not logged in has arrived directly on this page,
-        // they should be redirected to the course page they are trying to enrol on after logging in.
-        $SESSION->wantsurl = "$CFG->wwwroot/course/view.php?id=$id";
+if (!isloggedin() || isguestuser()) {
+    $course = $DB->get_record('course', ['id' => $id], '*', MUST_EXIST);
+    if ((int) $course->id !== SITEID && $course->visible) {
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+        theme_iiidem2_render_enrol_preview_page($course);
+        exit;
     }
-    // do not use require_login here because we are usually coming from it,
-    // it would also mess up the SESSION->wantsurl
-    redirect(get_login_url());
+
+    if (!isloggedin()) {
+        $referer = get_local_referer();
+        if (empty($referer)) {
+            // A user that is not logged in has arrived directly on this page,
+            // they should be redirected to the course page they are trying to enrol on after logging in.
+            $SESSION->wantsurl = "$CFG->wwwroot/course/view.php?id=$id";
+        }
+        // do not use require_login here because we are usually coming from it,
+        // it would also mess up the SESSION->wantsurl
+        redirect(get_login_url());
+    }
 }
 
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);

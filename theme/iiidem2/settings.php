@@ -218,7 +218,7 @@ if ($ADMIN->fulltree) {
         'Program Governance'
     ));
 
-    $maxadvisors = 5;
+    $maxadvisors = 3;
     for ($i = 1; $i <= $maxadvisors; $i++) {
         $page->add(new admin_setting_heading(
             'theme_iiidem2/governanceheading' . $i,

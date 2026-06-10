@@ -10,6 +10,23 @@
     display: none;
 }
 
+/* One profile avatar only: keep global navbar usermenu. */
+body.iiidem-student-dashboard-page #page-header,
+body.iiidem-student-dashboard-page .page-context-header,
+body.iiidem-student-dashboard-page .page-header-headings,
+body.iiidem-student-dashboard-page .page-header-image,
+body.iiidem-student-dashboard-page .page-header-image .userpicture,
+body.iiidem-student-dashboard-page .header-button-group,
+.pagelayout-mydashboard.iiidem-student-dashboard-page #page-header,
+.pagelayout-mydashboard.iiidem-student-dashboard-page .page-context-header {
+    display: none !important;
+}
+
+body.iiidem-student-dashboard-page .drawer-toggles,
+body.iiidem-student-dashboard-page #page-navbar {
+    display: none !important;
+}
+
 .iiidem-student-dashboard-v2 {
     display: flex;
     min-height: calc(100vh - 120px);
@@ -190,6 +207,212 @@
     border-left-color: #004274;
 }
 
+.iiidem-student-stat--purple {
+    border-left-color: #7c3aed;
+}
+
+.iiidem-student-quicklinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.iiidem-student-quicklinks__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    color: #0a2540;
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.iiidem-student-quicklinks__item:hover {
+    background: #f8fafc;
+    color: #004274;
+    text-decoration: none;
+}
+
+.iiidem-student-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.iiidem-student-section__title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+.iiidem-student-section__link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #004274;
+    text-decoration: none;
+}
+
+.iiidem-student-section__link:hover {
+    text-decoration: underline;
+}
+
+.iiidem-student-course-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(12, 45, 76, 0.06);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.iiidem-student-course-card__image-wrap {
+    height: 140px;
+    overflow: hidden;
+    background: #e2e8f0;
+}
+
+.iiidem-student-course-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.iiidem-student-course-card__body {
+    padding: 1rem 1.1rem 1.15rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.iiidem-student-course-card__title {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0a2540;
+    line-height: 1.35;
+}
+
+.iiidem-student-course-card__progress {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-student-course-card__progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f07b20, #1aa898);
+    border-radius: 999px;
+}
+
+.iiidem-student-course-card__progress-label {
+    margin: 0 0 0.85rem;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.iiidem-student-btn-continue {
+    margin-top: auto;
+    align-self: flex-start;
+    background: #004274;
+    color: #fff;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.iiidem-student-btn-continue:hover {
+    background: #0a2540;
+    color: #fff;
+}
+
+.iiidem-student-list__type {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #f07b20;
+    margin-bottom: 0.15rem;
+}
+
+.iiidem-student-list__notif-icon {
+    color: #004274;
+    margin-right: 0.35rem;
+}
+
+.iiidem-student-achievements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.iiidem-student-achievements__item {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.iiidem-student-achievements__value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0a2540;
+    line-height: 1.1;
+}
+
+.iiidem-student-achievements__label {
+    display: block;
+    margin: 0.25rem 0 0.5rem;
+    font-size: 0.88rem;
+    color: #64748b;
+}
+
+.iiidem-student-achievements__link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #004274;
+}
+
+.iiidem-student-mini-stat {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 0.85rem;
+    text-align: center;
+    height: 100%;
+}
+
+.iiidem-student-mini-stat__icon {
+    color: #f07b20;
+    font-size: 1.1rem;
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-student-mini-stat__value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0a2540;
+}
+
+.iiidem-student-mini-stat__label {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
 .iiidem-student-stat__value {
     font-size: 2rem;
     font-weight: 800;
@@ -364,4 +587,155 @@
     .iiidem-student-main {
         padding: 1rem;
     }
+}
+
+/* Embedded Moodle month calendar on dashboards */
+.iiidem-dashboard-calendar-embed {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0.5rem 1rem 1rem;
+    overflow-x: auto;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar {
+    width: 100%;
+    min-width: 0;
+    vertical-align: top;
+    padding: 0;
+}
+
+.iiidem-dashboard-calendar-embed .heightcontainer {
+    width: 100%;
+    min-width: 0;
+}
+
+.iiidem-dashboard-calendar-embed .calendarwrapper {
+    width: 100%;
+    min-width: 0;
+    position: relative;
+}
+
+.iiidem-dashboard-calendar-embed .header {
+    display: none;
+}
+
+.iiidem-dashboard-calendar-embed .calendar-controls {
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.iiidem-dashboard-calendar-embed .calendar-controls::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth {
+    display: table;
+    width: 100%;
+    min-width: 640px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0 auto;
+}
+
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth thead {
+    display: table-header-group;
+}
+
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth tbody {
+    display: table-row-group;
+}
+
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth tr {
+    display: table-row;
+}
+
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth th,
+.iiidem-dashboard-calendar-embed table.calendartable.calendarmonth td {
+    display: table-cell;
+    width: 14.28%;
+    vertical-align: top;
+    text-align: center;
+    border: 1px dotted #dee2e6;
+    padding: 4px;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth {
+    width: 100%;
+    margin: 0;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarwrapper td > div {
+    height: 11.5em;
+    overflow: hidden;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth ul li {
+    list-style-type: none;
+    line-height: 1.2em;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth ul li > a {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth ul li .calendar-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth td .day-number-circle {
+    display: inline-block;
+    line-height: 0;
+    width: 30px;
+    height: 30px;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth td .day-number-circle .day-number {
+    display: inline-block;
+    padding: 50% 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth td.today .day-number-circle {
+    border-radius: 50%;
+    background-color: #0b3d91;
+    color: #fff;
+}
+
+.iiidem-dashboard-calendar-embed .maincalendar .calendarmonth .clickable:hover {
+    background-color: #f8f9fa;
+}
+
+.iiidem-student-panel--calendar,
+.admin-dashboard-calendar .iiidem-student-panel--calendar {
+    overflow: hidden;
+}
+
+.iiidem-student-panel__body--calendar {
+    background: #fff;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.admin-dashboard-calendar {
+    margin-top: 0.5rem;
 }

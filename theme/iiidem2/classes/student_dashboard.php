@@ -38,33 +38,74 @@ class student_dashboard {
         $user = \core_user::get_user($userid, '*', MUST_EXIST);
         $courses = self::get_enrolled_courses($userid);
         $liveclasses = self::get_live_classes($courses, $userid);
+        $joinnowurl = !empty($liveclasses[0]['joinurl']) ? $liveclasses[0]['joinurl'] : '';
+
+        $announcements = self::get_announcement_items($userid);
         $notifications = self::get_notifications($userid);
-        $upcomingsessions = self::get_upcoming_sessions($liveclasses);
-        $assignmentsgrades = self::get_assignments_grades($courses, $userid);
-        $joinnowurl = !empty($upcomingsessions[0]['joinurl']) ? $upcomingsessions[0]['joinurl'] : '';
+        $achievements = self::get_achievements($userid);
+        $coursecards = self::get_course_cards($courses, $userid);
+        $upcomingactivities = self::get_upcoming_activities($courses, $userid, $liveclasses);
+        $calendarcourseid = theme_iiidem2_get_dashboard_calendar_course_id_for_user($userid);
+        $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
+        $learningstats = self::get_learning_statistics($userid, $courses);
 
-        $userpicture = new \user_picture($user);
-        $userpicture->size = 80;
-
-        return [
+        return array_merge([
             'firstname' => $user->firstname,
-            'useravatarurl' => $userpicture->get_url($PAGE)->out(false),
             'dashboardurl' => \theme_iiidem2_get_dashboard_url()->out(false),
-            'statcards' => self::get_stat_cards($courses, $userid, $liveclasses),
             'sidenav' => self::get_sidebar_nav($courses, $userid),
-            'upcomingsessions' => $upcomingsessions,
-            'hasupcomingsessions' => !empty($upcomingsessions),
+            'quicklinks' => self::get_quick_links($userid, $calendarcourseid),
+            'progresscards' => self::get_learning_progress_cards($courses, $userid),
+            'coursecards' => $coursecards,
+            'hascoursecards' => !empty($coursecards),
+            'mycoursesurl' => (new \moodle_url('/my/courses.php'))->out(false),
+            'upcomingactivities' => $upcomingactivities,
+            'hasupcomingactivities' => !empty($upcomingactivities),
+            'announcements' => $announcements,
+            'hasannouncements' => !empty($announcements),
+            'notifications' => $notifications,
+            'hasnotifications' => !empty($notifications),
+            'notificationcount' => count($notifications),
+            'achievementbadgecount' => $achievements['badgecount'],
+            'achievementcertificatecount' => $achievements['certificatecount'],
+            'achievementbadgesurl' => $achievements['badgesurl'],
+            'achievementcertificatesurl' => $achievements['certificatesurl'],
+            'learningstats' => $learningstats['stats'],
+            'hasrecommendedcourses' => false,
+            'recommendedcoursesurl' => (new \moodle_url('/course/index.php'))->out(false),
             'hasjoinnow' => $joinnowurl !== '',
             'joinnowurl' => $joinnowurl,
-            'assignmentsgrades' => $assignmentsgrades,
-            'hasassignmentsgrades' => !empty($assignmentsgrades),
-            'notificationcount' => count($notifications),
-            'hasnotifications' => !empty($notifications),
-            'calendarurl' => (new \moodle_url('/calendar/view.php'))->out(false),
             'badgesurl' => (new \moodle_url('/badges/mybadges.php'))->out(false),
             'gradesurl' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
             'messagesurl' => (new \moodle_url('/message/index.php'))->out(false),
+            'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
+        ], $calendarcontext);
+    }
+
+    /**
+     * Enrolled-course data for any role (student participant enrollments).
+     *
+     * @param int|null $userid
+     * @return array
+     */
+    public static function get_enrolled_courses_context(?int $userid = null): array {
+        global $CFG, $USER;
+
+        if ($userid === null) {
+            $userid = (int) $USER->id;
+        }
+
+        require_once($CFG->libdir . '/enrollib.php');
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $courses = self::get_enrolled_courses($userid);
+        $coursecards = self::get_course_cards($courses, $userid);
+
+        return [
+            'coursecards' => $coursecards,
+            'hascoursecards' => !empty($coursecards),
+            'progresscards' => self::get_learning_progress_cards($courses, $userid),
+            'mycoursesurl' => (new \moodle_url('/my/courses.php'))->out(false),
         ];
     }
 
@@ -75,7 +116,40 @@ class student_dashboard {
     protected static function get_enrolled_courses(int $userid): array {
         $courses = enrol_get_users_courses($userid, true, '*', 'visible DESC, fullname ASC');
         unset($courses[SITEID]);
+
+        if (empty($courses)) {
+            $fallback = enrol_get_users_courses($userid, false, '*', 'visible DESC, fullname ASC');
+            unset($fallback[SITEID]);
+            foreach ($fallback as $course) {
+                if (self::user_can_access_enrolled_course($course, $userid)) {
+                    $courses[$course->id] = $course;
+                }
+            }
+        }
+
         return array_values($courses);
+    }
+
+    /**
+     * @param \stdClass $course
+     * @param int $userid
+     * @return bool
+     */
+    protected static function user_can_access_enrolled_course(\stdClass $course, int $userid): bool {
+        if (empty($course->id) || (int) $course->id === SITEID) {
+            return false;
+        }
+
+        $context = \context_course::instance((int) $course->id, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+
+        if (is_enrolled($context, $userid, '', true)) {
+            return true;
+        }
+
+        return can_access_course($course, [], $userid);
     }
 
     /**
@@ -87,13 +161,13 @@ class student_dashboard {
         global $CFG;
 
         $cards = [];
-        $limit = 4;
+        $limit = 6;
 
         foreach ($courses as $course) {
             if (count($cards) >= $limit) {
                 break;
             }
-            if (!$course->visible) {
+            if (!self::user_can_access_enrolled_course($course, $userid)) {
                 continue;
             }
 
@@ -121,8 +195,13 @@ class student_dashboard {
                 $courseimage = $CFG->wwwroot . '/theme/iiidem2/pix/ai.jpg';
             }
 
-            $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
-            $progress = $percent !== null ? (int) round($percent) : null;
+            $progress = null;
+            try {
+                $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
+                $progress = $percent !== null ? (int) round($percent) : null;
+            } catch (\Throwable $e) {
+                $progress = null;
+            }
 
             $cards[] = [
                 'fullname' => format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]),
@@ -134,6 +213,7 @@ class student_dashboard {
                 'progresslabel' => $progress !== null
                     ? get_string('dashboardprogresslabel', 'theme_iiidem2', $progress)
                     : get_string('dashboardnoprogress', 'theme_iiidem2'),
+                'continueurl' => (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             ];
         }
 
@@ -141,47 +221,334 @@ class student_dashboard {
     }
 
     /**
-     * Top summary cards (course progress, average grade, next session).
+     * Learning progress summary cards (enrolled, completed, in progress, certificates).
+     *
+     * @param array $courses
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_learning_progress_cards(array $courses, int $userid): array {
+        global $DB;
+
+        $enrolled = count($courses);
+        $completed = 0;
+        $inprogress = 0;
+
+        foreach ($courses as $course) {
+            $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
+            if ($percent !== null && (int) round($percent) >= 100) {
+                $completed++;
+            } else {
+                $inprogress++;
+            }
+        }
+
+        $certificates = (int) $DB->count_records_select(
+            'course_completions',
+            'userid = ? AND timecompleted IS NOT NULL AND timecompleted > 0',
+            [$userid]
+        );
+
+        return [
+            [
+                'value' => (string) $enrolled,
+                'label' => get_string('dashboardstatcourses', 'theme_iiidem2'),
+                'accent' => 'navy',
+            ],
+            [
+                'value' => (string) $completed,
+                'label' => get_string('dashboardstatcompleted', 'theme_iiidem2'),
+                'accent' => 'teal',
+            ],
+            [
+                'value' => (string) $inprogress,
+                'label' => get_string('dashboardstatinprogress', 'theme_iiidem2'),
+                'accent' => 'orange',
+            ],
+            [
+                'value' => (string) $certificates,
+                'label' => get_string('dashboardstatcertificates', 'theme_iiidem2'),
+                'accent' => 'purple',
+            ],
+        ];
+    }
+
+    /**
+     * Horizontal quick links (My courses, Calendar, Grades, etc.).
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_quick_links(int $userid, int $calendarcourseid = SITEID): array {
+        $calendarurl = new \moodle_url('/calendar/view.php', ['view' => 'month']);
+        if ($calendarcourseid != SITEID) {
+            $calendarurl->param('course', $calendarcourseid);
+        }
+
+        return [
+            [
+                'icon' => 'fa-book',
+                'label' => get_string('dashboardmycourses', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/my/courses.php'))->out(false),
+            ],
+            [
+                'icon' => 'fa-calendar',
+                'label' => get_string('dashboardcalendartitle', 'theme_iiidem2'),
+                'url' => $calendarurl->out(false),
+            ],
+            [
+                'icon' => 'fa-chart-line',
+                'label' => get_string('dashboardnavgrades', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
+            ],
+            [
+                'icon' => 'fa-certificate',
+                'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/badges/mybadges.php'))->out(false),
+            ],
+            [
+                'icon' => 'fa-envelope',
+                'label' => get_string('dashboardquickmessages', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/message/index.php'))->out(false),
+            ],
+            [
+                'icon' => 'fa-user',
+                'label' => get_string('dashboardquickprofile', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
+            ],
+        ];
+    }
+
+    /**
+     * Merged upcoming quizzes, assignments, and live sessions.
      *
      * @param array $courses
      * @param int $userid
      * @param array $liveclasses
      * @return array
      */
-    protected static function get_stat_cards(array $courses, int $userid, array $liveclasses): array {
-        $sumprogress = 0;
-        $progresscount = 0;
+    protected static function get_upcoming_activities(array $courses, int $userid, array $liveclasses): array {
+        $items = [];
+        $now = time();
 
-        foreach ($courses as $course) {
-            $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
-            if ($percent === null) {
-                continue;
+        foreach (self::collect_upcoming_tasks($courses, $userid) as $task) {
+            $statusclass = 'navy';
+            if ($task['sorttime'] < $now + DAYSECS) {
+                $statusclass = 'orange';
             }
-            $progresscount++;
-            $sumprogress += $percent;
+            $items[] = [
+                'typelabel' => $task['typelabel'],
+                'title' => $task['title'],
+                'meta' => $task['coursefullname'] . ' · ' . $task['date'],
+                'url' => $task['url'],
+                'status' => $task['date'],
+                'statusclass' => $statusclass,
+                'sorttime' => $task['sorttime'],
+            ];
         }
 
-        $avgprogress = $progresscount > 0 ? (int) round($sumprogress / $progresscount) : 0;
-        $avggrade = self::get_average_grade_percentage($userid, $courses);
-        $nextsession = self::get_next_session_countdown($liveclasses);
+        foreach ($liveclasses as $session) {
+            $sorttime = (int) ($session['sorttime'] ?? 0);
+            $status = self::get_session_status($sorttime, $now, !empty($session['istoday']));
+            $items[] = [
+                'typelabel' => get_string('dashboardtypelive', 'theme_iiidem2'),
+                'title' => $session['title'],
+                'meta' => trim($session['date'] . ' · ' . $session['time']),
+                'url' => $session['joinurl'] ?? '',
+                'status' => $status['label'],
+                'statusclass' => $status['class'],
+                'sorttime' => $sorttime,
+            ];
+        }
+
+        usort($items, static function(array $a, array $b): int {
+            return $a['sorttime'] <=> $b['sorttime'];
+        });
+
+        $items = array_slice($items, 0, 6);
+        foreach ($items as &$item) {
+            unset($item['sorttime']);
+        }
+
+        return $items;
+    }
+
+    /**
+     * Recent course announcements for the dashboard panel.
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_announcement_items(int $userid): array {
+        $data = theme_iiidem2_get_student_announcements($userid, 5);
+        $items = [];
+        foreach ($data['announcements'] as $announcement) {
+            $items[] = [
+                'title' => $announcement['subject'],
+                'meta' => $announcement['coursefullname'],
+                'date' => $announcement['date'],
+                'url' => $announcement['url'],
+            ];
+        }
+        return $items;
+    }
+
+    /**
+     * Certificates and badges summary.
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_achievements(int $userid): array {
+        global $CFG, $DB;
+
+        $badgecount = 0;
+        if (!empty($CFG->enablebadges)) {
+            require_once($CFG->libdir . '/badgeslib.php');
+            $badges = badges_get_user_badges($userid, 0, 0, 0, true);
+            $badgecount = count($badges);
+        }
+
+        $certificatecount = (int) $DB->count_records_select(
+            'course_completions',
+            'userid = ? AND timecompleted IS NOT NULL AND timecompleted > 0',
+            [$userid]
+        );
 
         return [
-            [
-                'value' => $progresscount > 0 ? $avgprogress . '%' : '—',
-                'label' => get_string('dashboardstatcourseprogress', 'theme_iiidem2'),
-                'accent' => 'orange',
-            ],
-            [
-                'value' => $avggrade !== null ? $avggrade . '%' : '—',
-                'label' => get_string('dashboardstataveragegrade', 'theme_iiidem2'),
-                'accent' => 'teal',
-            ],
-            [
-                'value' => $nextsession,
-                'label' => get_string('dashboardstatnextsession', 'theme_iiidem2'),
-                'accent' => 'navy',
+            'badgecount' => $badgecount,
+            'certificatecount' => $certificatecount,
+            'hasbadges' => $badgecount > 0,
+            'hascertificates' => $certificatecount > 0,
+            'badgesurl' => (new \moodle_url('/badges/mybadges.php'))->out(false),
+            'certificatesurl' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
+        ];
+    }
+
+    /**
+     * Learning statistics cards.
+     *
+     * @param int $userid
+     * @param array $courses
+     * @return array
+     */
+    protected static function get_learning_statistics(int $userid, array $courses): array {
+        global $DB;
+
+        $completed = 0;
+        foreach ($courses as $course) {
+            $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
+            if ($percent !== null && (int) round($percent) >= 100) {
+                $completed++;
+            }
+        }
+
+        $avggrade = self::get_average_grade_percentage($userid, $courses);
+        $quizattempts = (int) $DB->count_records('quiz_attempts', ['userid' => $userid, 'state' => 'finished']);
+
+        $monthstart = usergetmidnight(strtotime('first day of this month'));
+        $monthlyactivity = 0;
+        if ($DB->get_manager()->table_exists('logstore_standard_log')) {
+            $monthlyactivity = (int) $DB->count_records_select(
+                'logstore_standard_log',
+                'userid = ? AND timecreated >= ?',
+                [$userid, $monthstart]
+            );
+        }
+
+        return [
+            'stats' => [
+                [
+                    'icon' => 'fa-check-circle',
+                    'value' => (string) $completed,
+                    'label' => get_string('dashboardstatcoursescompleted', 'theme_iiidem2'),
+                ],
+                [
+                    'icon' => 'fa-chart-line',
+                    'value' => $avggrade !== null ? $avggrade . '%' : '—',
+                    'label' => get_string('dashboardstatquizperformance', 'theme_iiidem2'),
+                ],
+                [
+                    'icon' => 'fa-question-circle',
+                    'value' => (string) $quizattempts,
+                    'label' => get_string('dashboardstatquizattempts', 'theme_iiidem2'),
+                ],
+                [
+                    'icon' => 'fa-calendar-check',
+                    'value' => (string) $monthlyactivity,
+                    'label' => get_string('dashboardstatmonthlyactivity', 'theme_iiidem2'),
+                ],
             ],
         ];
+    }
+
+    /**
+     * Upcoming tasks with sort timestamps preserved.
+     *
+     * @param array $courses
+     * @param int $userid
+     * @return array
+     */
+    protected static function collect_upcoming_tasks(array $courses, int $userid): array {
+        global $DB;
+
+        $now = time();
+        $horizon = $now + (60 * 60 * 24 * 30);
+        $tasks = [];
+
+        foreach ($courses as $course) {
+            try {
+                $modinfo = get_fast_modinfo($course, $userid);
+            } catch (\Exception $e) {
+                continue;
+            }
+
+            $coursename = format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]);
+
+            foreach ($modinfo->get_instances_of('assign') as $cm) {
+                if (!$cm->uservisible) {
+                    continue;
+                }
+                $assign = $DB->get_record('assign', ['id' => $cm->instance], 'id, name, duedate', IGNORE_MISSING);
+                if (!$assign || empty($assign->duedate) || $assign->duedate < $now || $assign->duedate > $horizon) {
+                    continue;
+                }
+                $tasks[] = [
+                    'type' => 'assign',
+                    'typelabel' => get_string('dashboardtypeassign', 'theme_iiidem2'),
+                    'title' => format_string($assign->name, true, ['context' => \context_module::instance($cm->id)]),
+                    'coursefullname' => $coursename,
+                    'date' => userdate($assign->duedate, get_string('strftimedatefullshort', 'core_langconfig')),
+                    'sorttime' => (int) $assign->duedate,
+                    'url' => (new \moodle_url('/mod/assign/view.php', ['id' => $cm->id]))->out(false),
+                ];
+            }
+
+            foreach ($modinfo->get_instances_of('quiz') as $cm) {
+                if (!$cm->uservisible) {
+                    continue;
+                }
+                $quiz = $DB->get_record('quiz', ['id' => $cm->instance], 'id, name, timeclose', IGNORE_MISSING);
+                if (!$quiz || empty($quiz->timeclose) || $quiz->timeclose < $now || $quiz->timeclose > $horizon) {
+                    continue;
+                }
+                $tasks[] = [
+                    'type' => 'quiz',
+                    'typelabel' => get_string('dashboardtypequiz', 'theme_iiidem2'),
+                    'title' => format_string($quiz->name, true, ['context' => \context_module::instance($cm->id)]),
+                    'coursefullname' => $coursename,
+                    'date' => userdate($quiz->timeclose, get_string('strftimedatefullshort', 'core_langconfig')),
+                    'sorttime' => (int) $quiz->timeclose,
+                    'url' => (new \moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(false),
+                ];
+            }
+        }
+
+        usort($tasks, static function(array $a, array $b): int {
+            return $a['sorttime'] <=> $b['sorttime'];
+        });
+
+        return $tasks;
     }
 
     /**
@@ -682,7 +1049,7 @@ class student_dashboard {
             return $b['sorttime'] <=> $a['sorttime'];
         });
 
-        $items = array_slice($items, 0, 8);
+        $items = array_slice($items, 0, 6);
         foreach ($items as &$item) {
             unset($item['sorttime']);
         }

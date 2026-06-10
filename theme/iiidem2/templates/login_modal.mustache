@@ -1,0 +1,53 @@
+{{!
+    @template theme_iiidem2/login_modal
+
+    Bootstrap login modal for guests.
+
+    Context variables required for this template:
+    * loginurl - POST target for the login form
+    * logintoken - CSRF token
+    * forgotpasswordurl - Forgot password link
+    * signupurl - Sign-up page URL
+    * canloginbyemail - Whether username/email label is used
+    * cansignup - Whether sign-up is enabled
+}}
+<div class="modal fade" id="iiidemLoginModal" tabindex="-1" aria-labelledby="iiidemLoginModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="iiidemLoginModalLabel">{{#str}}login{{/str}}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{#str}}closebuttontitle, core{{/str}}"></button>
+            </div>
+            <div class="modal-body iiidem-login-modal-body">
+                <p class="text-muted mb-3">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
+                <form class="login-form" action="{{loginurl}}" method="post" id="iiidemLoginModalForm">
+                    <input type="hidden" name="logintoken" value="{{logintoken}}">
+                    <div class="mb-3">
+                        <label for="iiidemLoginUsername" class="form-label">
+                            {{^canloginbyemail}}{{#str}}username{{/str}}{{/canloginbyemail}}
+                            {{#canloginbyemail}}{{#str}}usernameemail{{/str}}{{/canloginbyemail}}
+                        </label>
+                        <input type="text" name="username" id="iiidemLoginUsername" class="form-control"
+                               autocomplete="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="iiidemLoginPassword" class="form-label">{{#str}}password{{/str}}</label>
+                        <input type="password" name="password" id="iiidemLoginPassword" class="form-control"
+                               autocomplete="current-password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" type="submit">{{#str}}login{{/str}}</button>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <a href="{{forgotpasswordurl}}">{{#str}}forgotaccount{{/str}}</a>
+                    </div>
+                    {{#cansignup}}
+                    <div class="mt-3 text-center">
+                        <a href="{{signupurl}}" class="btn btn-outline-secondary btn-sm">{{#str}}startsignup{{/str}}</a>
+                    </div>
+                    {{/cansignup}}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

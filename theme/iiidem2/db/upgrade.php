@@ -26,5 +26,50 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100729, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024100746) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100746, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100747) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100747, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100748) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100748, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100749) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100749, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100750) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100750, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100751) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100751, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100752) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100752, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100753) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100753, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100754) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100754, 'theme', 'iiidem2');
+    }
+
     return true;
 }

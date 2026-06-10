@@ -27,3 +27,9 @@ $ADMIN->add('payment', new admin_externalpage(
     new lang_string('paymentaccounts', 'payment'),
     new moodle_url("/payment/accounts.php"),
     ['moodle/payment:manageaccounts', 'moodle/payment:viewpayments']));
+
+$ADMIN->add('payment', new admin_externalpage(
+    'paygw_pnb_transactions',
+    new lang_string('transactionhistory', 'paygw_pnb'),
+    new moodle_url('/payment/gateway/pnb/transactions.php'),
+    'moodle/site:config'));

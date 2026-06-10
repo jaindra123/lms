@@ -1,16 +1,32 @@
-{{!
-    @template theme_iiidem2/quiz/activity_wrapper
-
-    MCQ attempt page — Polling Station / ECI sample card layout.
-}}
-<div class="iiidem-quiz-mcq iiidem-quiz-activity" data-cmid="{{quizcmid}}">
-    <div class="iiidem-quiz-mcq__stage">
-        <a href="{{quizviewurl}}" class="iiidem-quiz-mcq__back-link" title="{{#str}}back, moodle{{/str}}">
-            <i class="icon fa fa-arrow-left" aria-hidden="true"></i>
-            <span class="visually-hidden">{{#str}}back, moodle{{/str}}</span>
-        </a>
-        <div class="iiidem-quiz-mcq__card"{{#hasquizwatermark}} style="--iiidem-quiz-watermark-url: url('{{quizwatermarkurl}}')"{{/hasquizwatermark}}>
-            {{{ output.main_content }}}
-        </div>
-    </div>
-</div>
+{{!
+
+    @template theme_iiidem2/quiz/activity_wrapper
+
+
+
+    MCQ attempt page — Polling Station / ECI sample card layout.
+
+}}
+
+<div class="iiidem-quiz-mcq iiidem-quiz-activity" data-cmid="{{quizcmid}}">
+
+    <div class="iiidem-quiz-mcq__stage">
+
+        <a href="{{quizviewurl}}" class="iiidem-quiz-mcq__back-link" title="{{#str}}back, moodle{{/str}}">
+
+            <i class="icon fa fa-arrow-left" aria-hidden="true"></i>
+
+            <span class="visually-hidden">{{#str}}back, moodle{{/str}}</span>
+
+        </a>
+
+        <div class="iiidem-quiz-mcq__card"{{#hasquizwatermark}} style="--iiidem-quiz-watermark-url: url('{{quizwatermarkurl}}')"{{/hasquizwatermark}}>
+
+            {{{ output.main_content }}}
+
+        </div>
+
+    </div>
+
+</div>
+

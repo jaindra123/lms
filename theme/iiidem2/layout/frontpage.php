@@ -52,6 +52,7 @@ $templatecontext = array_merge(
 $templatecontext['aboutideahtml'] = $OUTPUT->render_from_template('theme_iiidem2/about_idea', $ideacontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_slider', 'init');
+$PAGE->requires->js_call_amd('theme_iiidem2/frontpage_about_tabs', 'init');
 
 echo $OUTPUT->render_from_template('theme_iiidem2/frontpage', $templatecontext);
 ?>

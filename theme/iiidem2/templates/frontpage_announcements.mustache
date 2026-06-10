@@ -1,0 +1,59 @@
+{{!
+    @template theme_iiidem2/frontpage_announcements
+
+    Latest announcements — slide-in sidebar on the hero (arrow tab when closed).
+}}
+{{#hasannouncements}}
+<div class="iiidem-announcements-drawer is-closed" id="iiidemAnnouncementsDrawer">
+    <div class="iiidem-announcements-drawer__trigger-wrap">
+        <span class="iiidem-announcements-drawer__trigger-label">{{#str}}frontpageannouncementsopen, theme_iiidem2{{/str}}</span>
+        <button type="button"
+                class="iiidem-announcements-drawer__trigger"
+                data-action="open-announcements"
+                aria-controls="iiidemAnnouncementsPanel"
+                aria-expanded="false"
+                aria-label="{{#str}}frontpageannouncementsopen, theme_iiidem2{{/str}}">
+            <span class="fa fa-chevron-left" aria-hidden="true"></span>
+        </button>
+    </div>
+
+    <aside class="iiidem-announcements-drawer__panel"
+           id="iiidemAnnouncementsPanel"
+           aria-labelledby="iiidem-frontpage-announcements-heading"
+           aria-hidden="true">
+        <header class="iiidem-announcements-drawer__header">
+            <h2 id="iiidem-frontpage-announcements-heading" class="iiidem-announcements-drawer__title">
+                {{#str}}frontpageannouncementstitle, theme_iiidem2{{/str}}
+            </h2>
+            <button type="button"
+                    class="iiidem-announcements-drawer__close"
+                    data-action="close-announcements"
+                    aria-label="{{#str}}closebuttontitle, core{{/str}}">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </header>
+
+        <div class="iiidem-announcements-drawer__body">
+            <ul class="iiidem-announcements-drawer__list list-unstyled mb-0">
+                {{#announcements}}
+                <li class="iiidem-announcements-drawer__item">
+                    <div class="iiidem-announcements-drawer__datetime">{{datetime}}</div>
+                    <div class="iiidem-announcements-drawer__meta">{{meta}}</div>
+                    <a class="iiidem-announcements-drawer__link" href="{{{url}}}">{{title}}</a>
+                </li>
+                {{/announcements}}
+            </ul>
+            {{#hasolderurl}}
+            <div class="iiidem-announcements-drawer__footer">
+                <a class="iiidem-announcements-drawer__older" href="{{{olderurl}}}">{{#str}}frontpageannouncementsolder, theme_iiidem2{{/str}}</a>
+            </div>
+            {{/hasolderurl}}
+        </div>
+    </aside>
+</div>
+{{#js}}
+require(['theme_iiidem2/frontpage_announcements'], function(announcements) {
+    announcements.init();
+});
+{{/js}}
+{{/hasannouncements}}

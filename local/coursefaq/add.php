@@ -15,7 +15,7 @@ $PAGE->set_heading('Add Course FAQ');
 
 echo $OUTPUT->header();
 
-if (optional_param('submit', false, PARAM_BOOL)) {
+if (optional_param('submit', false, PARAM_BOOL) && confirm_sesskey()) {
 
     $courseid = required_param('courseid', PARAM_INT);
     $question = required_param('question', PARAM_TEXT);
@@ -46,6 +46,7 @@ $courses = $DB->get_records('course', null, '', 'id, fullname');
 ?>
 
 <form method="post">
+    <input type="hidden" name="sesskey" value="<?= sesskey() ?>">
 
     <label>Course</label><br>
     <select name="courseid" required>

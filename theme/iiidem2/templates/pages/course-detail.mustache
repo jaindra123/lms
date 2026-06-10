@@ -18,17 +18,22 @@
                     <a href="{{entercourseurl}}" class="btn btn-primary">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
                     {{/isloggedin}}
                     {{^isloggedin}}
+                    {{#hasloginmodal}}
+                    <button type="button" class="btn btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#iiidemLoginModal">
+                        {{#str}}coursedetaillogin, theme_iiidem2{{/str}}
+                    </button>
+                    {{/hasloginmodal}}
+                    {{^hasloginmodal}}
                     <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
+                    {{/hasloginmodal}}
                     {{/isloggedin}}
                     <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
                 </div>
             </div>
         </div>
     </section>
-
-    {{#hasquizzes}}
-    {{> theme_iiidem2/course/quizzes }}
-    {{/hasquizzes}}
 
     {{> theme_iiidem2/course/curriculum }}
 

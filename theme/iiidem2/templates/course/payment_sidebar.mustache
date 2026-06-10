@@ -1,0 +1,40 @@
+{{!
+    @template theme_iiidem2/course/payment_sidebar
+
+    Course fee and PNB payment button (enrol_fee + paygw_pnb).
+}}
+<div class="course-sidebar">
+    <div class="iiidem-course-payment-card card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="iiidem-course-payment-card__price">{{coursefeecost}}</div>
+            <p class="iiidem-course-payment-card__label">{{#str}}coursefeepaymentlabel, theme_iiidem2{{/str}}</p>
+
+            {{#showcoursepayment}}
+            <button type="button"
+                    class="btn btn-primary btn-lg w-100 iiidem-course-payment-card__btn"
+                    id="gateways-modal-trigger-{{coursefeeinstanceid}}"
+                    data-action="core_payment/triggerPayment"
+                    data-component="enrol_fee"
+                    data-paymentarea="fee"
+                    data-itemid="{{coursefeeinstanceid}}"
+                    data-cost="{{coursefeecost}}"
+                    data-description="{{coursefeedescription}}"
+                    data-successurl="{{coursefeesuccessurl}}">
+                {{#str}}paywithpnb, theme_iiidem2{{/str}}
+            </button>
+            <p class="iiidem-course-payment-card__note small text-muted mt-3 mb-0">
+                {{#str}}coursefeepaymentnote, theme_iiidem2{{/str}}
+            </p>
+            {{#js}}
+            require(['core_payment/gateways_modal'], function(modal) {
+                modal.init();
+            });
+            {{/js}}
+            {{/showcoursepayment}}
+
+            {{^showcoursepayment}}
+            <p class="small text-muted mb-0">{{#str}}coursefeepaymentpending, theme_iiidem2{{/str}}</p>
+            {{/showcoursepayment}}
+        </div>
+    </div>
+</div>

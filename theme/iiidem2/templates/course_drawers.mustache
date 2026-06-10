@@ -166,17 +166,22 @@
                                 <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
                                     <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
                                     <div class="d-flex flex-wrap gap-2">
+                                        {{#hasloginmodal}}
+                                        <button type="button" class="btn btn-primary"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#iiidemLoginModal">
+                                            {{#str}}coursedetaillogin, theme_iiidem2{{/str}}
+                                        </button>
+                                        {{/hasloginmodal}}
+                                        {{^hasloginmodal}}
                                         <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
+                                        {{/hasloginmodal}}
                                         <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
                                     </div>
                                 </div>
                             </div>
                         </section>
                         {{/ispubliccourseview}}
-
-                        {{#hasquizzes}}
-                        {{> theme_iiidem2/course/quizzes }}
-                        {{/hasquizzes}}
 
                         {{> theme_iiidem2/course/curriculum }}
 
@@ -196,6 +201,25 @@
             </div>
         </div>
     </div>
+    {{#hasadvisors}}
+    {{> theme_iiidem2/program_governance }}
+    {{/hasadvisors}}
+
+    {{#pnbpaymentsuccess}}
+    <div class="modal fade" id="iiidemPnbPaymentSuccessModal" tabindex="-1" aria-labelledby="iiidemPnbPaymentSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4 p-md-5">
+                    <div class="text-success mb-3" style="font-size:3rem;">&#10003;</div>
+                    <h2 class="h4 mb-3" id="iiidemPnbPaymentSuccessLabel">{{#str}} paymentresultsuccessheading, paygw_pnb {{/str}}</h2>
+                    <p class="mb-4">{{#str}} paymentsuccess, paygw_pnb {{/str}}</p>
+                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-dismiss="modal">{{#str}} continue {{/str}}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/pnbpaymentsuccess}}
+
     {{> theme_iiidem2/page_end }}
 </div>
 
@@ -206,6 +230,16 @@ require(['theme_iiidem2/loader', 'theme_iiidem2/drawer'], function(Loader, Drawe
     Drawer.init();
     M.util.js_complete('theme_iiidem2/loader');
 });
+{{#pnbpaymentsuccess}}
+require(['jquery'], function() {
+    setTimeout(function() {
+        var modalEl = document.getElementById('iiidemPnbPaymentSuccessModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }, 100);
+});
+{{/pnbpaymentsuccess}}
 {{/js}}
 
 </body>

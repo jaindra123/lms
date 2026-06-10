@@ -19,17 +19,28 @@ require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
 require_login();
 
-$context = context_user::instance($USER->id);
-$PAGE->set_context($context);
+$PAGE->set_context(context_system::instance());
 $PAGE->set_pagelayout('mydashboard');
 $PAGE->set_url(new moodle_url('/theme/iiidem2/dashboard/index.php'));
 $PAGE->set_title(get_string('dashboard', 'theme_iiidem2'));
-$PAGE->set_heading(get_string('dashboard', 'theme_iiidem2'));
+$PAGE->set_heading('');
+$PAGE->activityheader->disable();
 
 $templatecontext = theme_iiidem2_get_dashboard_context();
 if (!empty($templatecontext['isstudent'])) {
     $PAGE->add_body_class('iiidem-student-dashboard-page');
+}
+if (!empty($templatecontext['isteacher'])) {
+    $PAGE->add_body_class('iiidem-teacher-dashboard-page');
+}
+if (!empty($templatecontext['isstudent']) || !empty($templatecontext['isteacher']) || !empty($templatecontext['hascoursecards']) || !empty($templatecontext['isadmin'])) {
     $PAGE->requires->css(new moodle_url('/theme/iiidem2/style/student-dashboard.css'));
+}
+if (!empty($templatecontext['isteacher'])) {
+    $PAGE->requires->css(new moodle_url('/theme/iiidem2/style/teacher-dashboard.css'));
+}
+if (!empty($templatecontext['hascalendarhtml'])) {
+    $PAGE->add_body_class('iiidem-dashboard-has-calendar');
 }
 $templatecontext['output'] = $OUTPUT;
 

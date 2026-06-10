@@ -122,6 +122,12 @@ if ($isenrolpage) {
     $enrolcontext['isenrolpage'] = true;
 }
 
+$hidestandardpageheader = theme_iiidem2_is_student_dashboard_page($PAGE);
+if ($hidestandardpageheader) {
+    $headercontent = false;
+    $secondarynavigation = false;
+}
+
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
@@ -141,7 +147,8 @@ $templatecontext = [
     'hasregionmainsettingsmenu' => !empty($regionmainsettingsmenu),
     'overflow' => $overflow,
     'headercontent' => $headercontent,
-    'addblockbutton' => $addblockbutton
+    'addblockbutton' => $addblockbutton,
+    'hidestandardpageheader' => $hidestandardpageheader,
 ];
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);

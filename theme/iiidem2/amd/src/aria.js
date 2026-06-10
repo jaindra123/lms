@@ -483,15 +483,17 @@ const tabElementFix = () => {
     });
 
     document.addEventListener('click', e => {
-        if (e.target.matches('[role="tablist"] [data-toggle="tab"], [role="tablist"] [data-toggle="pill"]')) {
-            const tabs = e.target.closest('[role="tablist"]').querySelectorAll('[data-toggle="tab"], [data-toggle="pill"]');
-            e.preventDefault();
-            $(e.target).tab('show');
-            tabs.forEach(tab => {
-                tab.tabIndex = -1;
-            });
-            e.target.tabIndex = 0;
+        const tab = e.target.closest('[role="tablist"] [data-toggle="tab"], [role="tablist"] [data-toggle="pill"]');
+        if (!tab) {
+            return;
         }
+        const tabs = tab.closest('[role="tablist"]').querySelectorAll('[data-toggle="tab"], [data-toggle="pill"]');
+        e.preventDefault();
+        $(tab).tab('show');
+        tabs.forEach(item => {
+            item.tabIndex = -1;
+        });
+        tab.tabIndex = 0;
     });
 };
 

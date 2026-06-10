@@ -1,0 +1,19 @@
+{{!
+    @template theme_iiidem2/dashboard/calendar_panel
+
+    Embedded Moodle month calendar (same events as /calendar/view.php?view=month).
+}}
+<article class="iiidem-student-panel iiidem-student-panel--calendar" id="calendar">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-calendar" aria-hidden="true"></span></span>
+            <h2 class="iiidem-student-panel__title">{{#str}}dashboardcalendartitle, theme_iiidem2{{/str}}</h2>
+        </div>
+        <a href="{{{calendarurl}}}" class="iiidem-student-section__link">{{#str}}viewall, theme_iiidem2{{/str}}</a>
+    </header>
+    <div class="iiidem-student-panel__body iiidem-student-panel__body--calendar p-0">
+        <div class="iiidem-dashboard-calendar-embed">
+            {{{calendarhtml}}}
+        </div>
+    </div>
+</article>

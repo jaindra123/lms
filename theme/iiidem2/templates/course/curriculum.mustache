@@ -35,24 +35,44 @@
                         <div class="lecture-item mb-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div> ▶ {{title}}  </div>
+                                {{#preview}}
                                 <div>
-                                    {{#preview}}
+                                    {{#canpreviewcurriculum}}
                                     <button class="btn btn-sm btn-primary" type="button"
                                             data-bs-toggle="collapse"
-                                            data-bs-target="#preview{{id}}">
-                                        Preview
+                                            data-bs-target="#preview{{id}}"
+                                            aria-expanded="false"
+                                            aria-controls="preview{{id}}">
+                                        {{previewlabel}}
                                     </button>
-                                    {{/preview}}
+                                    {{/canpreviewcurriculum}}
+                                    {{^canpreviewcurriculum}}
+                                    {{#hasloginmodal}}
+                                    <button type="button" class="btn btn-sm btn-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#iiidemLoginModal">
+                                        {{previewlabel}}
+                                    </button>
+                                    {{/hasloginmodal}}
+                                    {{^hasloginmodal}}
+                                    <a href="{{loginurl}}" class="btn btn-sm btn-primary">
+                                        {{previewlabel}}
+                                    </a>
+                                    {{/hasloginmodal}}
+                                    {{/canpreviewcurriculum}}
                                 </div>
+                                {{/preview}}
                             </div>
 
-                            {{#previewcontent}}
+                            {{#canpreviewcurriculum}}
+                            {{#haspreviewcontent}}
                             <div class="collapse mt-2" id="preview{{id}}">
                                 <div class="card card-body">
                                     {{{previewcontent}}}
                                 </div>
                             </div>
-                            {{/previewcontent}}
+                            {{/haspreviewcontent}}
+                            {{/canpreviewcurriculum}}
                         </div>
                         {{/activities}}
                     </div>

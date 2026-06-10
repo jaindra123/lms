@@ -2,46 +2,51 @@
     <div class="row align-items-center">
         <div class="col-md-12">
             <div class="iiidem-section-header iiidem-section-header--left mb-4">
-                <span class="iiidem-section-header__eyebrow">Who we are</span>
                 <h2 class="iiidem-section-header__title">About IIIDEM LMS</h2>
             </div>
             <div class="iiidem-tabs-wrapper">
                 <ul class="nav custom-tabs" id="iiidemTab" role="tablist">
 
                     <li class="nav-item">
-                        <button class="nav-link active"
-                                data-bs-toggle="tab"
-                                data-bs-target="#about"
-                                type="button"
-                                role="tab">
+                        <a class="nav-link active"
+                           id="iiidem-about-tab"
+                           data-toggle="tab"
+                           href="#about"
+                           role="tab"
+                           aria-controls="about"
+                           aria-selected="true">
                             About IIIDEM
-                        </button>
+                        </a>
                     </li>
 
                     <li class="nav-item">
-                        <button class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#whatwedo"
-                                type="button"
-                                role="tab">
+                        <a class="nav-link"
+                           id="iiidem-whatwedo-tab"
+                           data-toggle="tab"
+                           href="#whatwedo"
+                           role="tab"
+                           aria-controls="whatwedo"
+                           aria-selected="false">
                             What We Do
-                        </button>
+                        </a>
                     </li>
 
                     <li class="nav-item">
-                        <button class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#campus"
-                                type="button"
-                                role="tab">
+                        <a class="nav-link"
+                           id="iiidem-campus-tab"
+                           data-toggle="tab"
+                           href="#campus"
+                           role="tab"
+                           aria-controls="campus"
+                           aria-selected="false">
                             Campus & Facilities
-                        </button>
+                        </a>
                     </li>
 
-                    <li class="nav-item">
+                  <!--   <li class="nav-item">
                         <button class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#organogram"
+                                data-toggle="tab"
+                                data-target="#organogram"
                                 type="button"
                                 role="tab">
                             Organogram
@@ -50,13 +55,13 @@
 
                     <li class="nav-item">
                         <button class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#directory"
+                                data-toggle="tab"
+                                data-target="#directory"
                                 type="button"
                                 role="tab">
                             IIIDEM Directory
                         </button>
-                    </li>
+                    </li> -->
 
                 </ul>
 
@@ -103,13 +108,13 @@
 
                     </div>
 
-                    <div class="tab-pane fade" id="organogram">
+                   <!--  <div class="tab-pane fade" id="organogram">
                         <p>Content for Organogram</p>
                     </div>
 
                     <div class="tab-pane fade" id="directory">
                         <p>Content for IIIDEM Directory</p>
-                    </div>
+                    </div> -->
 
                 </div>
             </div>
@@ -117,4 +122,9 @@
         </div>
     </div>
 </div>
+{{#js}}
+require(['theme_iiidem2/frontpage_about_tabs'], function(tabs) {
+    tabs.init();
+});
+{{/js}}
 

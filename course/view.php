@@ -56,6 +56,15 @@ if (!empty($name)) {
 
 $course = $DB->get_record('course', $params, '*', MUST_EXIST);
 
+// Public course browse for visitors (theme_iiidem2) — before require_login().
+if (!isloggedin() || isguestuser()) {
+    if ((int) $course->id !== SITEID && $course->visible) {
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+        theme_iiidem2_render_public_course_view($course);
+        exit;
+    }
+}
+
 $urlparams = ['id' => $course->id];
 
 // Sectionid should get priority over section number.

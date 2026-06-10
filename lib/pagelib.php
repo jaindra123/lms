@@ -1175,9 +1175,13 @@ class moodle_page {
         if ($this->_course->id != $SITE->id) {
             require_once($CFG->dirroot.'/course/lib.php');
             $courseformat = course_get_format($this->_course);
-            $this->add_body_class('format-'. $courseformat->get_format());
-            $courseformat->page_set_course($this);
-        } else {
+            if ($this->_state <= self::STATE_BEFORE_HEADER) {
+                $this->add_body_class('format-'. $courseformat->get_format());
+            }
+            if ($this->_state <= self::STATE_BEFORE_HEADER) {
+                $courseformat->page_set_course($this);
+            }
+        } else if ($this->_state <= self::STATE_BEFORE_HEADER) {
             $this->add_body_class('format-site');
         }
     }
@@ -1361,7 +1365,9 @@ class moodle_page {
      */
     public function add_body_class($class) {
         if ($this->_state > self::STATE_BEFORE_HEADER) {
-            throw new coding_exception('Cannot call moodle_page::add_body_class after output has been started.');
+            // Body classes are fixed when header output starts; ignore duplicate/late calls
+            // (e.g. set_course() invoked again while the theme layout is rendering).
+            return;
         }
         $this->_bodyclasses[$class] = 1;
     }

@@ -3,30 +3,33 @@
 
     Role-based dashboard shell (student / teacher / admin).
 }}
-<div class="iiidem-dashboard{{#isstudent}} iiidem-dashboard--student{{/isstudent}}">
+<div class="iiidem-dashboard{{#isstudent}} iiidem-dashboard--student{{/isstudent}}{{#isteacher}} iiidem-dashboard--teacher{{/isteacher}}">
     {{#isstudent}}
         {{> theme_iiidem2/dashboard/student }}
     {{/isstudent}}
 
-    {{^isstudent}}
+    {{#isteacher}}
+        {{> theme_iiidem2/dashboard/teacher }}
+    {{/isteacher}}
+
+    {{#isadmin}}
     <div class="container-fluid py-4">
         <div class="iiidem-dashboard-welcome mb-4">
             <h1 class="h2 mb-1">{{#str}}dashboardwelcome, theme_iiidem2, {{fullname}}{{/str}}</h1>
-            <p class="text-muted mb-0">
-                {{#isadmin}}{{#str}}dashboardroleadmin, theme_iiidem2{{/str}}{{/isadmin}}
-                {{#isteacher}}{{#str}}dashboardroleteacher, theme_iiidem2{{/str}}{{/isteacher}}
-            </p>
+            <p class="text-muted mb-0">{{#str}}dashboardroleadmin, theme_iiidem2{{/str}}</p>
         </div>
 
-        {{#isteacher}}
-            {{> theme_iiidem2/dashboard/teacher }}
-        {{/isteacher}}
+        {{#hascoursecards}}
+        <section class="iiidem-student-section mb-4" id="my-courses">
+            <header class="iiidem-student-section__header">
+                <h2 class="iiidem-student-section__title">{{#str}}dashboardmycourses, theme_iiidem2{{/str}}</h2>
+                <a href="{{{mycoursesurl}}}" class="iiidem-student-section__link">{{#str}}viewall, theme_iiidem2{{/str}}</a>
+            </header>
+            {{> theme_iiidem2/dashboard/course_cards }}
+        </section>
+        {{/hascoursecards}}
 
-        {{#isadmin}}
-            {{> theme_iiidem2/dashboard/admin }}
-        {{/isadmin}}
+        {{> theme_iiidem2/dashboard/admin }}
     </div>
-    {{/isstudent}}
-
-    {{{ output.main_content }}}
+    {{/isadmin}}
 </div>

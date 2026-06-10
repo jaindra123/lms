@@ -4,5 +4,14 @@
     Standard page closing: shared footer + Moodle hooks.
     Place inside #page-wrapper, after main content / #page.
 }}
+{{#hasloginmodal}}
+{{> theme_iiidem2/login_modal }}
+{{/hasloginmodal}}
 {{> theme_iiidem2/footer }}
 {{{ output.standard_after_main_region_html }}}
+{{#js}}
+M.util.js_pending('theme_iiidem2/loader');
+require(['theme_iiidem2/loader'], function() {
+    M.util.js_complete('theme_iiidem2/loader');
+});
+{{/js}}

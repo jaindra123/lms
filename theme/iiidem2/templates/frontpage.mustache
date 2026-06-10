@@ -56,36 +56,15 @@
         {{{aboutideahtml}}}
     </section>
 
-    <section class="advisors-section" id="program_governance">
-        <div class="container">
-            <div class="section-header-governance">
-                <h2>{{governancetitle}}</h2>
-            </div>
-            <div class="advisors-grid">
-                {{#advisors}}
-                <div class="advisor-card">
-                    <div class="advisor-image">
-                        <img src="{{imageurl}}" alt="{{imagealt}}">
-                    </div>
-                    <div class="advisor-content">
-                        <h3>{{name}}</h3>
-                        {{#hasroles}}
-                        {{#roles}}
-                        <span>{{text}}</span>
-                        {{/roles}}
-                        {{/hasroles}}
-                    </div>
-                </div>
-                {{/advisors}}
-            </div>
-        </div>
-    </section>
+    {{#hasadvisors}}
+    {{> theme_iiidem2/program_governance }}
+    {{/hasadvisors}}
 
     {{#hascourses}}
     <section class="iiidem-courses-section" id="courses">
         <div class="container">
             <div class="iiidem-section-header text-center">
-                <span class="iiidem-section-header__eyebrow">Learning paths</span>
+              
                 <h2 class="iiidem-section-header__title">Explore Our Courses</h2>
                 <p class="iiidem-section-header__lead">Browse certification and training programs designed for election professionals.</p>
             </div>

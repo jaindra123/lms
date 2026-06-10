@@ -129,7 +129,9 @@
                     </div>
                 {{/hasblocks}}
             </div>
+            {{^hidestandardpageheader}}
             {{{ output.full_header }}}
+            {{/hidestandardpageheader}}
             {{#secondarymoremenu}}
                 <div class="secondary-navigation d-print-none">
                     {{> core/moremenu}}

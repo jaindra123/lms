@@ -1,7 +1,7 @@
 {{!
     @template theme_iiidem2/dashboard/student
 
-    Modern student dashboard (sidebar + stats + sessions + assignments).
+    Full student dashboard: courses, progress, activities, calendar, announcements.
 }}
 <div class="iiidem-student-dashboard-v2">
     <aside class="iiidem-student-sidebar" aria-label="{{#str}}dashboardrolestudent, theme_iiidem2{{/str}}">
@@ -37,52 +37,103 @@
                     <span class="iiidem-student-icon-btn__badge">{{notificationcount}}</span>
                     {{/hasnotifications}}
                 </a>
-                <a href="{{{profileurl}}}" class="iiidem-student-avatar" aria-label="{{#str}}dashboardprofile, theme_iiidem2{{/str}}">
-                    <img src="{{{useravatarurl}}}" alt="">
-                </a>
             </div>
         </header>
 
-        <section class="iiidem-student-stats row g-3 g-lg-4 mb-4">
-            {{#statcards}}
-            <div class="col-md-4">
+        <nav class="iiidem-student-quicklinks" aria-label="{{#str}}dashboardquicklinks, theme_iiidem2{{/str}}">
+            {{#quicklinks}}
+            <a href="{{{url}}}" class="iiidem-student-quicklinks__item">
+                <span class="fa {{icon}}" aria-hidden="true"></span>
+                <span>{{label}}</span>
+            </a>
+            {{/quicklinks}}
+        </nav>
+
+        <section class="iiidem-student-stats row g-3 g-lg-4 mb-4" aria-label="{{#str}}dashboardlearningprogress, theme_iiidem2{{/str}}">
+            {{#progresscards}}
+            <div class="col-6 col-lg-3">
                 <article class="iiidem-student-stat iiidem-student-stat--{{accent}}">
                     <div class="iiidem-student-stat__value">{{value}}</div>
                     <div class="iiidem-student-stat__label">{{label}}</div>
                 </article>
             </div>
-            {{/statcards}}
+            {{/progresscards}}
         </section>
 
-        <section class="row g-4">
+        <section class="iiidem-student-section mb-4" id="my-courses">
+            <header class="iiidem-student-section__header">
+                <h2 class="iiidem-student-section__title">{{#str}}dashboardmycourses, theme_iiidem2{{/str}}</h2>
+                <a href="{{{mycoursesurl}}}" class="iiidem-student-section__link">{{#str}}viewall, theme_iiidem2{{/str}}</a>
+            </header>
+            {{> theme_iiidem2/dashboard/course_cards }}
+        </section>
+
+        <section class="row g-4 mb-4">
             <div class="col-lg-6">
-                <article class="iiidem-student-panel" id="upcoming-sessions">
+                <article class="iiidem-student-panel" id="upcoming-activities">
                     <header class="iiidem-student-panel__header">
                         <div class="iiidem-student-panel__title-wrap">
-                            <span class="iiidem-student-panel__icon"><span class="fa fa-video" aria-hidden="true"></span></span>
-                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardupcomingsessions, theme_iiidem2{{/str}}</h2>
+                            <span class="iiidem-student-panel__icon"><span class="fa fa-list-check" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardupcoming, theme_iiidem2{{/str}}</h2>
                         </div>
                         {{#hasjoinnow}}
                         <a href="{{{joinnowurl}}}" class="btn iiidem-student-btn-join">{{#str}}dashboardjoinnow, theme_iiidem2{{/str}}</a>
                         {{/hasjoinnow}}
                     </header>
                     <div class="iiidem-student-panel__body">
-                        {{#hasupcomingsessions}}
+                        {{#hasupcomingactivities}}
                         <ul class="iiidem-student-list list-unstyled mb-0">
-                            {{#upcomingsessions}}
+                            {{#upcomingactivities}}
                             <li class="iiidem-student-list__item">
                                 <div class="iiidem-student-list__content">
-                                    <div class="iiidem-student-list__title">{{title}}</div>
+                                    <div class="iiidem-student-list__type">{{typelabel}}</div>
+                                    <a href="{{{url}}}" class="iiidem-student-list__title iiidem-student-list__link">{{title}}</a>
                                     <div class="iiidem-student-list__meta">{{meta}}</div>
                                 </div>
                                 <span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{status}}</span>
                             </li>
-                            {{/upcomingsessions}}
+                            {{/upcomingactivities}}
                         </ul>
-                        {{/hasupcomingsessions}}
-                        {{^hasupcomingsessions}}
-                        <p class="iiidem-student-empty mb-0">{{#str}}dashboardnolive, theme_iiidem2{{/str}}</p>
-                        {{/hasupcomingsessions}}
+                        {{/hasupcomingactivities}}
+                        {{^hasupcomingactivities}}
+                        <p class="iiidem-student-empty mb-0">{{#str}}dashboardnoupcoming, theme_iiidem2{{/str}}</p>
+                        {{/hasupcomingactivities}}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-4 mb-4">
+            <div class="col-12">
+                {{> theme_iiidem2/dashboard/calendar_panel }}
+            </div>
+        </section>
+
+        <section class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <article class="iiidem-student-panel">
+                    <header class="iiidem-student-panel__header">
+                        <div class="iiidem-student-panel__title-wrap">
+                            <span class="iiidem-student-panel__icon"><span class="fa fa-bullhorn" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardannouncements, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-student-panel__body">
+                        {{#hasannouncements}}
+                        <ul class="iiidem-student-list list-unstyled mb-0">
+                            {{#announcements}}
+                            <li class="iiidem-student-list__item">
+                                <div class="iiidem-student-list__content">
+                                    <a href="{{{url}}}" class="iiidem-student-list__title iiidem-student-list__link">{{title}}</a>
+                                    <div class="iiidem-student-list__meta">{{meta}} · {{date}}</div>
+                                </div>
+                            </li>
+                            {{/announcements}}
+                        </ul>
+                        {{/hasannouncements}}
+                        {{^hasannouncements}}
+                        <p class="iiidem-student-empty mb-0">{{#str}}dashboardannouncements_none, theme_iiidem2{{/str}}</p>
+                        {{/hasannouncements}}
                     </div>
                 </article>
             </div>
@@ -91,27 +142,78 @@
                 <article class="iiidem-student-panel">
                     <header class="iiidem-student-panel__header">
                         <div class="iiidem-student-panel__title-wrap">
-                            <span class="iiidem-student-panel__icon"><span class="fa fa-pen" aria-hidden="true"></span></span>
-                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardassignmentsgrades, theme_iiidem2{{/str}}</h2>
+                            <span class="iiidem-student-panel__icon"><span class="fa fa-bell" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardnotifications, theme_iiidem2{{/str}}</h2>
                         </div>
                     </header>
                     <div class="iiidem-student-panel__body">
-                        {{#hasassignmentsgrades}}
+                        {{#hasnotifications}}
                         <ul class="iiidem-student-list list-unstyled mb-0">
-                            {{#assignmentsgrades}}
+                            {{#notifications}}
                             <li class="iiidem-student-list__item">
                                 <div class="iiidem-student-list__content">
+                                    <span class="fa {{icon}} iiidem-student-list__notif-icon" aria-hidden="true"></span>
                                     <a href="{{{url}}}" class="iiidem-student-list__title iiidem-student-list__link">{{title}}</a>
-                                    <div class="iiidem-student-list__meta">{{meta}}</div>
+                                    <div class="iiidem-student-list__meta">{{meta}} · {{date}}</div>
                                 </div>
-                                <span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{status}}</span>
                             </li>
-                            {{/assignmentsgrades}}
+                            {{/notifications}}
                         </ul>
-                        {{/hasassignmentsgrades}}
-                        {{^hasassignmentsgrades}}
-                        <p class="iiidem-student-empty mb-0">{{#str}}dashboardnoupcoming, theme_iiidem2{{/str}}</p>
-                        {{/hasassignmentsgrades}}
+                        {{/hasnotifications}}
+                        {{^hasnotifications}}
+                        <p class="iiidem-student-empty mb-0">{{#str}}dashboardannouncements_none, theme_iiidem2{{/str}}</p>
+                        {{/hasnotifications}}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-4">
+            <div class="col-lg-6">
+                <article class="iiidem-student-panel">
+                    <header class="iiidem-student-panel__header">
+                        <div class="iiidem-student-panel__title-wrap">
+                            <span class="iiidem-student-panel__icon"><span class="fa fa-award" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardachievements, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-student-panel__body">
+                        <div class="iiidem-student-achievements">
+                            <div class="iiidem-student-achievements__item">
+                                <span class="iiidem-student-achievements__value">{{achievementcertificatecount}}</span>
+                                <span class="iiidem-student-achievements__label">{{#str}}dashboardstatcertificates, theme_iiidem2{{/str}}</span>
+                                <a href="{{{achievementcertificatesurl}}}" class="iiidem-student-achievements__link">{{#str}}dashboardviewcertificates, theme_iiidem2{{/str}}</a>
+                            </div>
+                            <div class="iiidem-student-achievements__item">
+                                <span class="iiidem-student-achievements__value">{{achievementbadgecount}}</span>
+                                <span class="iiidem-student-achievements__label">{{#str}}dashboardstatbadges, theme_iiidem2{{/str}}</span>
+                                <a href="{{{achievementbadgesurl}}}" class="iiidem-student-achievements__link">{{#str}}dashboardviewbadges, theme_iiidem2{{/str}}</a>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div class="col-lg-6">
+                <article class="iiidem-student-panel">
+                    <header class="iiidem-student-panel__header">
+                        <div class="iiidem-student-panel__title-wrap">
+                            <span class="iiidem-student-panel__icon"><span class="fa fa-chart-pie" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-student-panel__title">{{#str}}dashboardlearningstats, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-student-panel__body">
+                        <div class="row g-3">
+                            {{#learningstats}}
+                            <div class="col-6">
+                                <div class="iiidem-student-mini-stat">
+                                    <span class="fa {{icon}} iiidem-student-mini-stat__icon" aria-hidden="true"></span>
+                                    <div class="iiidem-student-mini-stat__value">{{value}}</div>
+                                    <div class="iiidem-student-mini-stat__label">{{label}}</div>
+                                </div>
+                            </div>
+                            {{/learningstats}}
+                        </div>
                     </div>
                 </article>
             </div>

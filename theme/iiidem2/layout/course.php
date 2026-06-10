@@ -104,6 +104,9 @@ $templatecontext = [
 ];
 
 $templatecontext = array_merge($templatecontext, $coursedisplay, $curriculum, $quizzes);
+$templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_fee_payment_context($COURSE));
+$templatecontext = array_merge($templatecontext, theme_iiidem2_get_program_governance_context());
+$templatecontext['pnbpaymentsuccess'] = optional_param('pnbpayment', '', PARAM_ALPHA) === 'success';
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/enroll', 'init');

@@ -21,6 +21,7 @@
     background-color: #000 !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     align-items: center;
+    padding: 0 25px 0 25px;
 }
 
 /* Vertically center logo, primary menu, and user area in the header bar. */
@@ -273,6 +274,12 @@
 
 .iiidem-curriculum .mediaplugin {
     margin: 0;
+}
+
+/* Login modal (guest course preview). */
+.iiidem-login-modal-body .form-label {
+    font-weight: 600;
+    color: #0b3d91;
 }
 
 /* Course FAQ & curriculum accordions (Bootstrap 5). */
@@ -728,6 +735,8 @@ body.pagelayout-frontpage #page {
     color: #0b3d91;
     font-weight: 600;
     border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
 }
 
 .iiidem-about-section .custom-tabs .nav-link.active {
@@ -995,7 +1004,7 @@ section#program_governance {
 
 .advisors-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 30px;
 }
 
@@ -1005,6 +1014,47 @@ section#program_governance {
     text-align: center;
     padding-top: 140px;
     padding-bottom: 25px;
+}
+
+/* Course view — fee / PNB payment card in hero */
+.iiidem-course-payment-card {
+    background: #fff;
+    border-radius: 12px;
+}
+
+.iiidem-course-payment-card__price {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #0b3d91;
+    line-height: 1.2;
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-course-payment-card__label {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+}
+
+.iiidem-course-payment-card__btn {
+    background: #0b3d91;
+    border-color: #0b3d91;
+    font-weight: 600;
+}
+
+.iiidem-course-payment-card__btn:hover {
+    background: #082d6b;
+    border-color: #082d6b;
+}
+
+.iiidem-course-hero .course-sidebar {
+    margin-top: 1.5rem;
+}
+
+@media (min-width: 992px) {
+    .iiidem-course-hero .course-sidebar {
+        margin-top: 0;
+    }
 }
 
 .advisor-image {

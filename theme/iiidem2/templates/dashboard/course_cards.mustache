@@ -1,0 +1,34 @@
+{{!
+    @template theme_iiidem2/dashboard/course_cards
+
+    My Courses card grid (shared by student / admin / teacher dashboards).
+}}
+{{#hascoursecards}}
+<div class="row g-3 g-lg-4">
+    {{#coursecards}}
+    <div class="col-md-6 col-xl-4">
+        <article class="iiidem-student-course-card">
+            <div class="iiidem-student-course-card__image-wrap">
+                <img src="{{{courseimage}}}" alt="" class="iiidem-student-course-card__image">
+            </div>
+            <div class="iiidem-student-course-card__body">
+                <h3 class="iiidem-student-course-card__title">{{fullname}}</h3>
+                {{#hasprogress}}
+                <div class="iiidem-student-course-card__progress">
+                    <div class="iiidem-student-course-card__progress-bar" style="width: {{progress}}%"></div>
+                </div>
+                <p class="iiidem-student-course-card__progress-label">{{progresslabel}}</p>
+                {{/hasprogress}}
+                {{^hasprogress}}
+                <p class="iiidem-student-course-card__progress-label">{{progresslabel}}</p>
+                {{/hasprogress}}
+                <a href="{{{continueurl}}}" class="btn iiidem-student-btn-continue">{{#str}}dashboardcontinue, theme_iiidem2{{/str}}</a>
+            </div>
+        </article>
+    </div>
+    {{/coursecards}}
+</div>
+{{/hascoursecards}}
+{{^hascoursecards}}
+<p class="iiidem-student-empty">{{#str}}dashboardnocourses, theme_iiidem2{{/str}}</p>
+{{/hascoursecards}}

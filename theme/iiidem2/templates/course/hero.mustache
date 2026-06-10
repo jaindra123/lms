@@ -6,15 +6,30 @@ style="background-image:url('{{ courseimage }}');">
             <div class="col-lg-7">
                 <div class="hero-content">
                     <h1 class="course-title"> {{ coursename }}  </h1>
-                  
                     <div class="course-meta">
-                        <!-- <span>⭐ 4.8 Rating</span>
-                        <span>12,000 Students</span>
-                        <span>6 Weeks</span> -->
                     </div>
-                  
                 </div>
             </div>
+            {{#hascoursefee}}
+            <div class="col-lg-5">
+                {{#coursefeeloginrequired}}
+                <div class="course-sidebar">
+                    <div class="iiidem-course-payment-card card shadow-sm border-0">
+                        <div class="card-body p-4 text-center">
+                            <div class="iiidem-course-payment-card__price">{{coursefeecost}}</div>
+                            <p class="iiidem-course-payment-card__label">{{#str}}coursefeepaymentlabel, theme_iiidem2{{/str}}</p>
+                            <a href="{{coursefeeloginurl}}" class="btn btn-primary btn-lg w-100">
+                                {{#str}}login, core{{/str}} {{#str}}paywithpnb, theme_iiidem2{{/str}}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {{/coursefeeloginrequired}}
+                {{^coursefeeloginrequired}}
+                {{> theme_iiidem2/course/payment_sidebar }}
+                {{/coursefeeloginrequired}}
+            </div>
+            {{/hascoursefee}}
         </div>
     </div>
 </section>

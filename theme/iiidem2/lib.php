@@ -209,6 +209,7 @@ function theme_iiidem2_get_footer_context(): array {
 function theme_iiidem2_merge_footer_context(array $templatecontext): array {
     return array_merge($templatecontext, theme_iiidem2_get_footer_context(), [
         'hasenrollmodal' => !empty($templatecontext['hasenrollmodal']),
+        'hasloginmodal' => !empty($templatecontext['hasloginmodal']),
     ]);
 }
 
@@ -301,7 +302,7 @@ function theme_iiidem2_get_resource_preview_html(cm_info $cm): string {
  * @return string
  */
 function theme_iiidem2_get_user_dashboard_role(?int $userid = null): string {
-    global $USER, $CFG;
+    global $USER, $CFG, $DB;
 
     require_once($CFG->libdir . '/accesslib.php');
 
@@ -319,10 +320,6 @@ function theme_iiidem2_get_user_dashboard_role(?int $userid = null): string {
         return 'admin';
     }
 
-    if (has_capability('moodle/course:create', $systemcontext, $userid)) {
-        return 'teacher';
-    }
-
     $roles = get_user_roles($systemcontext, $userid, false);
     foreach ($roles as $role) {
         if (in_array($role->shortname, ['manager', 'coursecreator'], true)) {
@@ -333,7 +330,51 @@ function theme_iiidem2_get_user_dashboard_role(?int $userid = null): string {
         }
     }
 
+    if (has_capability('moodle/course:create', $systemcontext, $userid)) {
+        return 'teacher';
+    }
+
+    if (theme_iiidem2_user_has_teacher_role($userid)) {
+        return 'teacher';
+    }
+
     return 'student';
+}
+
+/**
+ * Whether the user is a teacher/instructor in any course (not only at site level).
+ *
+ * @param int $userid
+ * @return bool
+ */
+function theme_iiidem2_user_has_teacher_role(int $userid): bool {
+    global $DB, $CFG;
+
+    require_once($CFG->libdir . '/enrollib.php');
+
+    $sql = "SELECT 1
+              FROM {role_assignments} ra
+              JOIN {role} r ON r.id = ra.roleid
+             WHERE ra.userid = :userid
+               AND r.shortname IN ('editingteacher', 'teacher')";
+
+    if ($DB->record_exists_sql($sql, ['userid' => $userid])) {
+        return true;
+    }
+
+    $courses = enrol_get_users_courses($userid, true);
+    foreach ($courses as $course) {
+        if ((int) $course->id === SITEID) {
+            continue;
+        }
+        $context = context_course::instance($course->id);
+        if (has_capability('moodle/course:manageactivities', $context, $userid) ||
+                has_capability('moodle/grade:edit', $context, $userid)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -506,6 +547,356 @@ function theme_iiidem2_get_student_announcements(?int $userid = null, int $limit
 }
 
 /**
+ * Latest announcements for the site front page (news forums on visible courses).
+ *
+ * @param int $limit Maximum items to show.
+ * @return array{hasannouncements: bool, announcements: array, hasolderurl: bool, olderurl: string}
+ */
+function theme_iiidem2_get_frontpage_announcements(int $limit = 5): array {
+    global $CFG, $DB, $SITE;
+
+    $empty = [
+        'hasannouncements' => false,
+        'announcements' => [],
+        'hasolderurl' => false,
+        'olderurl' => '',
+    ];
+
+    $forumplugin = core_plugin_manager::instance()->get_plugin_info('mod_forum');
+    if (!$forumplugin || !$forumplugin->is_enabled()) {
+        return $empty;
+    }
+
+    require_once($CFG->dirroot . '/mod/forum/lib.php');
+
+    $courses = [get_course(SITEID)];
+    foreach (get_courses(['sortorder' => 'ASC']) as $course) {
+        if ((int) $course->id === SITEID || empty($course->visible)) {
+            continue;
+        }
+        $courses[] = $course;
+    }
+
+    $candidates = [];
+    $percourse = 5;
+    $primaryforumurl = '';
+
+    foreach ($courses as $course) {
+        $forum = $DB->get_record('forum', ['course' => $course->id, 'type' => 'news'], '*', IGNORE_MULTIPLE);
+        if (!$forum) {
+            continue;
+        }
+
+        try {
+            $modinfo = get_fast_modinfo($course);
+        } catch (Exception $e) {
+            continue;
+        }
+
+        if (empty($modinfo->instances['forum'][$forum->id])) {
+            continue;
+        }
+
+        $cm = $modinfo->instances['forum'][$forum->id];
+        if (!$cm->uservisible) {
+            continue;
+        }
+
+        $context = context_module::instance($cm->id);
+        if (!has_capability('mod/forum:viewdiscussion', $context)) {
+            continue;
+        }
+
+        $sort = forum_get_default_sort_order(true, 'p.modified', 'd', false);
+        $discussions = forum_get_discussions(
+            $cm,
+            $sort,
+            true,
+            -1,
+            $percourse,
+            false,
+            -1,
+            0,
+            FORUM_POSTS_ALL_USER_GROUPS
+        );
+
+        if (!$discussions) {
+            continue;
+        }
+
+        $coursecontext = context_course::instance($course->id);
+        $metaname = format_string($course->shortname, true, ['context' => $coursecontext]);
+        if ($metaname === '') {
+            $metaname = format_string($course->fullname, true, ['context' => $coursecontext]);
+        }
+
+        $forumlisturl = (new moodle_url('/mod/forum/view.php', ['id' => $cm->id]))->out(false);
+        if ((int) $course->id === SITEID && $primaryforumurl === '') {
+            $primaryforumurl = $forumlisturl;
+        }
+
+        foreach ($discussions as $discussion) {
+            $posttime = $discussion->modified;
+            if (!empty($CFG->forum_enabletimedposts) && !empty($discussion->timestart) && $discussion->timestart > $posttime) {
+                $posttime = $discussion->timestart;
+            }
+
+            $candidates[] = [
+                'datetime' => userdate($posttime, get_string('strftimedatetimeshort', 'langconfig')),
+                'meta' => $metaname,
+                'title' => format_string($discussion->name, true, ['context' => $context]),
+                'url' => (new moodle_url('/mod/forum/discuss.php', ['d' => $discussion->discussion]))->out(false),
+                'forumlisturl' => $forumlisturl,
+                'timemodified' => $posttime,
+            ];
+        }
+    }
+
+    if (!$candidates) {
+        return $empty;
+    }
+
+    usort($candidates, static function(array $a, array $b): int {
+        return $b['timemodified'] <=> $a['timemodified'];
+    });
+
+    $announcements = array_slice($candidates, 0, $limit);
+    $olderurl = $primaryforumurl;
+    if ($olderurl === '' && !empty($announcements[0]['forumlisturl'])) {
+        $olderurl = $announcements[0]['forumlisturl'];
+    }
+    foreach ($announcements as &$item) {
+        unset($item['timemodified'], $item['forumlisturl']);
+    }
+    unset($item);
+
+    return [
+        'hasannouncements' => true,
+        'announcements' => $announcements,
+        'hasolderurl' => $olderurl !== '',
+        'olderurl' => $olderurl,
+    ];
+}
+
+/**
+ * Course id for embedded dashboard calendar for the current user.
+ *
+ * @param int $userid
+ * @return int
+ */
+function theme_iiidem2_get_dashboard_calendar_course_id_for_user(int $userid): int {
+    global $CFG;
+
+    require_once($CFG->libdir . '/enrollib.php');
+
+    $courses = enrol_get_users_courses($userid, true);
+    unset($courses[SITEID]);
+
+    if (!empty($courses)) {
+        return theme_iiidem2_get_dashboard_calendar_course_id(array_values($courses));
+    }
+
+    $visible = theme_iiidem2_get_visible_course_ids_for_calendar();
+    if (count($visible) === 1) {
+        return $visible[0];
+    }
+
+    return SITEID;
+}
+
+/**
+ * Course id used for embedded dashboard calendar (single course vs site-wide).
+ *
+ * @param array $courses Enrolled or visible courses.
+ * @return int
+ */
+function theme_iiidem2_get_dashboard_calendar_course_id(array $courses): int {
+    if (count($courses) === 1) {
+        $course = reset($courses);
+        return (int) $course->id;
+    }
+    return SITEID;
+}
+
+/**
+ * Render Moodle's native month calendar view HTML for dashboard embedding.
+ *
+ * @param int $courseid Course calendar scope (SITEID = all accessible courses).
+ * @return string
+ */
+function theme_iiidem2_render_dashboard_calendar_embed(int $courseid = SITEID): string {
+    global $PAGE, $CFG, $USER;
+
+    require_once($CFG->dirroot . '/calendar/lib.php');
+
+    \core_calendar\local\event\container::set_requesting_user((int) $USER->id);
+
+    $calendar = calendar_information::create(time(), $courseid);
+    $renderer = $PAGE->get_renderer('core_calendar');
+    [$data, $template] = calendar_get_view($calendar, 'month', true, false);
+
+    $data->showviewselector = false;
+    unset($data->filter_selector, $data->defaulteventcontext);
+
+    $html = $renderer->render_from_template($template, $data);
+
+    return $renderer->start_layout()
+        . html_writer::start_tag('div', ['class' => 'heightcontainer', 'data-calendar-type' => 'dashboard-embed'])
+        . $html
+        . html_writer::end_tag('div')
+        . $renderer->complete_layout();
+}
+
+/**
+ * @deprecated Use theme_iiidem2_render_dashboard_calendar_embed().
+ * @param int $courseid
+ * @return string
+ */
+function theme_iiidem2_render_dashboard_calendar_upcoming(int $courseid = SITEID): string {
+    return theme_iiidem2_render_dashboard_calendar_embed($courseid);
+}
+
+/**
+ * Calendar panel context: embedded month view + link to full calendar page.
+ *
+ * @param int $courseid
+ * @return array{calendarhtml: string, hascalendarhtml: bool, calendarurl: string, calendarcourseid: int}
+ */
+function theme_iiidem2_get_dashboard_calendar_context(int $courseid = SITEID): array {
+    $url = new moodle_url('/calendar/view.php', ['view' => 'month']);
+    if ($courseid != SITEID) {
+        $url->param('course', $courseid);
+    }
+
+    return [
+        'calendarhtml' => theme_iiidem2_render_dashboard_calendar_embed($courseid),
+        'hascalendarhtml' => true,
+        'calendarurl' => $url->out(false),
+        'calendarcourseid' => $courseid,
+    ];
+}
+
+/**
+ * URL for a Moodle calendar event (activity or day view).
+ *
+ * @param calendar_event|stdClass $event
+ * @return string
+ */
+function theme_iiidem2_get_calendar_event_url($event): string {
+    if (!empty($event->modulename) && !empty($event->instance)) {
+        try {
+            $cm = get_coursemodule_from_instance($event->modulename, $event->instance, $event->courseid, IGNORE_MISSING);
+            if ($cm) {
+                return (new moodle_url('/mod/' . $event->modulename . '/view.php', ['id' => $cm->id]))->out(false);
+            }
+        } catch (Exception $e) {
+            // Fall through to calendar day view.
+        }
+    }
+
+    $params = ['view' => 'day', 'time' => $event->timestart];
+    if (!empty($event->courseid)) {
+        $params['course'] = $event->courseid;
+    }
+
+    return (new moodle_url('/calendar/view.php', $params))->out(false);
+}
+
+/**
+ * Upcoming (and recent) Moodle calendar events for dashboard panels.
+ *
+ * @param array $courseids Course ids to include.
+ * @param int|null $userid User for capability checks.
+ * @param int $limit Max events to return.
+ * @return array List of {title, meta, url, ispast} items.
+ */
+function theme_iiidem2_get_dashboard_calendar_events(array $courseids, ?int $userid = null, int $limit = 8): array {
+    global $CFG;
+
+    $courseids = array_values(array_unique(array_filter(array_map('intval', $courseids))));
+    if (empty($courseids)) {
+        return [];
+    }
+
+    require_once($CFG->dirroot . '/calendar/lib.php');
+
+    if ($userid !== null) {
+        \core_calendar\local\event\container::set_requesting_user($userid);
+    }
+
+    $now = time();
+    $upcoming = calendar_get_events($now, $now + (90 * DAYSECS), false, false, $courseids, true, true);
+    $events = $upcoming ?: [];
+
+    if (count($events) < $limit) {
+        $recent = calendar_get_events($now - (60 * DAYSECS), $now, false, false, $courseids, true, true);
+        if ($recent) {
+            usort($recent, static function($a, $b): int {
+                return $b->timestart <=> $a->timestart;
+            });
+            $existingids = [];
+            foreach ($events as $event) {
+                $existingids[$event->id] = true;
+            }
+            foreach ($recent as $event) {
+                if (empty($existingids[$event->id])) {
+                    $events[] = $event;
+                }
+            }
+        }
+    }
+
+    if (!$events) {
+        return [];
+    }
+
+    usort($events, static function($a, $b): int {
+        return $a->timestart <=> $b->timestart;
+    });
+
+    $items = [];
+    foreach (array_slice($events, 0, $limit) as $event) {
+        $coursename = '';
+        if (!empty($event->courseid)) {
+            $course = get_course($event->courseid, false);
+            if ($course) {
+                $coursecontext = context_course::instance($course->id);
+                $coursename = format_string($course->shortname, true, ['context' => $coursecontext]);
+                if ($coursename === '') {
+                    $coursename = format_string($course->fullname, true, ['context' => $coursecontext]);
+                }
+            }
+        }
+
+        $datestr = userdate($event->timestart, get_string('strftimedatetimeshort', 'langconfig'));
+        $items[] = [
+            'title' => format_string($event->name, true),
+            'meta' => $coursename !== '' ? $coursename . ' · ' . $datestr : $datestr,
+            'url' => theme_iiidem2_get_calendar_event_url($event),
+            'ispast' => $event->timestart < $now,
+        ];
+    }
+
+    return $items;
+}
+
+/**
+ * Visible course ids for site-wide dashboard calendar (admins).
+ *
+ * @return int[]
+ */
+function theme_iiidem2_get_visible_course_ids_for_calendar(): array {
+    $ids = [];
+    foreach (get_courses(['sortorder' => 'ASC']) as $course) {
+        if ((int) $course->id === SITEID || empty($course->visible)) {
+            continue;
+        }
+        $ids[] = (int) $course->id;
+    }
+    return $ids;
+}
+
+/**
  * Template context for role dashboards.
  *
  * @param int|null $userid
@@ -540,6 +931,8 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
     switch ($role) {
         case 'admin':
             $context['isadmin'] = true;
+            $calendarcourseid = theme_iiidem2_get_dashboard_calendar_course_id_for_user($userid);
+            $context = array_merge($context, theme_iiidem2_get_dashboard_calendar_context($calendarcourseid));
             break;
         case 'teacher':
             $context['isteacher'] = true;
@@ -548,6 +941,11 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
         default:
             $context['isstudent'] = true;
             $context = array_merge($context, \theme_iiidem2\student_dashboard::get_context($userid));
+    }
+
+    // Admins/teachers may also be enrolled as students — always expose participant courses.
+    if (empty($context['isstudent'])) {
+        $context = array_merge($context, \theme_iiidem2\student_dashboard::get_enrolled_courses_context($userid));
     }
 
     return $context;
@@ -795,7 +1193,7 @@ function theme_iiidem2_get_frontpage_courses(): array {
     $courses = get_courses();
 
     foreach ($courses as $course) {
-        if ((int) $course->id === SITEID) {
+        if ((int) $course->id === (int) SITEID || empty($course->visible)) {
             continue;
         }
 
@@ -1799,6 +2197,23 @@ function theme_iiidem2_is_enrol_index_page(moodle_page $page): bool {
 }
 
 /**
+ * True on the custom IIIDEM student dashboard (theme/iiidem2/dashboard/index.php).
+ *
+ * @param moodle_page|null $page
+ * @return bool
+ */
+function theme_iiidem2_is_student_dashboard_page(?moodle_page $page = null): bool {
+    global $PAGE;
+    $page = $page ?? $PAGE;
+
+    if (strpos((string) $page->bodyclasses, 'iiidem-student-dashboard-page') !== false) {
+        return true;
+    }
+
+    return $page->url->compare(new moodle_url('/theme/iiidem2/dashboard/index.php'), URL_MATCH_BASE);
+}
+
+/**
  * Render /course/view.php for visitors without enrolment (hero, curriculum, instructors).
  *
  * @param stdClass $course
@@ -1828,10 +2243,15 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
 
     $bodyattributes = $OUTPUT->body_attributes(['uses-drawers', 'iiidem-public-course-view']);
 
+    $wantsurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
+
     $templatecontext = theme_iiidem2_merge_footer_context(array_merge(
         $coursedisplay,
         $curriculum,
         $quizzes,
+        theme_iiidem2_get_course_fee_payment_context($course),
+        theme_iiidem2_get_program_governance_context(),
+        theme_iiidem2_get_login_modal_context($wantsurl),
         [
             'sitename' => format_string($SITE->shortname, true, [
                 'context' => context_course::instance(SITEID),
@@ -1939,6 +2359,36 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
 }
 
 /**
+ * Whether the current user may expand curriculum activity previews.
+ *
+ * Any logged-in user enrolled in the course, or with course view capability (e.g. teacher).
+ *
+ * @param stdClass $course
+ * @param int|null $userid
+ * @return bool
+ */
+function theme_iiidem2_user_can_preview_curriculum(stdClass $course, ?int $userid = null): bool {
+    global $USER, $CFG;
+
+    require_once($CFG->libdir . '/enrollib.php');
+
+    if ($userid === null) {
+        if (!isloggedin() || isguestuser()) {
+            return false;
+        }
+        $userid = (int) $USER->id;
+    }
+
+    $context = context_course::instance($course->id);
+
+    if (is_enrolled($context, $userid, '', true)) {
+        return true;
+    }
+
+    return has_capability('moodle/course:view', $context, $userid);
+}
+
+/**
  * Curriculum sections/activities for a course (used on course layout and course detail page).
  *
  * @param stdClass $course
@@ -1948,6 +2398,10 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     $modinfo = get_fast_modinfo($course);
     $sectionsdata = [];
     $totalactivities = 0;
+    $canpreview = theme_iiidem2_user_can_preview_curriculum($course);
+
+    $loginurl = new moodle_url('/login/index.php');
+    $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
     foreach ($modinfo->get_section_info_all() as $section) {
         if ($section->section == 0) {
@@ -1962,14 +2416,20 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                     continue;
                 }
 
-                $previewcontent = theme_iiidem2_get_activity_preview_content($cm);
+                $previewcontentraw = theme_iiidem2_get_activity_preview_content($cm);
+                $haspreviewcontent = $previewcontentraw !== '';
+
                 $activities[] = [
                     'id' => $cm->id,
                     'title' => $cm->name,
                     'type' => $cm->modname,
-                    'preview' => $previewcontent !== '',
+                    'preview' => $haspreviewcontent,
                     'duration' => '5min',
-                    'previewcontent' => $previewcontent,
+                    'previewcontent' => $canpreview ? $previewcontentraw : '',
+                    'haspreviewcontent' => $haspreviewcontent,
+                    'canpreviewcurriculum' => $canpreview,
+                    'previewlabel' => 'Preview',
+                    'loginurl' => $loginurl->out(false),
                     'isquiz' => ($cm->modname === 'quiz'),
                     'cmid' => $cm->id,
                 ];
@@ -1989,6 +2449,42 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         'sections' => $sectionsdata,
         'totalsections' => count($sectionsdata),
         'totalactivities' => $totalactivities,
+        'canpreviewcurriculum' => $canpreview,
+        'previewredirectlogin' => !$canpreview,
+        'loginurl' => $loginurl->out(false),
+        'previewlabel' => 'Preview',
+    ];
+}
+
+/**
+ * Login modal context for guests (Bootstrap modal with core login form).
+ *
+ * Sets SESSION->wantsurl so a successful login returns to the course page.
+ *
+ * @param string|null $wantsurl Return URL after login (relative or absolute local URL).
+ * @return array
+ */
+function theme_iiidem2_get_login_modal_context(?string $wantsurl = null): array {
+    global $SESSION, $CFG;
+
+    if (isloggedin() && !isguestuser()) {
+        return [
+            'hasloginmodal' => false,
+        ];
+    }
+
+    if (!empty($wantsurl)) {
+        $SESSION->wantsurl = (new moodle_url($wantsurl))->out(false);
+    }
+
+    return [
+        'hasloginmodal' => true,
+        'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+        'logintoken' => \core\session\manager::get_login_token(),
+        'forgotpasswordurl' => (new moodle_url('/login/forgot_password.php'))->out(false),
+        'signupurl' => (new moodle_url('/login/signup.php'))->out(false),
+        'canloginbyemail' => !empty($CFG->authloginviaemail),
+        'cansignup' => ($CFG->registerauth === 'email' || !empty($CFG->registerauth)),
     ];
 }
 
@@ -2345,6 +2841,98 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
 }
 
 /**
+ * Whether the user has an active (non-suspended, in-date) fee enrolment instance.
+ *
+ * @param int $userid
+ * @param int $feeinstanceid enrol.id for the fee instance
+ * @return bool
+ */
+function theme_iiidem2_user_has_active_fee_enrolment(int $userid, int $feeinstanceid): bool {
+    global $DB;
+
+    $ue = $DB->get_record('user_enrolments', ['userid' => $userid, 'enrolid' => $feeinstanceid]);
+    if (!$ue || (int) $ue->status !== ENROL_USER_ACTIVE) {
+        return false;
+    }
+
+    $now = time();
+    if (!empty($ue->timestart) && (int) $ue->timestart > $now) {
+        return false;
+    }
+    if (!empty($ue->timeend) && (int) $ue->timeend < $now) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Course fee / PNB payment context for the course view marketing layout.
+ *
+ * @param stdClass $course
+ * @return array
+ */
+function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
+    global $CFG, $USER, $DB;
+
+    require_once($CFG->libdir . '/enrollib.php');
+
+    $defaults = [
+        'hascoursefee' => false,
+        'showcoursepayment' => false,
+        'coursefeeloginrequired' => false,
+    ];
+
+    $feeinstance = null;
+    foreach (enrol_get_instances($course->id, true) as $instance) {
+        if ($instance->enrol === 'fee' && (int) $instance->status === ENROL_INSTANCE_ENABLED && $instance->cost > 0) {
+            $feeinstance = $instance;
+            break;
+        }
+    }
+
+    if (!$feeinstance) {
+        return $defaults;
+    }
+
+    $currency = $feeinstance->currency ?: 'INR';
+    $costdisplay = \core_payment\helper::get_cost_as_string((float) $feeinstance->cost, $currency);
+    $description = get_string('purchasedescription', 'enrol_fee', format_string($course->fullname));
+    $successurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
+    $loginurl = (new moodle_url('/login/index.php', [
+        'wantsurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
+    ]))->out(false);
+
+    if (!isloggedin() || isguestuser()) {
+        return [
+            'hascoursefee' => true,
+            'showcoursepayment' => false,
+            'coursefeecost' => $costdisplay,
+            'coursefeeloginrequired' => true,
+            'coursefeeloginurl' => $loginurl,
+        ];
+    }
+
+    // Hide payment only when fee enrolment is currently active (suspended users can pay again).
+    if (theme_iiidem2_user_has_active_fee_enrolment((int) $USER->id, (int) $feeinstance->id)) {
+        return $defaults;
+    }
+
+    $gateways = \core_payment\helper::get_available_gateways('enrol_fee', 'fee', (int) $feeinstance->id);
+
+    return [
+        'hascoursefee' => true,
+        'showcoursepayment' => !empty($gateways),
+        'coursefeecost' => $costdisplay,
+        'coursefeeinstanceid' => (int) $feeinstance->id,
+        'coursefeedescription' => $description,
+        'coursefeesuccessurl' => $successurl,
+        'coursefeeloginrequired' => false,
+        'haspnbgateway' => in_array('pnb', $gateways, true),
+    ];
+}
+
+/**
  * Full Mustache context for theme_iiidem2/pages/course-detail.
  *
  * @param stdClass $course
@@ -2357,12 +2945,23 @@ function theme_iiidem2_get_course_detail_context(stdClass $course): array {
     $quizzes = theme_iiidem2_get_course_quizzes_context($course);
     $display = theme_iiidem2_get_course_display_context($course);
 
-    return array_merge($display, $curriculum, $quizzes, [
-        'courseid' => $course->id,
-        'isloggedin' => isloggedin() && !isguestuser(),
-        'loginurl' => (new moodle_url('/login/index.php'))->out(false),
-        'config' => ['wwwroot' => $CFG->wwwroot],
-    ]);
+    $loginurl = new moodle_url('/login/index.php');
+    $loginurl->param('wantsurl', theme_iiidem2_get_course_detail_url($course));
+
+    $wantsurl = theme_iiidem2_get_course_detail_url($course);
+
+    return array_merge(
+        $display,
+        $curriculum,
+        $quizzes,
+        theme_iiidem2_get_login_modal_context($wantsurl),
+        [
+            'courseid' => $course->id,
+            'isloggedin' => isloggedin() && !isguestuser(),
+            'loginurl' => $loginurl->out(false),
+            'config' => ['wwwroot' => $CFG->wwwroot],
+        ]
+    );
 }
 
 /**
