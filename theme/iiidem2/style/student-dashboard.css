@@ -1,8 +1,79 @@
 /* Student dashboard v2 — sidebar layout matching IIIDEM design */
 
-.pagelayout-mydashboard #page.drawers .main-inner {
-    max-width: none;
+/* Full-bleed: remove Boost drawers padding, max-width, and card margins. */
+body.iiidem-student-dashboard-page #page.drawers,
+body.iiidem-student-dashboard-page.limitedwidth #page.drawers,
+body.iiidem-student-dashboard-page.mediumwidth #page.drawers {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.iiidem-student-dashboard-page #page.drawers .main-inner,
+body.iiidem-student-dashboard-page.limitedwidth #page.drawers .main-inner,
+body.iiidem-student-dashboard-page.mediumwidth #page.drawers .main-inner,
+body.iiidem-student-dashboard-page #topofscroll.main-inner {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body.iiidem-student-dashboard-page #page.drawers div[role="main"],
+body.iiidem-student-dashboard-page #page-content,
+body.iiidem-student-dashboard-page #region-main-box,
+body.iiidem-student-dashboard-page #region-main {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard--student {
+    margin: 0;
     padding: 0;
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    body.iiidem-student-dashboard-page #page.drawers .main-inner,
+    body.iiidem-student-dashboard-page #topofscroll.main-inner {
+        margin-top: 0 !important;
+    }
+}
+
+@media (min-width: 768px) {
+    body.iiidem-student-dashboard-page #page.drawers,
+    body.iiidem-student-dashboard-page.limitedwidth #page.drawers {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    body.iiidem-student-dashboard-page #page.drawers .main-inner,
+    body.iiidem-student-dashboard-page.limitedwidth #page.drawers .main-inner {
+        max-width: none !important;
+        padding: 0 !important;
+    }
+
+    body.iiidem-student-dashboard-page #page.drawers div[role="main"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
+.pagelayout-mydashboard.iiidem-student-dashboard-page #page.drawers .main-inner,
+.pagelayout-mydashboard.iiidem-teacher-dashboard-page #page.drawers .main-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .pagelayout-mydashboard #page.drawers .activity-header,
@@ -29,11 +100,11 @@ body.iiidem-student-dashboard-page #page-navbar {
 
 .iiidem-student-dashboard-v2 {
     display: flex;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - var(--navbar-height, 72px));
     background: #f1f4f8;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 8px 24px rgba(12, 45, 76, 0.08);
+    box-shadow: none;
 }
 
 .iiidem-student-sidebar {
@@ -738,4 +809,54 @@ body.iiidem-student-dashboard-page #page-navbar {
 
 .admin-dashboard-calendar {
     margin-top: 0.5rem;
+}
+
+/* Weekend (section) progress panel */
+.iiidem-weekend-progress__course {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-weekend-progress__bar {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-weekend-progress__bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #004274, #1aa898);
+    border-radius: 999px;
+    transition: width 0.35s ease;
+}
+
+.iiidem-weekend-progress__label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0a2540;
+}
+
+.iiidem-weekend-progress__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.iiidem-weekend-progress__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0.85rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.iiidem-weekend-progress__name {
+    font-weight: 600;
+    color: #0a2540;
+    font-size: 0.9rem;
 }

@@ -1,6 +1,8 @@
 <?php
 $string['pluginname'] = 'PNB Payment Gateway';
 $string['pluginname_desc'] = 'Punjab National Bank Internet Payment Gateway for course fee collection.';
+$string['gatewayname'] = 'Punjab National Bank (PNB)';
+$string['gatewaydescription'] = 'Pay your course fee securely through the PNB Internet Payment Gateway using net banking or card.';
 $string['merchantid'] = 'Merchant ID';
 $string['merchantid_help'] = 'Merchant ID provided by PNB after IPG onboarding.';
 $string['secretkey'] = 'Secret / encryption key';
@@ -46,4 +48,5 @@ $string['notransactions'] = 'No PNB transactions recorded yet.';
 $string['transactioncount'] = '{$a} transaction(s) listed.';
 $string['bankreference'] = 'Bank reference';
 $string['paymentnotallowed'] = 'Course fee payment is only available for registered university students. EMB participants are enrolled by course administrators without online payment.';
+$string['amountmismatch'] = 'The payment amount does not match the course fee. Please start the payment again from the course page.';
 $string['paymenttxnreflabel'] = 'Transaction reference';

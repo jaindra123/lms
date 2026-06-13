@@ -10,6 +10,11 @@ defined('MOODLE_INTERNAL') || die();
 
 $callbacks = [
     [
+        'hook' => \core\hook\after_config::class,
+        'callback' => [\theme_iiidem2\hook_listener::class, 'after_config'],
+        'priority' => 100,
+    ],
+    [
         'hook' => \core_user\hook\after_login_completed::class,
         'callback' => [\theme_iiidem2\hook_listener::class, 'after_login_completed'],
         'priority' => 100,

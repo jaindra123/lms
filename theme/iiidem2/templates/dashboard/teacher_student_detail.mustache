@@ -1,0 +1,153 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_student_detail
+
+    Single student detail view for instructors.
+}}
+<div class="iiidem-teacher-student-detail">
+    <nav class="iiidem-teacher-student-detail__back mb-4">
+        <a href="{{{dashboardurl}}}#teacher-students" class="iiidem-teacher-section__link">
+            <span class="fa fa-arrow-left" aria-hidden="true"></span>
+            {{#str}}dashboardteacherbacktoroster, theme_iiidem2{{/str}}
+        </a>
+    </nav>
+
+    <article class="iiidem-teacher-panel">
+        <header class="iiidem-teacher-student-detail__header">
+            <span class="iiidem-teacher-student-detail__avatar" style="background-image:url('{{{profileimage}}}')"></span>
+            <div>
+                <h1 class="iiidem-teacher-student-detail__name h2 mb-1">{{studentname}}</h1>
+                <p class="iiidem-teacher-student-detail__course mb-0">{{coursename}}</p>
+            </div>
+        </header>
+
+        <div class="iiidem-teacher-panel__body">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <section class="iiidem-teacher-student-detail__section">
+                        <h2 class="h6">{{#str}}dashboardteacherstudentprofile, theme_iiidem2{{/str}}</h2>
+                        <dl class="iiidem-teacher-student-detail__dl mb-0">
+                            {{#hasemail}}
+                            <div>
+                                <dt>{{#str}}email{{/str}}</dt>
+                                <dd><a href="mailto:{{email}}">{{email}}</a></dd>
+                            </div>
+                            {{/hasemail}}
+                            <div>
+                                <dt>{{#str}}dashboardteacherstudentenrolled, theme_iiidem2{{/str}}</dt>
+                                <dd>{{enrolledonlabel}}</dd>
+                            </div>
+                            <div>
+                                <dt>{{#str}}lastaccess{{/str}}</dt>
+                                <dd>{{lastaccesslabel}}</dd>
+                            </div>
+                        </dl>
+                    </section>
+                </div>
+
+                <div class="col-lg-6">
+                    <section class="iiidem-teacher-student-detail__section">
+                        <h2 class="h6">{{#str}}dashboardteacherstudentprogress, theme_iiidem2{{/str}}</h2>
+                        {{#hasprogress}}
+                        <div class="iiidem-teacher-progress mb-2">
+                            <div class="iiidem-teacher-progress__bar" style="width: {{progress}}%;"></div>
+                        </div>
+                        <p class="mb-0">{{progresslabel}}</p>
+                        {{/hasprogress}}
+                        {{^hasprogress}}
+                        <p class="iiidem-teacher-empty mb-0">{{progresslabel}}</p>
+                        {{/hasprogress}}
+                    </section>
+                </div>
+            </div>
+
+            {{#hasweekends}}
+            <section class="iiidem-teacher-student-detail__section mt-4">
+                <h2 class="h6">{{#str}}dashboardteacherstudentweekends, theme_iiidem2{{/str}}</h2>
+                <ul class="iiidem-teacher-student-detail__weekends list-unstyled mb-0">
+                    {{#weekends}}
+                    <li class="iiidem-teacher-student-detail__weekend">
+                        <span>{{name}}</span>
+                        <span class="iiidem-teacher-pill iiidem-teacher-pill--{{statusclass}}">{{statuslabel}}</span>
+                    </li>
+                    {{/weekends}}
+                </ul>
+            </section>
+            {{/hasweekends}}
+
+            {{#hasattendance}}
+            <section class="iiidem-teacher-student-detail__section mt-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h2 class="h6 mb-0">{{#str}}dashboardteacherattendance, theme_iiidem2{{/str}}</h2>
+                    <a href="{{{attendanceurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardteacherattendanceviewstudent, theme_iiidem2{{/str}}</a>
+                </div>
+                <p class="mb-1">{{attendancelabel}}</p>
+                {{#hasattendancesublabel}}
+                <p class="iiidem-teacher-queue__meta mb-2">{{attendancesublabel}}</p>
+                {{/hasattendancesublabel}}
+                {{#hasattendancehelp}}
+                <p class="iiidem-teacher-student-detail__help mb-3">{{attendancehelp}}</p>
+                {{/hasattendancehelp}}
+                {{#hasattendanceupcoming}}
+                <p class="iiidem-teacher-queue__meta mb-3">{{#str}}dashboardteacherstudentattendanceupcoming, theme_iiidem2, {{attendanceupcoming}} {{/str}}</p>
+                {{/hasattendanceupcoming}}
+
+                {{#hasattendancesessions}}
+                <div class="table-responsive">
+                    <table class="table table-sm iiidem-teacher-attendance__table mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{#str}}dashboardteacherattendancedate, theme_iiidem2{{/str}}</th>
+                                <th>{{#str}}dashboardteacherattendancesessioncol, theme_iiidem2{{/str}}</th>
+                                <th>{{#str}}dashboardteacherattendancestatus, theme_iiidem2{{/str}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#attendancesessions}}
+                            <tr>
+                                <td>
+                                    <div class="iiidem-teacher-attendance__date">{{date}}</div>
+                                    <div class="iiidem-teacher-attendance__time">{{time}}</div>
+                                </td>
+                                <td>{{title}}</td>
+                                <td>
+                                    <span class="iiidem-teacher-pill iiidem-teacher-pill--{{statusclass}}">{{statuslabel}}</span>
+                                    {{#hastakeurl}}
+                                    <a href="{{{takeurl}}}" class="btn btn-outline-primary btn-sm ms-2">{{#str}}dashboardteacherattendancetake, theme_iiidem2{{/str}}</a>
+                                    {{/hastakeurl}}
+                                </td>
+                            </tr>
+                            {{/attendancesessions}}
+                        </tbody>
+                    </table>
+                </div>
+                {{/hasattendancesessions}}
+
+                {{^hasattendancesessions}}
+                <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteacherstudentattendancenorecords, theme_iiidem2{{/str}}</p>
+                {{/hasattendancesessions}}
+            </section>
+            {{/hasattendance}}
+
+            {{#hascertificates}}
+            <section class="iiidem-teacher-student-detail__section mt-4">
+                <h2 class="h6">{{#str}}dashboardteachercertificates, theme_iiidem2{{/str}}</h2>
+                <ul class="list-unstyled mb-0">
+                    {{#certificates}}
+                    <li class="iiidem-teacher-student-detail__cert mb-2">
+                        <div class="fw-semibold">{{name}}</div>
+                        <div class="iiidem-teacher-queue__meta">{{date}}{{#hascode}} · {{code}}{{/hascode}}</div>
+                        <a href="{{{downloadurl}}}" class="btn btn-outline-primary btn-sm mt-1">{{#str}}dashboardteachercertdownload, theme_iiidem2{{/str}}</a>
+                    </li>
+                    {{/certificates}}
+                </ul>
+            </section>
+            {{/hascertificates}}
+
+            <div class="iiidem-teacher-student-detail__actions mt-4 d-flex flex-wrap gap-2">
+                <a href="{{{messageurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">{{#str}}dashboardteacherstudentmessage, theme_iiidem2{{/str}}</a>
+                <a href="{{{courseurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
+                <a href="{{{moodleprofileurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardteacherstudentfullprofile, theme_iiidem2{{/str}}</a>
+            </div>
+        </div>
+    </article>
+</div>

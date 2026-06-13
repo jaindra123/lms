@@ -4,12 +4,11 @@
     About International IDEA (Site administration → Themes → IIIDEM2 → About International IDEA).
 }}
 <div class="container">
-    <div class="section-header">
-        <div class="col-md-12">
-            <h1>{{iiidem_idea_title}}</h1>
-            {{#iiidem_idea_hasbody}}
-            <div class="about-idea-body">{{{iiidem_idea_body}}}</div>
-            {{/iiidem_idea_hasbody}}
-        </div>
-    </div>
+    <header class="iiidem-section-header text-center mb-4">
+        <span class="iiidem-section-header__eyebrow">Partnership</span>
+        <h2 class="iiidem-section-header__title">{{iiidem_idea_title}}</h2>
+    </header>
+    {{#iiidem_idea_hasbody}}
+    <div class="iiidem-idea-panel about-idea-body">{{{iiidem_idea_body}}}</div>
+    {{/iiidem_idea_hasbody}}
 </div>

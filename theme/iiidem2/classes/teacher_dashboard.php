@@ -62,14 +62,17 @@ class teacher_dashboard {
         $teachercourses = self::get_course_cards($courses, $userid);
         $quickactions = self::get_quick_actions();
         $studentperformance = self::get_student_performance($courses);
-        $analytics = self::get_analytics($courses, $pendingtasks);
+        $attendancecontext = teacher_attendance::get_dashboard_context($courses, $userid);
+        $certificatecontext = teacher_certificates::get_dashboard_context($courses, $userid);
+        $rostercontext = teacher_students::get_dashboard_context($courses, $userid);
+        $analytics = self::get_analytics($courses, $pendingtasks, $certificatecontext);
         $communications = self::get_communications($courses);
 
-        return [
+        return array_merge([
             'firstname' => $user->firstname,
             'cohortlabel' => $cohortlabel,
             'sidenav' => self::get_sidebar_nav($courses, $userid),
-            'statcards' => self::get_stat_cards($courses, $pendingtasks),
+            'statcards' => self::get_stat_cards($courses, $pendingtasks, $userid),
             'livecontrolitems' => $livecontrolitems,
             'haslivecontrolitems' => !empty($livecontrolitems),
             'launchurl' => $launchurl,
@@ -98,7 +101,7 @@ class teacher_dashboard {
             'hasnotifications' => !empty($pendingtasks),
             'notificationcount' => min(count($pendingtasks), 99),
             'calendarurl' => (new \moodle_url('/calendar/view.php'))->out(false),
-        ];
+        ], $attendancecontext, $certificatecontext, $rostercontext);
     }
 
     /**
@@ -418,9 +421,10 @@ class teacher_dashboard {
     /**
      * @param array $courses
      * @param array $pendingtasks
+     * @param array $certificatecontext
      * @return array
      */
-    protected static function get_analytics(array $courses, array $pendingtasks): array {
+    protected static function get_analytics(array $courses, array $pendingtasks, array $certificatecontext = []): array {
         $totalstudents = 0;
         $sumcompletion = 0;
         $courseswithcompletion = 0;
@@ -459,6 +463,13 @@ class teacher_dashboard {
                 'icon' => 'fa-clipboard-check',
                 'label' => get_string('dashboardteacherstatpending', 'theme_iiidem2'),
                 'value' => (string) count($pendingtasks),
+            ],
+            [
+                'icon' => 'fa-certificate',
+                'label' => get_string('dashboardteacherstatcertificates', 'theme_iiidem2'),
+                'value' => !empty($certificatecontext['hascertificates'])
+                    ? $certificatecontext['totalissuedlabel']
+                    : '—',
             ],
         ];
     }
@@ -623,6 +634,12 @@ class teacher_dashboard {
             : (new \moodle_url('/grade/report/grader/index.php'))->out(false);
         $forumurl = self::get_first_forum_url($courses);
         $attendanceurl = self::get_attendance_url($courses);
+        $dashboardattendance = \theme_iiidem2_get_dashboard_url();
+        $dashboardattendance->set_anchor('teacher-attendance');
+        $dashboardcertificates = \theme_iiidem2_get_dashboard_url();
+        $dashboardcertificates->set_anchor('teacher-certificates');
+        $dashboardstudents = \theme_iiidem2_get_dashboard_url();
+        $dashboardstudents->set_anchor('teacher-students');
 
         return [
             [
@@ -640,7 +657,13 @@ class teacher_dashboard {
             [
                 'icon' => 'fa-user-check',
                 'label' => get_string('dashboardteachernavroster', 'theme_iiidem2'),
-                'url' => $attendanceurl ?: $participantsurl,
+                'url' => $dashboardstudents->out(false),
+                'active' => false,
+            ],
+            [
+                'icon' => 'fa-certificate',
+                'label' => get_string('dashboardteachernavcertificates', 'theme_iiidem2'),
+                'url' => $dashboardcertificates->out(false),
                 'active' => false,
             ],
             [
@@ -681,7 +704,7 @@ class teacher_dashboard {
      * @param array $pendingtasks
      * @return array
      */
-    protected static function get_stat_cards(array $courses, array $pendingtasks): array {
+    protected static function get_stat_cards(array $courses, array $pendingtasks, int $userid): array {
         $activelearners = 0;
         foreach ($courses as $course) {
             $context = \context_course::instance($course->id);
@@ -704,7 +727,7 @@ class teacher_dashboard {
                 'accent' => 'orange',
             ],
             [
-                'value' => self::get_average_attendance_label($courses),
+                'value' => self::get_average_attendance_label($courses, $userid),
                 'label' => get_string('dashboardteacheravgattendance', 'theme_iiidem2'),
                 'accent' => 'navy',
             ],
@@ -715,7 +738,12 @@ class teacher_dashboard {
      * @param array $courses
      * @return string
      */
-    protected static function get_average_attendance_label(array $courses): string {
+    protected static function get_average_attendance_label(array $courses, int $userid): string {
+        $attendanceavg = teacher_attendance::get_average_percent_label($courses, $userid);
+        if ($attendanceavg !== '—') {
+            return $attendanceavg;
+        }
+
         $sum = 0;
         $count = 0;
 

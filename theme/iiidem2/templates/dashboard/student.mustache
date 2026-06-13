@@ -68,6 +68,14 @@
             {{> theme_iiidem2/dashboard/course_cards }}
         </section>
 
+        {{#hasweekendprogress}}
+        <section class="iiidem-student-section mb-4" id="weekend-progress">
+            {{#weekendprogress}}
+            {{> theme_iiidem2/dashboard/weekend_progress }}
+            {{/weekendprogress}}
+        </section>
+        {{/hasweekendprogress}}
+
         <section class="row g-4 mb-4">
             <div class="col-lg-6">
                 <article class="iiidem-student-panel" id="upcoming-activities">

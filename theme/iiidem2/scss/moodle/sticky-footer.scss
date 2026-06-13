@@ -226,7 +226,7 @@ img.gov-logo {
 
 .iiidem-footer {
     padding-top: 50px;
-    background-color: #2d2d2d;
+    background-color: #0b3d91;
     color: #ffffff;
     position: relative;
 }
@@ -269,15 +269,7 @@ img.gov-logo {
 }
 
 .iiidem-course-hero .hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        90deg,
-        rgba(4, 16, 40, 0.92) 0%,
-        rgba(4, 16, 40, 0.78) 40%,
-        rgba(4, 16, 40, 0.35) 100%
-    );
-    border-radius: 0;
+    display: none;
 }
 
 .iiidem-course-hero .container {
@@ -626,8 +618,8 @@ img.gov-logo {
 .copyRights {
     text-align: center;
     padding: 0.5rem 1.5rem;
-    background-color: #000;
-    color: #92defb;
+    background-color: #0a3580;
+    color: rgba(255, 255, 255, 0.9);
     width: 100%;
     font-size: 0.75rem;
     display: flex;

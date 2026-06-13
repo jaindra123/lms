@@ -24,6 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024100754;
+$plugin->version   = 2024100779;
 $plugin->requires  = 2024100100;
 $plugin->component = 'theme_iiidem2';

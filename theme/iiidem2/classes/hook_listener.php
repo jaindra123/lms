@@ -19,6 +19,32 @@ defined('MOODLE_INTERNAL') || die();
  */
 class hook_listener {
 
+    /** @var bool Whether the course_summary_exporter autoloader is registered. */
+    private static $courseexporterautoloadregistered = false;
+
+    /**
+     * Register theme override for course list progress (My courses block webservice).
+     *
+     * @param \core\hook\after_config $hook
+     */
+    public static function after_config(\core\hook\after_config $hook): void {
+        if (self::$courseexporterautoloadregistered) {
+            return;
+        }
+        self::$courseexporterautoloadregistered = true;
+
+        spl_autoload_register(static function(string $classname): void {
+            if ($classname !== 'core_course\\external\\course_summary_exporter') {
+                return;
+            }
+            if (class_exists($classname, false)) {
+                return;
+            }
+            global $CFG;
+            require_once($CFG->dirroot . '/theme/iiidem2/classes/external/course_summary_exporter.php');
+        }, true, true);
+    }
+
     /**
      * Send users to their role dashboard after login (unless they requested another page).
      *
@@ -75,6 +101,7 @@ class hook_listener {
             return;
         }
 
+        \theme_iiidem2_apply_course_view_page_assets($PAGE);
         \theme_iiidem2_preload_course_layout_context($COURSE);
     }
 

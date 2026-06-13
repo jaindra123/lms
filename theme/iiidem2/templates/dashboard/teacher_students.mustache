@@ -1,0 +1,61 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_students
+
+    Enrolled students roster for instructors.
+}}
+<article class="iiidem-teacher-panel iiidem-teacher-roster" id="teacher-students">
+    <header class="iiidem-teacher-panel__header">
+        <div class="iiidem-teacher-panel__title-wrap">
+            <span class="iiidem-teacher-panel__icon"><span class="fa fa-users" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-teacher-panel__title mb-0">{{#str}}dashboardteacherroster, theme_iiidem2{{/str}}</h2>
+                {{#hasstudents}}
+                <p class="iiidem-teacher-roster__subtitle mb-0">{{studentcountlabel}}</p>
+                {{/hasstudents}}
+            </div>
+        </div>
+    </header>
+    <div class="iiidem-teacher-panel__body">
+        {{#hasroster}}
+        {{#rostercourses}}
+        <section class="iiidem-teacher-roster__course{{^isfirst}} mt-4 pt-4 border-top{{/isfirst}}">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h3 class="h6 mb-0">{{coursename}}</h3>
+                <span class="iiidem-teacher-pill iiidem-teacher-pill--navy">{{studentcountlabel}}</span>
+            </div>
+
+            {{#hasstudents}}
+            <ul class="iiidem-teacher-roster__list list-unstyled mb-0">
+                {{#students}}
+                <li class="iiidem-teacher-roster__item">
+                    <a href="{{{detailurl}}}" class="iiidem-teacher-roster__link">
+                        <span class="iiidem-teacher-roster__avatar" style="background-image:url('{{{profileimage}}}')"></span>
+                        <span class="iiidem-teacher-roster__info">
+                            <span class="iiidem-teacher-roster__name">{{name}}</span>
+                            {{#hasemail}}
+                            <span class="iiidem-teacher-roster__meta">{{email}}</span>
+                            {{/hasemail}}
+                            <span class="iiidem-teacher-roster__meta">{{progresslabel}}</span>
+                        </span>
+                        {{#hasprogress}}
+                        <span class="iiidem-teacher-roster__progress">{{progress}}%</span>
+                        {{/hasprogress}}
+                        <span class="fa fa-chevron-right iiidem-teacher-roster__chevron" aria-hidden="true"></span>
+                    </a>
+                </li>
+                {{/students}}
+            </ul>
+            {{/hasstudents}}
+
+            {{^hasstudents}}
+            <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernostudents, theme_iiidem2{{/str}}</p>
+            {{/hasstudents}}
+        </section>
+        {{/rostercourses}}
+        {{/hasroster}}
+
+        {{^hasroster}}
+        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernostudents, theme_iiidem2{{/str}}</p>
+        {{/hasroster}}
+    </div>
+</article>

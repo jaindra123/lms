@@ -49,16 +49,17 @@ foreach ($_POST as $key => $value) {
 
 $txnref = $postparams['TXNREFNO'] ?? '';
 $returnurl = $postparams['RETURNURL'] ?? '';
-$amount = $postparams['AMOUNT'] ?? '';
-$currency = $postparams['CURRENCYCODE'] ?? 'INR';
-$merchantid = $postparams['MERCHANTID'] ?? '';
-$description = $postparams['DESCRIPTION'] ?? '';
 
 if ($txnref === '' || $returnurl === '') {
     throw new moodle_exception('txnnotfound', 'paygw_pnb');
 }
 
 $txn = $DB->get_record('paygw_pnb_txn', ['txnref' => $txnref], '*', MUST_EXIST);
+
+$amount = number_format((float) $txn->amount, 2, '.', '');
+$currency = $txn->currency ?: ($postparams['CURRENCYCODE'] ?? 'INR');
+$merchantid = $postparams['MERCHANTID'] ?? '';
+$description = $postparams['DESCRIPTION'] ?? '';
 
 if ((int) $txn->userid !== (int) $USER->id && !is_siteadmin()) {
     throw new require_login_exception('Invalid transaction user.');

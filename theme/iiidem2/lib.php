@@ -2235,11 +2235,41 @@ function theme_iiidem2_finalize_page_html(string $html): string {
     $endprop->setAccessible(true);
     $html = str_replace((string) $endprop->getValue($renderer), $PAGE->requires->get_end_code(), $html);
 
-    if ($PAGE->state !== moodle_page::STATE_DONE) {
-        $PAGE->set_state(moodle_page::STATE_DONE);
+    return $html;
+}
+
+/**
+ * CSS/JS for /course/view.php marketing layout (before &lt;head&gt; is built).
+ *
+ * @param moodle_page $page
+ * @return void
+ */
+function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
+    global $CFG;
+
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    if (!$page->url->compare(new moodle_url('/course/view.php'), URL_MATCH_BASE)) {
+        return;
+    }
+    if (empty($page->course->id) || (int) $page->course->id === SITEID) {
+        return;
     }
 
-    return $html;
+    $done = true;
+    $page->add_body_class('iiidem-course-hero-layout');
+    $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
+
+    $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
+    $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
+    if (is_readable($bs5css)) {
+        $page->requires->css(new moodle_url('/theme/iiidem2/style/bootstrap5.min.css'));
+    }
+    if (is_readable($bs5js)) {
+        $page->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
+    }
 }
 
 /**
@@ -2272,6 +2302,11 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $PAGE->set_cacheable(true);
     $PAGE->set_title(format_string($course->fullname));
     $PAGE->set_heading(format_string($course->fullname));
+
+    // Register CSS/JS before the template renders &lt;head&gt; (public path skips header()).
+    $PAGE->theme->init_page($PAGE);
+    theme_iiidem2_apply_course_view_page_assets($PAGE);
+    theme_iiidem2_preload_course_layout_context($course);
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
@@ -2324,16 +2359,6 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
             'config' => ['wwwroot' => $CFG->wwwroot],
         ]
     ));
-
-    $PAGE->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
-    $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
-    $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
-    if (is_readable($bs5css)) {
-        $PAGE->requires->css(new moodle_url('/theme/iiidem2/style/bootstrap5.min.css'));
-    }
-    if (is_readable($bs5js)) {
-        $PAGE->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
-    }
 
     // course_drawers is a full-page template (head, body, page_end) — finalize Moodle footer tokens.
     theme_iiidem2_echo_page_template('theme_iiidem2/course_drawers', $templatecontext);
@@ -2400,9 +2425,60 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
 }
 
 /**
+ * Enabled fee enrolment instance for a course, if any.
+ *
+ * @param int $courseid
+ * @return stdClass|null
+ */
+function theme_iiidem2_get_course_fee_enrol_instance(int $courseid): ?stdClass {
+    global $CFG;
+    require_once($CFG->libdir . '/enrollib.php');
+
+    foreach (enrol_get_instances($courseid, true) as $instance) {
+        if ($instance->enrol === 'fee' && (int) $instance->status === ENROL_INSTANCE_ENABLED && $instance->cost > 0) {
+            return $instance;
+        }
+    }
+    return null;
+}
+
+/**
+ * Logged-in university student who must pay the course fee before accessing curriculum previews.
+ *
+ * @param stdClass $course
+ * @param int|null $userid
+ * @return bool
+ */
+function theme_iiidem2_user_needs_course_fee_for_preview(stdClass $course, ?int $userid = null): bool {
+    global $USER, $CFG;
+
+    require_once($CFG->libdir . '/enrollib.php');
+
+    if (!isloggedin() || isguestuser()) {
+        return false;
+    }
+
+    if ($userid === null) {
+        $userid = (int) $USER->id;
+    }
+
+    $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
+    if (!$feeinstance) {
+        return false;
+    }
+
+    if (!\theme_iiidem2\registration_profile::user_requires_course_fee_payment($userid)) {
+        return false;
+    }
+
+    return !theme_iiidem2_user_has_active_fee_enrolment($userid, (int) $feeinstance->id);
+}
+
+/**
  * Whether the current user may expand curriculum activity previews.
  *
- * Any logged-in user enrolled in the course, or with course view capability (e.g. teacher).
+ * University students on a paid course must complete fee enrolment. Staff who manage the course
+ * and other actively enrolled users may preview without the fee check.
  *
  * @param stdClass $course
  * @param int|null $userid
@@ -2422,11 +2498,189 @@ function theme_iiidem2_user_can_preview_curriculum(stdClass $course, ?int $useri
 
     $context = context_course::instance($course->id);
 
-    if (is_enrolled($context, $userid, '', true)) {
+    if (has_capability('moodle/course:manageactivities', $context, $userid)
+            || has_capability('moodle/course:update', $context, $userid)) {
         return true;
     }
 
-    return has_capability('moodle/course:view', $context, $userid);
+    $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
+    if ($feeinstance && \theme_iiidem2\registration_profile::user_requires_course_fee_payment($userid)) {
+        return theme_iiidem2_user_has_active_fee_enrolment($userid, (int) $feeinstance->id);
+    }
+
+    return is_enrolled($context, $userid, '', true);
+}
+
+/**
+ * Total weekend slots used for progress % (100 ÷ 7 ≈ 14% per slot).
+ *
+ * @return int
+ */
+function theme_iiidem2_weekend_progress_slots(): int {
+    return 7;
+}
+
+/**
+ * Progress % from completed weekend units (integer math: units×100÷7).
+ *
+ * @param int $completedunits
+ * @return int 0–100
+ */
+function theme_iiidem2_weekend_progress_percent(int $completedunits): int {
+    $slots = theme_iiidem2_weekend_progress_slots();
+    if ($completedunits <= 0) {
+        return 0;
+    }
+    return min(100, intdiv($completedunits * 100, $slots));
+}
+
+/**
+ * Course list progress % (My courses, mobile, etc.) using weekend slots when applicable.
+ *
+ * @param stdClass $course
+ * @param int $userid 0 = current user
+ * @return float|null Weekend-based percent, or null to fall back to core activity completion
+ */
+function theme_iiidem2_get_course_list_progress_percentage(stdClass $course, int $userid = 0): ?float {
+    global $USER;
+
+    if (empty($userid)) {
+        $userid = (int) $USER->id;
+    }
+
+    $weekend = theme_iiidem2_get_course_weekend_progress($course, $userid);
+    if (!empty($weekend['hasprogress']) && !empty($weekend['weekends'])) {
+        return (float) $weekend['progress'];
+    }
+
+    return null;
+}
+
+/**
+ * Completed weekend units from section rows (last section = Weekend 6+7 counts as 2).
+ *
+ * @param array $weekends
+ * @return int
+ */
+function theme_iiidem2_weekend_progress_completed_units(array $weekends): int {
+    $units = 0;
+    $lastindex = count($weekends) - 1;
+    foreach ($weekends as $index => $weekend) {
+        if (empty($weekend['complete'])) {
+            continue;
+        }
+        $units += ($index === $lastindex) ? 2 : 1;
+    }
+    return $units;
+}
+
+/**
+ * Weekend (course section) progress for a student.
+ *
+ * A weekend counts as complete when every completion-tracked activity in that section
+ * is marked complete for the user (viewed lecture, finished quiz, attended live session, etc.).
+ * Progress % uses 7 slots (100÷7); the final section (Weekend 6-7) counts as 2 slots.
+ *
+ * @param stdClass $course
+ * @param int $userid
+ * @return array hasprogress, progress, completedweekends, totalweekends, weekends[], progresslabel
+ */
+function theme_iiidem2_get_course_weekend_progress(stdClass $course, int $userid): array {
+    global $CFG;
+
+    require_once($CFG->libdir . '/completionlib.php');
+
+    $defaults = [
+        'hasprogress' => false,
+        'progress' => 0,
+        'completedweekends' => 0,
+        'totalweekends' => 0,
+        'weekends' => [],
+        'progresslabel' => get_string('dashboardnoprogress', 'theme_iiidem2'),
+        'coursename' => format_string($course->fullname, true, ['context' => context_course::instance($course->id)]),
+        'courseurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
+    ];
+
+    $completion = new completion_info($course);
+    if (!$completion->is_enabled() || !$completion->is_tracked_user($userid)) {
+        return $defaults;
+    }
+
+    try {
+        $modinfo = get_fast_modinfo($course, $userid);
+    } catch (Exception $e) {
+        return $defaults;
+    }
+
+    $weekends = [];
+
+    foreach ($modinfo->get_section_info_all() as $section) {
+        if ((int) $section->section === 0) {
+            continue;
+        }
+        if (empty($modinfo->sections[$section->section])) {
+            continue;
+        }
+
+        $tracked = 0;
+        $completed = 0;
+
+        foreach ($modinfo->sections[$section->section] as $cmid) {
+            $cm = $modinfo->cms[$cmid];
+            if (!$cm->uservisible || $cm->deletioninprogress) {
+                continue;
+            }
+            if (!$completion->is_enabled($cm)) {
+                continue;
+            }
+
+            $tracked++;
+            $data = $completion->get_data($cm, false, $userid);
+            if (in_array((int) $data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
+                $completed++;
+            }
+        }
+
+        if ($tracked === 0) {
+            continue;
+        }
+
+        $iscomplete = ($completed >= $tracked);
+        $weekends[] = [
+            'name' => get_section_name($course, $section),
+            'complete' => $iscomplete,
+            'completedactivities' => $completed,
+            'totalactivities' => $tracked,
+            'statuslabel' => $iscomplete
+                ? get_string('dashboardweekendcomplete', 'theme_iiidem2')
+                : get_string('dashboardweekendpending', 'theme_iiidem2'),
+            'statusclass' => $iscomplete ? 'success' : 'muted',
+        ];
+    }
+
+    $totalslots = theme_iiidem2_weekend_progress_slots();
+    if (count($weekends) === 0) {
+        return $defaults;
+    }
+
+    $doneunits = theme_iiidem2_weekend_progress_completed_units($weekends);
+    $percent = theme_iiidem2_weekend_progress_percent($doneunits);
+
+    return [
+        'hasprogress' => true,
+        'progress' => $percent,
+        'completedweekends' => $doneunits,
+        'totalweekends' => $totalslots,
+        'weekends' => $weekends,
+        'hasweekends' => !empty($weekends),
+        'progresslabel' => get_string('dashboardweekendprogresslabel', 'theme_iiidem2', (object) [
+            'completed' => $doneunits,
+            'total' => $totalslots,
+            'percent' => $percent,
+        ]),
+        'coursename' => $defaults['coursename'],
+        'courseurl' => $defaults['courseurl'],
+    ];
 }
 
 /**
@@ -2436,13 +2690,21 @@ function theme_iiidem2_user_can_preview_curriculum(stdClass $course, ?int $useri
  * @return array keys: sections, totalsections, totalactivities
  */
 function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
+    global $CFG;
+
+    require_once($CFG->libdir . '/completionlib.php');
+
     $modinfo = get_fast_modinfo($course);
     $sectionsdata = [];
     $totalactivities = 0;
     $canpreview = theme_iiidem2_user_can_preview_curriculum($course);
+    $needspaymentforpreview = theme_iiidem2_user_needs_course_fee_for_preview($course);
+    $completion = $canpreview ? new completion_info($course) : null;
 
     $loginurl = new moodle_url('/login/index.php');
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
+    $loginmodal = theme_iiidem2_get_login_modal_context($loginurl->out(false));
+    $hasloginmodal = !empty($loginmodal['hasloginmodal']);
 
     foreach ($modinfo->get_section_info_all() as $section) {
         if ($section->section == 0) {
@@ -2460,6 +2722,9 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                 $previewcontentraw = theme_iiidem2_get_activity_preview_content($cm);
                 $haspreviewcontent = $previewcontentraw !== '';
 
+                $trackcompletion = $canpreview && $completion && $completion->is_enabled($cm)
+                    && in_array($cm->modname, ['page', 'url', 'resource'], true);
+
                 $activities[] = [
                     'id' => $cm->id,
                     'title' => $cm->name,
@@ -2469,6 +2734,9 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                     'previewcontent' => $canpreview ? $previewcontentraw : '',
                     'haspreviewcontent' => $haspreviewcontent,
                     'canpreviewcurriculum' => $canpreview,
+                    'curriculumpreviewneedspayment' => $needspaymentforpreview,
+                    'hasloginmodal' => $hasloginmodal,
+                    'trackcompletion' => $trackcompletion,
                     'previewlabel' => 'Preview',
                     'loginurl' => $loginurl->out(false),
                     'isquiz' => ($cm->modname === 'quiz'),
@@ -2486,15 +2754,135 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         ];
     }
 
-    return [
+    $paymentmodal = ['hascurriculumpaymentmodal' => false];
+    if ($needspaymentforpreview) {
+        $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
+        if ($feeinstance) {
+            $currency = $feeinstance->currency ?: 'INR';
+            $paymentmodal = [
+                'hascurriculumpaymentmodal' => true,
+                'coursefeecost' => \core_payment\helper::get_cost_as_string((float) $feeinstance->cost, $currency),
+                'coursefeeinstanceid' => (int) $feeinstance->id,
+                'showcoursepayment' => !empty(\core_payment\helper::get_available_gateways(
+                    'enrol_fee',
+                    'fee',
+                    (int) $feeinstance->id
+                )),
+            ];
+        } else {
+            $paymentmodal = [
+                'hascurriculumpaymentmodal' => true,
+                'coursefeecost' => '',
+                'showcoursepayment' => false,
+            ];
+        }
+    }
+
+    return array_merge($loginmodal, $paymentmodal, [
         'sections' => $sectionsdata,
         'totalsections' => count($sectionsdata),
         'totalactivities' => $totalactivities,
         'canpreviewcurriculum' => $canpreview,
-        'previewredirectlogin' => !$canpreview,
+        'curriculumpreviewneedspayment' => $needspaymentforpreview,
+        'curriculumtrackcompletion' => $canpreview,
+        'curriculumcompletionajaxurl' => (new moodle_url('/theme/iiidem2/ajax/mark_activity_viewed.php'))->out(false),
+        'previewredirectlogin' => !$canpreview && !$needspaymentforpreview,
         'loginurl' => $loginurl->out(false),
         'previewlabel' => 'Preview',
-    ];
+    ]);
+}
+
+/**
+ * Mark a curriculum preview as viewed for activity completion (page, url, resource).
+ *
+ * @param int $cmid Course-module id.
+ * @param int|null $userid Defaults to current user.
+ * @return array{success: bool, already?: bool, error?: string}
+ */
+function theme_iiidem2_mark_curriculum_activity_viewed(int $cmid, ?int $userid = null): array {
+    global $USER, $DB, $CFG;
+
+    require_once($CFG->libdir . '/completionlib.php');
+
+    if ($userid === null) {
+        if (!isloggedin() || isguestuser()) {
+            return ['success' => false, 'error' => 'notloggedin'];
+        }
+        $userid = (int) $USER->id;
+    }
+
+    try {
+        $cmrecord = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => 'invalidcm'];
+    }
+
+    $course = get_course($cmrecord->course);
+    require_course_login($course, false, $cmrecord);
+
+    if (!theme_iiidem2_user_can_preview_curriculum($course, $userid)) {
+        return ['success' => false, 'error' => 'nopermission'];
+    }
+
+    $modinfo = get_fast_modinfo($course, $userid);
+    $cm = $modinfo->get_cm($cmid);
+
+    if (!$cm->uservisible || $cm->deletioninprogress) {
+        return ['success' => false, 'error' => 'notvisible'];
+    }
+
+    if (!in_array($cm->modname, ['page', 'url', 'resource'], true)) {
+        return ['success' => false, 'error' => 'unsupported'];
+    }
+
+    $completion = new completion_info($course);
+    if (!$completion->is_enabled() || !$completion->is_enabled($cm)) {
+        return ['success' => false, 'error' => 'completionnotenabled'];
+    }
+
+    $data = $completion->get_data($cm, false, $userid);
+    if (in_array((int) $data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
+        return ['success' => true, 'already' => true];
+    }
+
+    $context = context_module::instance($cmid);
+    $needsviewevent = empty($data->viewed);
+
+    if ($needsviewevent) {
+        switch ($cm->modname) {
+            case 'page':
+                require_once($CFG->dirroot . '/mod/page/lib.php');
+                $instance = $DB->get_record('page', ['id' => $cm->instance], '*', MUST_EXIST);
+                page_view($instance, $course, $cmrecord, $context);
+                break;
+            case 'url':
+                require_once($CFG->dirroot . '/mod/url/lib.php');
+                $instance = $DB->get_record('url', ['id' => $cm->instance], '*', MUST_EXIST);
+                url_view($instance, $course, $cmrecord, $context);
+                break;
+            case 'resource':
+                require_once($CFG->dirroot . '/mod/resource/lib.php');
+                $instance = $DB->get_record('resource', ['id' => $cm->instance], '*', MUST_EXIST);
+                resource_view($instance, $course, $cmrecord, $context);
+                break;
+        }
+    }
+
+    // page_view/url_view may record "viewed" without marking complete — always finish completion.
+    $data = $completion->get_data($cm, false, $userid);
+    if (empty($data->viewed)) {
+        $data->viewed = COMPLETION_VIEWED;
+        $completion->internal_set_data($cm, $data);
+    }
+
+    $completion->update_state($cm, COMPLETION_COMPLETE, $userid);
+
+    $data = $completion->get_data($cm, false, $userid);
+    if (!in_array((int) $data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
+        return ['success' => false, 'error' => 'notcomplete'];
+    }
+
+    return ['success' => true];
 }
 
 /**
@@ -2523,9 +2911,9 @@ function theme_iiidem2_get_login_modal_context(?string $wantsurl = null): array 
         'loginurl' => (new moodle_url('/login/index.php'))->out(false),
         'logintoken' => \core\session\manager::get_login_token(),
         'forgotpasswordurl' => (new moodle_url('/login/forgot_password.php'))->out(false),
-        'signupurl' => (new moodle_url('/login/signup.php'))->out(false),
+        'registerurl' => theme_iiidem2_get_register_url(),
+        'loginsignuplabel' => get_string('loginsignup', 'theme_iiidem2'),
         'canloginbyemail' => !empty($CFG->authloginviaemail),
-        'cansignup' => ($CFG->registerauth === 'email' || !empty($CFG->registerauth)),
     ];
 }
 
@@ -2871,6 +3259,7 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
         'coursename' => format_string($course->fullname),
         'courseshortname' => format_string($course->shortname),
         'coursesummary' => format_text($course->summary, $course->summaryformat, ['context' => $context]),
+        'hascoursesummary' => trim(strip_tags($course->summary)) !== '',
         'courseimage' => $courseimage,
         'instructordata' => array_values($instructordata),
         'hasinstructors' => !empty($instructordata),
@@ -2924,13 +3313,7 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
         'coursefeeloginrequired' => false,
     ];
 
-    $feeinstance = null;
-    foreach (enrol_get_instances($course->id, true) as $instance) {
-        if ($instance->enrol === 'fee' && (int) $instance->status === ENROL_INSTANCE_ENABLED && $instance->cost > 0) {
-            $feeinstance = $instance;
-            break;
-        }
-    }
+    $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
 
     if (!$feeinstance) {
         return $defaults;
@@ -3075,6 +3458,12 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
 
     $detailcontext = theme_iiidem2_get_course_detail_context($course);
 
+    if (!empty($detailcontext['curriculumtrackcompletion'])) {
+        // Loaded via pages/course-detail.mustache {{#js}} when that layout is used.
+        $detailcontext['curriculumcompletionajaxurl'] = $detailcontext['curriculumcompletionajaxurl']
+            ?? (new moodle_url('/theme/iiidem2/ajax/mark_activity_viewed.php'))->out(false);
+    }
+
     $templatecontext = theme_iiidem2_merge_footer_context(array_merge(
         $detailcontext,
         [
@@ -3164,19 +3553,13 @@ function theme_iiidem2_page_init($page) {
         theme_iiidem2_apply_custom_quiz_page_assets($page);
     } else if (theme_iiidem2_is_live_class_page($page)) {
         theme_iiidem2_apply_live_class_page_assets($page);
-    } else if (!empty($page->course->id) && (int) $page->course->id !== SITEID
-        && ($page->pagelayout === 'course'
-            || $page->url->compare(new moodle_url('/course/view.php'), URL_MATCH_BASE)
-            || $page->url->get_path(false) === '/course-detail'
-            || strpos($page->url->get_path(false), '/course-detail/') === 0)) {
-        $page->requires->css($coursequizcss);
-        if ($page->url->compare(new moodle_url('/course/view.php'), URL_MATCH_BASE)) {
-            $page->add_body_class('iiidem-course-hero-layout');
-        }
+    } else if ($page->url->get_path(false) === '/course-detail'
+            || strpos($page->url->get_path(false), '/course-detail/') === 0) {
+        $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
     }
 
     // BS5 accordions/tabs only where templates use data-bs-* (not site home — avoids slow CDN on every visit).
-    if (in_array($page->pagelayout, ['marketing', 'course', 'incourse'], true)
+    if (in_array($page->pagelayout, ['marketing', 'incourse'], true)
         || strpos($page->bodyclasses, 'iiidem-course-detail') !== false
         || strpos($page->bodyclasses, 'iiidem-enrol-preview') !== false) {
         $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';

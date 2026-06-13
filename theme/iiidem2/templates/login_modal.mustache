@@ -7,9 +7,9 @@
     * loginurl - POST target for the login form
     * logintoken - CSRF token
     * forgotpasswordurl - Forgot password link
-    * signupurl - Sign-up page URL
+    * registerurl - Custom sign-up page URL (/register/)
+    * loginsignuplabel - Sign up button label
     * canloginbyemail - Whether username/email label is used
-    * cansignup - Whether sign-up is enabled
 }}
 <div class="modal fade" id="iiidemLoginModal" tabindex="-1" aria-labelledby="iiidemLoginModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -41,11 +41,9 @@
                     <div class="mt-3 text-center">
                         <a href="{{forgotpasswordurl}}">{{#str}}forgotaccount{{/str}}</a>
                     </div>
-                    {{#cansignup}}
-                    <div class="mt-3 text-center">
-                        <a href="{{signupurl}}" class="btn btn-outline-secondary btn-sm">{{#str}}startsignup{{/str}}</a>
-                    </div>
-                    {{/cansignup}}
+                    <p class="iiidem-login-signup text-center mt-3 mb-0">
+                        <a href="{{registerurl}}" class="btn btn-outline-primary iiidem-btn iiidem-login-signup__btn">{{loginsignuplabel}}</a>
+                    </p>
                 </form>
             </div>
         </div>

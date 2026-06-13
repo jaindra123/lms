@@ -1,0 +1,37 @@
+{{!
+    @template theme_iiidem2/dashboard/weekend_progress
+
+    Weekend (section) completion progress for the student dashboard.
+}}
+<article class="iiidem-student-panel iiidem-weekend-progress">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-chart-line" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-student-panel__title mb-0">{{#str}}dashboardweekendprogress, theme_iiidem2{{/str}}</h2>
+                <p class="iiidem-weekend-progress__course mb-0">
+                    <a href="{{{courseurl}}}" class="iiidem-student-list__link">{{coursename}}</a>
+                </p>
+            </div>
+        </div>
+    </header>
+    <div class="iiidem-student-panel__body">
+        <div class="iiidem-weekend-progress__summary mb-3">
+            <div class="iiidem-weekend-progress__bar" role="progressbar"
+                 aria-valuenow="{{progress}}" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="{{progresslabel}}">
+                <div class="iiidem-weekend-progress__bar-fill" style="width: {{progress}}%;"></div>
+            </div>
+            <p class="iiidem-weekend-progress__label mb-0">{{progresslabel}}</p>
+            <p class="iiidem-weekend-progress__help text-muted small mb-0 mt-1">{{#str}}dashboardweekendprogresshelp, theme_iiidem2{{/str}}</p>
+        </div>
+        <ul class="iiidem-weekend-progress__list list-unstyled mb-0">
+            {{#weekends}}
+            <li class="iiidem-weekend-progress__item">
+                <span class="iiidem-weekend-progress__name">{{name}}</span>
+                <span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{statuslabel}}</span>
+            </li>
+            {{/weekends}}
+        </ul>
+    </div>
+</article>

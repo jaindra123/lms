@@ -1,0 +1,37 @@
+{{!
+    @template theme_iiidem2/payment_required_modal
+
+    Alert modal when a logged-in student must pay the course fee before curriculum preview.
+}}
+<div class="modal fade iiidem-payment-required-modal" id="iiidemPaymentRequiredModal" tabindex="-1"
+     aria-labelledby="iiidemPaymentRequiredModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="iiidemPaymentRequiredModalLabel">
+                    {{#str}}curriculumpaymentrequiredtitle, theme_iiidem2{{/str}}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        aria-label="{{#str}}closebuttontitle, core{{/str}}"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
+                    <span class="fa fa-exclamation-triangle mt-1" aria-hidden="true"></span>
+                    <div>
+                        <strong>{{#str}}curriculumpaymentrequiredalertheading, theme_iiidem2{{/str}}</strong>
+                        <p class="mb-0 mt-1">{{#str}}curriculumpaymentrequiredalertbody, theme_iiidem2, {{coursefeecost}} {{/str}}</p>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0">{{#str}}curriculumpaymentrequiredhint, theme_iiidem2{{/str}}</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button"
+                        class="btn btn-primary w-100 iiidem-payment-required-ok"
+                        data-scroll-target="#iiidem-course-fee"
+                        {{#showcoursepayment}}data-payment-trigger="#gateways-modal-trigger-{{coursefeeinstanceid}}"{{/showcoursepayment}}>
+                    {{#str}}curriculumpaymentrequiredunderstood, theme_iiidem2{{/str}}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

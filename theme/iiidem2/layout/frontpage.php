@@ -40,12 +40,13 @@ $templatecontext['courses'] = $frontpagecourses;
 $templatecontext['hascourses'] = !empty($frontpagecourses);
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
-$governancecontext = theme_iiidem2_get_program_governance_context();
+// Program Governance — not shown on front page (see frontpage.mustache).
+// $governancecontext = theme_iiidem2_get_program_governance_context();
 $ideacontext = theme_iiidem2_get_about_idea_context();
 
 $templatecontext = array_merge(
     $templatecontext,
-    $governancecontext ?? [],
+    // $governancecontext ?? [],
     $ideacontext ?? []
 );
 

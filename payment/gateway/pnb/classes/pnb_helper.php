@@ -114,6 +114,13 @@ class pnb_helper {
     }
 
     /**
+     * Compare monetary values (bank callback vs stored transaction).
+     */
+    public static function amounts_match(string $returnedamount, float $expectedamount): bool {
+        return abs((float) $returnedamount - $expectedamount) < 0.005;
+    }
+
+    /**
      * Generate payment request checksum.
      */
     public static function generate_checksum(string $merchantid, string $txnref, string $amount,

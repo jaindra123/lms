@@ -9,8 +9,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$PAGE->add_body_class('iiidem-course-hero-layout');
-
 require_once($CFG->libdir . '/behat/lib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 
@@ -100,6 +98,7 @@ $templatecontext = [
     'headercontent' => $headercontent,
     'addblockbutton' => $addblockbutton,
     'hasenrollmodal' => true,
+    'courseediting' => $PAGE->user_is_editing(),
     // Moodle header() requires the main_content token in layout output (hidden; curriculum uses theme partial).
     'maincontentplaceholder' => $OUTPUT->main_content(),
 
@@ -112,6 +111,8 @@ $templatecontext['pnbpaymentsuccess'] = optional_param('pnbpayment', '', PARAM_A
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/enroll', 'init');
+
+$templatecontext['curriculumcompletionajaxurl'] = $curriculum['curriculumcompletionajaxurl'] ?? '';
 
 /*$templatecontext = [
     'output' => $OUTPUT,

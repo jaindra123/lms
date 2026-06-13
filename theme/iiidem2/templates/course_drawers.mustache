@@ -160,6 +160,10 @@
                                 </div>
                             </div>
                         {{/overflow}}
+                        {{#courseediting}}
+                        {{{ maincontentplaceholder }}}
+                        {{/courseediting}}
+                        {{^courseediting}}
                         {{#ispubliccourseview}}
                         <section class="iiidem-course-detail-cta py-4">
                             <div class="container">
@@ -189,12 +193,13 @@
                         {{> theme_iiidem2/course/instructors }}
                         {{/hasinstructors}}
                         {{> theme_iiidem2/course/faq }}
-                        {{{ output.activity_navigation }}}
-                        {{{ output.course_content_footer }}}
 
                         <div class="d-none" aria-hidden="true">
                             {{{ maincontentplaceholder }}}
                         </div>
+                        {{/courseediting}}
+                        {{{ output.activity_navigation }}}
+                        {{{ output.course_content_footer }}}
 
                     </div>
                 </div>
@@ -230,6 +235,14 @@ require(['theme_iiidem2/loader', 'theme_iiidem2/drawer'], function(Loader, Drawe
     Drawer.init();
     M.util.js_complete('theme_iiidem2/loader');
 });
+{{#curriculumtrackcompletion}}
+require(['theme_iiidem2/curriculum_completion'], function(CurriculumCompletion) {
+    CurriculumCompletion.init({
+        ajaxurl: '{{{curriculumcompletionajaxurl}}}',
+        sesskey: M.cfg.sesskey
+    });
+});
+{{/curriculumtrackcompletion}}
 {{#pnbpaymentsuccess}}
 require(['jquery'], function() {
     setTimeout(function() {

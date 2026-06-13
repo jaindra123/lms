@@ -1,0 +1,99 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_attendance
+
+    Date-wise attendance for teachers (mod_attendance).
+}}
+<article class="iiidem-teacher-panel iiidem-teacher-attendance" id="teacher-attendance">
+    <header class="iiidem-teacher-panel__header">
+        <div class="iiidem-teacher-panel__title-wrap">
+            <span class="iiidem-teacher-panel__icon"><span class="fa fa-user-check" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-teacher-panel__title mb-0">{{#str}}dashboardteacherattendancebydate, theme_iiidem2{{/str}}</h2>
+                {{#coursename}}
+                <p class="iiidem-teacher-attendance__course mb-0">{{coursename}}</p>
+                {{/coursename}}
+            </div>
+        </div>
+        {{#hasattendance}}
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{{reporturl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm">{{#str}}dashboardteacherattendancereport, theme_iiidem2{{/str}}</a>
+            <a href="{{{manageurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardteacherattendancemanage, theme_iiidem2{{/str}}</a>
+        </div>
+        {{/hasattendance}}
+    </header>
+    <div class="iiidem-teacher-panel__body">
+        {{#needsactivity}}
+        <p class="iiidem-teacher-empty mb-2">{{#str}}dashboardteacherattendancesetup, theme_iiidem2{{/str}}</p>
+        <a href="{{{courseurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
+        {{/needsactivity}}
+
+        {{#hasattendance}}
+        {{#hassessions}}
+        <div class="table-responsive mb-4">
+            <table class="table table-sm iiidem-teacher-attendance__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteacherattendancedate, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancesessioncol, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancepresent, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendanceabsent, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancenotmarked, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancestatus, theme_iiidem2{{/str}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#sessions}}
+                    <tr>
+                        <td>
+                            <div class="iiidem-teacher-attendance__date">{{date}}</div>
+                            <div class="iiidem-teacher-attendance__time">{{time}}</div>
+                        </td>
+                        <td>{{title}}</td>
+                        <td>{{present}}</td>
+                        <td>{{absent}}</td>
+                        <td>{{notmarked}}</td>
+                        <td><span class="iiidem-teacher-pill iiidem-teacher-pill--{{takenclass}}">{{takenlabel}}</span></td>
+                        <td class="text-end">
+                            <a href="{{{takeurl}}}" class="btn btn-outline-primary btn-sm">{{#str}}dashboardteacherattendancetake, theme_iiidem2{{/str}}</a>
+                        </td>
+                    </tr>
+                    {{/sessions}}
+                </tbody>
+            </table>
+        </div>
+        {{/hassessions}}
+
+        {{^hassessions}}
+        <p class="iiidem-teacher-empty mb-3">{{#str}}dashboardteacherattendancenosessions, theme_iiidem2{{/str}}</p>
+        <a href="{{{manageurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">{{#str}}dashboardteacherattendanceaddsessions, theme_iiidem2{{/str}}</a>
+        {{/hassessions}}
+
+        {{#hasstudents}}
+        <h3 class="h6 mb-3">{{#str}}dashboardteacherattendancestudents, theme_iiidem2{{/str}}</h3>
+        <div class="table-responsive">
+            <table class="table table-sm iiidem-teacher-attendance__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteacherattendancestudent, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancestudentcol, theme_iiidem2{{/str}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#students}}
+                    <tr>
+                        <td>{{name}}</td>
+                        <td>{{percentlabel}}</td>
+                        <td class="text-end">
+                            <a href="{{{detailurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardteacherattendanceviewstudent, theme_iiidem2{{/str}}</a>
+                        </td>
+                    </tr>
+                    {{/students}}
+                </tbody>
+            </table>
+        </div>
+        {{/hasstudents}}
+        {{/hasattendance}}
+    </div>
+</article>

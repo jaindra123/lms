@@ -1,0 +1,89 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_certificates
+
+    Issued certificates for teachers (mod_customcert) — instructor dashboard only.
+}}
+<article class="iiidem-teacher-panel iiidem-teacher-certificates" id="teacher-certificates">
+    <header class="iiidem-teacher-panel__header">
+        <div class="iiidem-teacher-panel__title-wrap">
+            <span class="iiidem-teacher-panel__icon"><span class="fa fa-certificate" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-teacher-panel__title mb-0">{{#str}}dashboardteachercertificates, theme_iiidem2{{/str}}</h2>
+                {{#primarycertname}}
+                <p class="iiidem-teacher-certificates__subtitle mb-0">{{primarycertname}}{{#primarycoursename}} · {{primarycoursename}}{{/primarycoursename}}</p>
+                {{/primarycertname}}
+            </div>
+        </div>
+        {{#hascertificates}}
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="iiidem-teacher-pill iiidem-teacher-pill--teal">{{#str}}dashboardteachercerttotal, theme_iiidem2, {{totalissued}}{{/str}}</span>
+            <a href="{{{reporturl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm">{{#str}}dashboardteachercertreport, theme_iiidem2{{/str}}</a>
+        </div>
+        {{/hascertificates}}
+    </header>
+    <div class="iiidem-teacher-panel__body">
+        {{^pluginenabled}}
+        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachercertpluginmissing, theme_iiidem2{{/str}}</p>
+        {{/pluginenabled}}
+
+        {{#needscertificate}}
+        <p class="iiidem-teacher-empty mb-2">{{#str}}dashboardteachercertsetup, theme_iiidem2{{/str}}</p>
+        <a href="{{{courseurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">{{#str}}entercourse, theme_iiidem2{{/str}}</a>
+        {{/needscertificate}}
+
+        {{#hascertificates}}
+        {{#certificates}}
+        <div class="iiidem-teacher-certificates__summary mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="iiidem-teacher-queue__title">{{name}}</div>
+                    <div class="iiidem-teacher-queue__meta">{{coursename}} · {{issuedlabel}}</div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{{manageurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardteachercertmanage, theme_iiidem2{{/str}}</a>
+                    <a href="{{{editurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}edit{{/str}}</a>
+                </div>
+            </div>
+        </div>
+        {{/certificates}}
+
+        {{#hasissues}}
+        <h3 class="h6 mb-3">{{#str}}dashboardteachercertrecent, theme_iiidem2{{/str}}</h3>
+        <div class="table-responsive">
+            <table class="table table-sm iiidem-teacher-certificates__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteachercertstudent, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteachercertcourse, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteachercertissued, theme_iiidem2{{/str}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#issues}}
+                    <tr>
+                        <td>
+                            <div class="iiidem-teacher-certificates__student">{{studentname}}</div>
+                            <div class="iiidem-teacher-queue__meta">{{certname}}</div>
+                        </td>
+                        <td>{{coursename}}</td>
+                        <td>
+                            <div>{{date}}</div>
+                            {{#hascode}}<div class="iiidem-teacher-queue__meta">{{code}}</div>{{/hascode}}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{{downloadurl}}}" class="btn btn-outline-primary btn-sm">{{#str}}dashboardteachercertdownload, theme_iiidem2{{/str}}</a>
+                        </td>
+                    </tr>
+                    {{/issues}}
+                </tbody>
+            </table>
+        </div>
+        {{/hasissues}}
+
+        {{^hasissues}}
+        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachercertnoissues, theme_iiidem2{{/str}}</p>
+        {{/hasissues}}
+        {{/hascertificates}}
+    </div>
+</article>

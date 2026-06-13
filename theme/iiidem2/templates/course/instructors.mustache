@@ -1,8 +1,8 @@
-<section class="course-instructors">
+<section class="iiidem-course-section iiidem-course-instructors">
     <div class="container">
-        <div class="section-heading">
-            <h2>Meet Your Instructors </h2>
-        </div>
+        <header class="iiidem-course-section__header">
+            <h2 class="iiidem-course-section__title">{{#str}}courseinstructorsheading, theme_iiidem2{{/str}}</h2>
+        </header>
 
         <div class="career-grid">
             {{#instructordata}}
@@ -18,14 +18,12 @@
                     {{/profileurl}}
                 </div>
                 <div class="career-content">
-                    <h3>{{name}}</h3>
-                    <span>{{role}}</span>
-                    <p>{{bio}}</p>
+                    <h3 class="iiidem-course-instructors__name">{{name}}</h3>
+                    <span class="iiidem-course-instructors__role">{{role}}</span>
+                    <p class="iiidem-course-instructors__bio">{{bio}}</p>
                 </div>
             </div>
             {{/instructordata}}
         </div>
-
     </div>
 </section>
-

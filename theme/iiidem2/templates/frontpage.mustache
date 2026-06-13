@@ -13,9 +13,13 @@
 
     {{> theme_iiidem2/slider }}
 
-    <section class="iiidem-features" aria-labelledby="iiidem-features-heading">
+    <section class="iiidem-features iiidem-page-section" aria-labelledby="iiidem-features-heading">
         <div class="container">
-            <h2 id="iiidem-features-heading" class="visually-hidden">{{#str}}home{{/str}}</h2>
+            <header class="iiidem-section-header text-center mb-4">
+                <span class="iiidem-section-header__eyebrow">Platform</span>
+                <h2 id="iiidem-features-heading" class="iiidem-section-header__title">Why choose IIIDEM LMS</h2>
+                <p class="iiidem-section-header__lead mb-0">Certification, live learning, and progress tracking in one place.</p>
+            </header>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="iiidem-feature-card">
@@ -48,32 +52,33 @@
         </div>
     </section>
 
-    <section class="iiidem-about-section" id="about-iiidem">
+    <section class="iiidem-about-section iiidem-page-section" id="about-iiidem">
         {{> theme_iiidem2/about }}
     </section>
 
-    <section class="advisors-section-idea" id="about-idea">
+    <section class="iiidem-idea-section iiidem-page-section" id="about-idea">
         {{{aboutideahtml}}}
     </section>
 
-    {{#hasadvisors}}
-    {{> theme_iiidem2/program_governance }}
-    {{/hasadvisors}}
+    {{! Program Governance — hidden on front page (re-enable when needed).
+    {{! {{#hasadvisors}}
+    {{! {{> theme_iiidem2/program_governance }}
+    {{! {{/hasadvisors}}
 
     {{#hascourses}}
-    <section class="iiidem-courses-section" id="courses">
+    <section class="iiidem-courses-section iiidem-page-section" id="courses">
         <div class="container">
-            <div class="iiidem-section-header text-center">
-              
-                <h2 class="iiidem-section-header__title">Explore Our Courses</h2>
-                <p class="iiidem-section-header__lead">Browse certification and training programs designed for election professionals.</p>
-            </div>
+            <header class="iiidem-section-header text-center mb-4">
+                <span class="iiidem-section-header__eyebrow">Courses</span>
+                <h2 class="iiidem-section-header__title">Explore our courses</h2>
+                <p class="iiidem-section-header__lead mb-0">Browse certification and training programs designed for election professionals.</p>
+            </header>
             {{> theme_iiidem2/courses }}
         </div>
     </section>
     {{/hascourses}}
 
-    <section class="iiidem-cta">
+    <section class="iiidem-cta iiidem-page-section">
         <div class="container">
             <div class="iiidem-cta__inner text-center">
                 <h2 class="iiidem-cta__title">Ready to start learning?</h2>

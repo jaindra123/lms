@@ -45,6 +45,7 @@ class student_dashboard {
         $achievements = self::get_achievements($userid);
         $coursecards = self::get_course_cards($courses, $userid);
         $upcomingactivities = self::get_upcoming_activities($courses, $userid, $liveclasses);
+        $weekendprogress = self::get_weekend_progress_context($courses, $userid);
         $calendarcourseid = theme_iiidem2_get_dashboard_calendar_course_id_for_user($userid);
         $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
         $learningstats = self::get_learning_statistics($userid, $courses);
@@ -57,6 +58,8 @@ class student_dashboard {
             'progresscards' => self::get_learning_progress_cards($courses, $userid),
             'coursecards' => $coursecards,
             'hascoursecards' => !empty($coursecards),
+            'weekendprogress' => $weekendprogress,
+            'hasweekendprogress' => !empty($weekendprogress['hasprogress']),
             'mycoursesurl' => (new \moodle_url('/my/courses.php'))->out(false),
             'upcomingactivities' => $upcomingactivities,
             'hasupcomingactivities' => !empty($upcomingactivities),
@@ -196,11 +199,22 @@ class student_dashboard {
             }
 
             $progress = null;
-            try {
-                $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
-                $progress = $percent !== null ? (int) round($percent) : null;
-            } catch (\Throwable $e) {
-                $progress = null;
+            $progresslabel = get_string('dashboardnoprogress', 'theme_iiidem2');
+            $weekendprogress = theme_iiidem2_get_course_weekend_progress($course, $userid);
+
+            if (!empty($weekendprogress['hasprogress'])) {
+                $progress = (int) $weekendprogress['progress'];
+                $progresslabel = $weekendprogress['progresslabel'];
+            } else {
+                try {
+                    $percent = \core_completion\progress::get_course_progress_percentage($course, $userid);
+                    if ($percent !== null) {
+                        $progress = (int) round($percent);
+                        $progresslabel = get_string('dashboardprogresslabel', 'theme_iiidem2', $progress);
+                    }
+                } catch (\Throwable $e) {
+                    $progress = null;
+                }
             }
 
             $cards[] = [
@@ -210,14 +224,36 @@ class student_dashboard {
                 'viewurl' => (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
                 'hasprogress' => $progress !== null,
                 'progress' => $progress ?? 0,
-                'progresslabel' => $progress !== null
-                    ? get_string('dashboardprogresslabel', 'theme_iiidem2', $progress)
-                    : get_string('dashboardnoprogress', 'theme_iiidem2'),
+                'progresslabel' => $progresslabel,
                 'continueurl' => (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             ];
         }
 
         return $cards;
+    }
+
+    /**
+     * Weekend progress panel for the student's primary enrolled course.
+     *
+     * @param array $courses
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_weekend_progress_context(array $courses, int $userid): array {
+        foreach ($courses as $course) {
+            if (!self::user_can_access_enrolled_course($course, $userid)) {
+                continue;
+            }
+            $progress = theme_iiidem2_get_course_weekend_progress($course, $userid);
+            if (!empty($progress['hasprogress'])) {
+                return $progress;
+            }
+        }
+
+        return [
+            'hasprogress' => false,
+            'weekends' => [],
+        ];
     }
 
     /**

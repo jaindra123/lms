@@ -98,7 +98,17 @@ if ($status === '') {
 }
 
 $verified = pnb_helper::verify_return($config, $params);
+$returnedamount = $params['AMOUNT'] ?? $params['amount'] ?? '';
 $success = $verified && pnb_helper::is_success_status($status);
+
+if ($verified && $returnedamount !== '' && !pnb_helper::amounts_match($returnedamount, (float) $txn->amount)) {
+    $show_return_message(
+        'error',
+        get_string('paymentresultfailheading', 'paygw_pnb'),
+        get_string('amountmismatch', 'paygw_pnb'),
+        $defaultcontinue
+    );
+}
 
 if (!$verified) {
     $show_return_message(

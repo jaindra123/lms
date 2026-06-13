@@ -1,5 +1,73 @@
 /* Instructor dashboard — matches IIIDEM teaching console design */
 
+/* Full-bleed: remove Boost drawers padding, max-width, and card margins. */
+body.iiidem-teacher-dashboard-page #page.drawers,
+body.iiidem-teacher-dashboard-page.limitedwidth #page.drawers,
+body.iiidem-teacher-dashboard-page.mediumwidth #page.drawers {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.iiidem-teacher-dashboard-page #page.drawers .main-inner,
+body.iiidem-teacher-dashboard-page.limitedwidth #page.drawers .main-inner,
+body.iiidem-teacher-dashboard-page.mediumwidth #page.drawers .main-inner,
+body.iiidem-teacher-dashboard-page #topofscroll.main-inner {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body.iiidem-teacher-dashboard-page #page.drawers div[role="main"],
+body.iiidem-teacher-dashboard-page #page-content,
+body.iiidem-teacher-dashboard-page #region-main-box,
+body.iiidem-teacher-dashboard-page #region-main {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.iiidem-teacher-dashboard-page .iiidem-dashboard--teacher {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    body.iiidem-teacher-dashboard-page #page.drawers .main-inner,
+    body.iiidem-teacher-dashboard-page #topofscroll.main-inner {
+        margin-top: 0 !important;
+    }
+}
+
+@media (min-width: 768px) {
+    body.iiidem-teacher-dashboard-page #page.drawers,
+    body.iiidem-teacher-dashboard-page.limitedwidth #page.drawers {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    body.iiidem-teacher-dashboard-page #page.drawers .main-inner,
+    body.iiidem-teacher-dashboard-page.limitedwidth #page.drawers .main-inner {
+        max-width: none !important;
+        padding: 0 !important;
+    }
+
+    body.iiidem-teacher-dashboard-page #page.drawers div[role="main"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
 body.iiidem-teacher-dashboard-page #page-header,
 body.iiidem-teacher-dashboard-page .page-context-header,
 body.iiidem-teacher-dashboard-page .page-header-headings,
@@ -15,9 +83,11 @@ body.iiidem-teacher-dashboard-page #page-navbar {
     display: none !important;
 }
 
-.pagelayout-mydashboard #page.drawers .main-inner {
-    max-width: none;
-    padding: 0;
+.pagelayout-mydashboard.iiidem-teacher-dashboard-page #page.drawers .main-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .pagelayout-mydashboard #page.drawers .activity-header,
@@ -27,11 +97,11 @@ body.iiidem-teacher-dashboard-page #page-navbar {
 
 .iiidem-teacher-dashboard-v2 {
     display: flex;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - var(--navbar-height, 72px));
     background: #f1f4f8;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 8px 24px rgba(12, 45, 76, 0.08);
+    box-shadow: none;
 }
 
 .iiidem-teacher-sidebar {
@@ -557,4 +627,194 @@ body.iiidem-teacher-dashboard-page #page-navbar {
         min-width: 0;
         flex: 1;
     }
+}
+
+.iiidem-teacher-attendance__course {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-attendance__table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.iiidem-teacher-attendance__date {
+    font-weight: 600;
+    color: #0a2540;
+}
+
+.iiidem-teacher-attendance__time {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-certificates__subtitle {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-certificates__table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.iiidem-teacher-certificates__student {
+    font-weight: 600;
+    color: #0a2540;
+}
+
+.iiidem-teacher-certificates__summary {
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+}
+
+.iiidem-teacher-roster__subtitle {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-roster__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.iiidem-teacher-roster__link {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.iiidem-teacher-roster__link:hover {
+    border-color: #1aa898;
+    box-shadow: 0 4px 12px rgba(12, 45, 76, 0.08);
+    color: inherit;
+    text-decoration: none;
+}
+
+.iiidem-teacher-roster__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: #dbeafe;
+    flex-shrink: 0;
+}
+
+.iiidem-teacher-roster__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.iiidem-teacher-roster__name {
+    display: block;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+.iiidem-teacher-roster__meta {
+    display: block;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-roster__progress {
+    font-weight: 700;
+    color: #1aa898;
+    white-space: nowrap;
+}
+
+.iiidem-teacher-roster__chevron {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.iiidem-teacher-student-detail {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+}
+
+.iiidem-teacher-student-detail__header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.iiidem-teacher-student-detail__avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: #dbeafe;
+    flex-shrink: 0;
+}
+
+.iiidem-teacher-student-detail__name {
+    color: #0a2540;
+}
+
+.iiidem-teacher-student-detail__course {
+    color: #64748b;
+}
+
+.iiidem-teacher-student-detail__section h2 {
+    color: #0a2540;
+    font-weight: 700;
+}
+
+.iiidem-teacher-student-detail__dl div {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 0.35rem 1rem;
+    margin-bottom: 0.65rem;
+}
+
+.iiidem-teacher-student-detail__dl dt {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.iiidem-teacher-student-detail__dl dd {
+    margin: 0;
+    color: #0a2540;
+}
+
+.iiidem-teacher-student-detail__weekend {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.iiidem-teacher-student-detail__weekend:last-child {
+    border-bottom: 0;
+}
+
+.iiidem-teacher-student-detail__help {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
 }
