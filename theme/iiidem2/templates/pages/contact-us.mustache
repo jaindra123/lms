@@ -1,0 +1,78 @@
+{{!
+    @template theme_iiidem2/pages/contact-us
+
+    Public Contact Us page (/contact-us/).
+}}
+{{> theme_iiidem2/navbar }}
+
+<main class="iiidem-marketing-page" id="contact-us-page">
+
+    <section class="iiidem-page-hero">
+        <div class="container">
+            <nav class="iiidem-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{config.wwwroot}}">{{#str}}home{{/str}}</a>
+                <span aria-hidden="true">/</span>
+                <span>{{pagetitle}}</span>
+            </nav>
+            <h1 class="iiidem-page-hero__title">{{pagetitle}}</h1>
+            <p class="iiidem-page-hero__lead">{{pagesubtitle}}</p>
+        </div>
+    </section>
+
+    <section class="iiidem-contact-section">
+        <div class="container">
+            <div class="row g-4">
+                {{#hascontactinfo}}
+                <div class="col-lg-5">
+                    <div class="card iiidem-contact-card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <h2 class="h4 mb-4">{{#str}}contactus_getintouch, theme_iiidem2{{/str}}</h2>
+                            {{#hasaddress}}
+                            <div class="iiidem-contact-item mb-3">
+                                <strong class="d-block text-muted small mb-1">{{#str}}address{{/str}}</strong>
+                                <span>{{contactaddress}}</span>
+                            </div>
+                            {{/hasaddress}}
+                            {{#hasemail}}
+                            <div class="iiidem-contact-item mb-3">
+                                <strong class="d-block text-muted small mb-1">{{#str}}email{{/str}}</strong>
+                                <a href="{{contactemailurl}}">{{contactemail}}</a>
+                            </div>
+                            {{/hasemail}}
+                            {{#hasphone}}
+                            <div class="iiidem-contact-item">
+                                <strong class="d-block text-muted small mb-1">{{#str}}phone{{/str}}</strong>
+                                <a href="{{contactphoneurl}}">{{contactphone}}</a>
+                            </div>
+                            {{/hasphone}}
+                        </div>
+                    </div>
+                </div>
+                {{/hascontactinfo}}
+
+                <div class="{{#hascontactinfo}}col-lg-7{{/hascontactinfo}}{{^hascontactinfo}}col-12 col-lg-8 mx-auto{{/hascontactinfo}}">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h2 class="h4 mb-4">{{#str}}contactus_sendmessage, theme_iiidem2{{/str}}</h2>
+                            {{#formsent}}
+                            <div class="alert alert-success" role="alert">
+                                {{#str}}contactusformsent, theme_iiidem2{{/str}}
+                            </div>
+                            {{/formsent}}
+                            <div class="iiidem-contact-form">
+                                {{{formhtml}}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<div class="d-none" aria-hidden="true">
+    {{{ output.main_content }}}
+</div>
+
+{{> theme_iiidem2/page_end }}

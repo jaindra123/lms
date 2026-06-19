@@ -1,0 +1,402 @@
+/**
+ * IIIDEM custom login page (pagelayout-login).
+ */
+
+:root {
+    --iiidem-login-blue: #0b3d91;
+    --iiidem-login-blue-dark: #082d6b;
+    --iiidem-login-blue-light: #1356c5;
+    --iiidem-login-panel: #f4f7fb;
+    --iiidem-login-card: #ffffff;
+    --iiidem-login-text: #1a2b4a;
+    --iiidem-login-muted: #5c6b82;
+    --iiidem-login-radius: 16px;
+}
+
+/* Reset default Moodle login chrome */
+body.iiidem-login-page .iiidem-site-header,
+body.iiidem-login-page .navbar.fixed-top,
+body.iiidem-login-page #page-footer,
+body.iiidem-login-page .footer-popover,
+body.iiidem-login-page .iiidem-footer {
+    display: none !important;
+}
+
+body.iiidem-login-page,
+body.iiidem-login-page #page-wrapper,
+body.iiidem-login-page #page,
+body.pagelayout-login.iiidem-login-page #page {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: var(--iiidem-login-panel) !important;
+    background-image: none !important;
+}
+
+body.iiidem-login-page #region-main-box,
+body.iiidem-login-page #region-main,
+body.iiidem-login-page #page-content {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    background: transparent;
+}
+
+.iiidem-login-shell {
+    min-height: 100vh;
+}
+
+.iiidem-login-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 42%) 1fr;
+    min-height: 100vh;
+}
+
+/* Brand panel */
+.iiidem-login-layout__brand {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2.5rem 2.75rem;
+    color: #fff;
+    background:
+        linear-gradient(155deg, rgba(11, 61, 145, 0.92) 0%, rgba(8, 45, 107, 0.96) 55%, rgba(19, 86, 197, 0.88) 100%),
+        var(--iiidem-login-blue);
+    overflow: hidden;
+}
+
+.iiidem-login-layout[style*="--iiidem-login-bg-image"] .iiidem-login-layout__brand {
+    background:
+        linear-gradient(155deg, rgba(11, 61, 145, 0.9) 0%, rgba(8, 45, 107, 0.94) 100%),
+        var(--iiidem-login-bg-image) center / cover no-repeat;
+}
+
+.iiidem-login-layout__brand::after {
+    content: "";
+    position: absolute;
+    right: -4rem;
+    bottom: -4rem;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+}
+
+.iiidem-login-layout__brand-logo {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.iiidem-login-layout__logo-img {
+    max-height: 72px;
+    width: auto;
+    padding: 0.45rem 0.65rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.iiidem-login-layout__logo-text {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.iiidem-login-layout__brand-body {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+.iiidem-login-layout__eyebrow {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.iiidem-login-layout__title {
+    margin: 0 0 1.75rem;
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 700;
+    line-height: 1.25;
+    max-width: 22ch;
+}
+
+.iiidem-login-layout__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.iiidem-login-layout__features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    opacity: 0.95;
+}
+
+.iiidem-login-layout__features .fa {
+    margin-top: 0.15rem;
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.iiidem-login-layout__nav {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+}
+
+.iiidem-login-layout__nav a {
+    color: rgba(255, 255, 255, 0.92);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.iiidem-login-layout__nav a:hover,
+.iiidem-login-layout__nav a:focus {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* Form panel */
+.iiidem-login-layout__panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: var(--iiidem-login-panel);
+}
+
+.iiidem-login-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 2.25rem 2rem 2rem;
+    background: var(--iiidem-login-card);
+    border-radius: var(--iiidem-login-radius);
+    box-shadow: 0 12px 40px rgba(11, 61, 145, 0.1);
+    border: 1px solid rgba(11, 61, 145, 0.08);
+}
+
+.iiidem-login-card__header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.iiidem-login-card__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--iiidem-login-text);
+}
+
+.iiidem-login-card__subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--iiidem-login-muted);
+}
+
+/* Core login form override */
+.iiidem-loginform__core-logo {
+    display: none !important;
+}
+
+.iiidem-loginform__alert {
+    border-radius: 10px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.iiidem-loginform__field {
+    margin-bottom: 1.1rem;
+}
+
+.iiidem-loginform__label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--iiidem-login-text);
+}
+
+.iiidem-loginform__input {
+    min-height: 48px;
+    border-radius: 10px;
+    border: 1px solid #c8d4e6;
+    padding: 0.65rem 0.9rem;
+    font-size: 1rem;
+    background: #fafbfd;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.iiidem-loginform__input:focus {
+    border-color: var(--iiidem-login-blue-light);
+    box-shadow: 0 0 0 3px rgba(19, 86, 197, 0.15);
+    background: #fff;
+}
+
+.iiidem-loginform__actions {
+    margin-top: 0.25rem;
+}
+
+.iiidem-loginform__submit {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 1rem;
+    background: var(--iiidem-login-blue) !important;
+    border-color: var(--iiidem-login-blue) !important;
+    box-shadow: 0 4px 14px rgba(11, 61, 145, 0.28);
+}
+
+.iiidem-loginform__submit:hover,
+.iiidem-loginform__submit:focus {
+    background: var(--iiidem-login-blue-dark) !important;
+    border-color: var(--iiidem-login-blue-dark) !important;
+}
+
+.iiidem-loginform__forgot {
+    margin-top: 0.85rem;
+    text-align: center;
+}
+
+.iiidem-loginform__forgot a {
+    font-size: 0.9rem;
+    color: var(--iiidem-login-blue-light);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.iiidem-loginform__forgot a:hover {
+    text-decoration: underline;
+}
+
+.iiidem-loginform__divider {
+    margin: 1.35rem 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.iiidem-loginform__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--iiidem-login-text);
+}
+
+.iiidem-loginform__idp-btn,
+.iiidem-loginform__guest-btn {
+    width: 100%;
+    border-radius: 10px;
+    min-height: 44px;
+}
+
+.iiidem-loginform__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 1rem;
+    margin-top: 1.25rem;
+    padding-top: 0.25rem;
+}
+
+.iiidem-loginform__cookies {
+    font-size: 0.85rem;
+    color: var(--iiidem-login-muted);
+    text-decoration: none;
+    padding: 0;
+}
+
+.iiidem-loginform__cookies:hover {
+    color: var(--iiidem-login-blue);
+}
+
+.iiidem-login-signup {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e8edf5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.iiidem-login-signup__label {
+    font-size: 0.9rem;
+    color: var(--iiidem-login-muted);
+}
+
+.iiidem-login-signup__btn {
+    border-radius: 999px;
+    padding: 0.55rem 2rem;
+    font-weight: 600;
+    min-width: 10rem;
+    border-color: var(--iiidem-login-blue);
+    color: var(--iiidem-login-blue);
+}
+
+.iiidem-login-signup__btn:hover {
+    background: var(--iiidem-login-blue);
+    color: #fff;
+}
+
+/* Hide default Moodle login wrapper styles */
+.iiidem-login-page .login-wrapper,
+.iiidem-login-page .login-container {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    max-width: none;
+}
+
+@media (max-width: 900px) {
+    .iiidem-login-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    .iiidem-login-layout__brand {
+        padding: 1.75rem 1.5rem;
+    }
+
+    .iiidem-login-layout__brand-body {
+        padding: 1rem 0;
+    }
+
+    .iiidem-login-layout__title {
+        font-size: 1.35rem;
+        max-width: none;
+    }
+
+    .iiidem-login-layout__features {
+        gap: 0.65rem;
+    }
+
+    .iiidem-login-layout__panel {
+        padding: 1.25rem 1rem 2rem;
+    }
+
+    .iiidem-login-card {
+        padding: 1.75rem 1.25rem 1.5rem;
+        box-shadow: 0 8px 24px rgba(11, 61, 145, 0.08);
+    }
+}

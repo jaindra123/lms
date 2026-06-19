@@ -194,6 +194,10 @@
                         {{/hasinstructors}}
                         {{> theme_iiidem2/course/faq }}
 
+                        {{#showstudentreviewsection}}
+                        {{> theme_iiidem2/course/student_reviews }}
+                        {{/showstudentreviewsection}}
+
                         <div class="d-none" aria-hidden="true">
                             {{{ maincontentplaceholder }}}
                         </div>
@@ -243,6 +247,11 @@ require(['theme_iiidem2/curriculum_completion'], function(CurriculumCompletion) 
     });
 });
 {{/curriculumtrackcompletion}}
+{{#showstudentreviewsection}}
+require(['theme_iiidem2/course_reviews'], function(CourseReviews) {
+    CourseReviews.init();
+});
+{{/showstudentreviewsection}}
 {{#pnbpaymentsuccess}}
 require(['jquery'], function() {
     setTimeout(function() {

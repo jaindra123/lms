@@ -1,0 +1,30 @@
+{{!
+    @template theme_iiidem2/dashboard/support_card
+
+    Student dashboard support hub card.
+}}
+<section class="iiidem-student-section mb-4" id="support">
+    <article class="iiidem-student-panel iiidem-student-support">
+        <header class="iiidem-student-panel__header">
+            <div class="iiidem-student-panel__title-wrap">
+                <span class="iiidem-student-panel__icon"><span class="fa fa-life-ring" aria-hidden="true"></span></span>
+                <h2 class="iiidem-student-panel__title">{{#str}}dashboardsupporttitle, theme_iiidem2{{/str}}</h2>
+            </div>
+            <a href="{{{supportfaqsurl}}}" class="iiidem-student-section__link">{{#str}}viewall, theme_iiidem2{{/str}}</a>
+        </header>
+        <div class="iiidem-student-panel__body">
+            <p class="iiidem-student-support__lead mb-3">{{#str}}dashboardsupportlead, theme_iiidem2{{/str}}</p>
+            <div class="iiidem-student-support__grid">
+                {{#supportlinks}}
+                <a href="{{{url}}}" class="iiidem-student-support__tile">
+                    <span class="fa {{icon}}" aria-hidden="true"></span>
+                    <span class="iiidem-student-support__label">{{label}}</span>
+                    {{#hasbadge}}
+                    <span class="iiidem-student-support__badge" aria-label="{{badge}} open">{{badge}}</span>
+                    {{/hasbadge}}
+                </a>
+                {{/supportlinks}}
+            </div>
+        </div>
+    </article>
+</section>

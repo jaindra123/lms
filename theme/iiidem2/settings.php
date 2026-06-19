@@ -265,6 +265,81 @@ if ($ADMIN->fulltree) {
 
     /*
     |--------------------------------------------------------------------------
+    | Course testimonials (course view page)
+    |--------------------------------------------------------------------------
+    */
+    $page = new admin_settingpage(
+        'theme_iiidem2_testimonials',
+        get_string('testimonialssettings', 'theme_iiidem2')
+    );
+
+    $page->add(new admin_setting_configtext(
+        'theme_iiidem2/testimonialstitle',
+        get_string('testimonialstitle', 'theme_iiidem2'),
+        get_string('testimonialstitle_desc', 'theme_iiidem2'),
+        get_string('testimonialstitle_default', 'theme_iiidem2')
+    ));
+
+    $maxtestimonials = 4;
+    for ($i = 1; $i <= $maxtestimonials; $i++) {
+        $page->add(new admin_setting_heading(
+            'theme_iiidem2/testimonialheading' . $i,
+            get_string('testimonialheading', 'theme_iiidem2', $i),
+            get_string('testimonialheading_desc', 'theme_iiidem2')
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'theme_iiidem2/testimonialname' . $i,
+            get_string('testimonialname', 'theme_iiidem2'),
+            '',
+            ''
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'theme_iiidem2/testimonialsubtitle' . $i,
+            get_string('testimonialsubtitle', 'theme_iiidem2'),
+            get_string('testimonialsubtitle_desc', 'theme_iiidem2'),
+            ''
+        ));
+
+        $page->add(new admin_setting_configtextarea(
+            'theme_iiidem2/testimonialquote' . $i,
+            get_string('testimonialquote', 'theme_iiidem2'),
+            '',
+            '',
+            PARAM_TEXT
+        ));
+
+        $page->add(new admin_setting_configselect(
+            'theme_iiidem2/testimonialstars' . $i,
+            get_string('testimonialstars', 'theme_iiidem2'),
+            get_string('testimonialstars_desc', 'theme_iiidem2'),
+            5,
+            [
+                5 => '5',
+                4 => '4',
+                3 => '3',
+                2 => '2',
+                1 => '1',
+            ]
+        ));
+
+        $setting = new admin_setting_configstoredfile(
+            'theme_iiidem2/testimonialimage' . $i,
+            get_string('testimonialimage', 'theme_iiidem2'),
+            get_string('testimonialimage_desc', 'theme_iiidem2'),
+            'testimonialimage' . $i,
+            0,
+            ['maxfiles' => 1, 'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp']]
+        );
+        $setting->set_updatedcallback('theme_reset_all_caches');
+        $page->add($setting);
+    }
+
+    $settings->add($page);
+
+    /*
+    |--------------------------------------------------------------------------
     | About International IDEA (homepage)
     |--------------------------------------------------------------------------
     */

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/iiidem_livequiz/db" VERSION="2026061600" COMMENT="Live session MCQ during Webex classes">
+    <TABLES>
+        <TABLE NAME="local_iiidem_livequiz_session" COMMENT="A live question set released during class">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="teacherid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="status" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="false"/>
+                <FIELD NAME="timeclosed" TYPE="int" LENGTH="10" NOTNULL="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+                <KEY NAME="teacherid" TYPE="foreign" FIELDS="teacherid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="course_status_ix" UNIQUE="false" FIELDS="courseid, status"/>
+                <INDEX NAME="cmid_ix" UNIQUE="false" FIELDS="cmid"/>
+            </INDEXES>
+        </TABLE>
+        <TABLE NAME="local_iiidem_livequiz_question" COMMENT="MCQ in a live session">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="sessionid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="questiontext" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="opt0" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="opt1" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="opt2" TYPE="char" LENGTH="255" NOTNULL="false"/>
+                <FIELD NAME="opt3" TYPE="char" LENGTH="255" NOTNULL="false"/>
+                <FIELD NAME="correctindex" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="-1"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="sessionid" TYPE="foreign" FIELDS="sessionid" REFTABLE="local_iiidem_livequiz_session" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="session_sort_ix" UNIQUE="false" FIELDS="sessionid, sortorder"/>
+            </INDEXES>
+        </TABLE>
+        <TABLE NAME="local_iiidem_livequiz_answer" COMMENT="Student choice for a live question">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="sessionid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="choiceindex" TYPE="int" LENGTH="2" NOTNULL="true"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="sessionid" TYPE="foreign" FIELDS="sessionid" REFTABLE="local_iiidem_livequiz_session" REFFIELDS="id"/>
+                <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="local_iiidem_livequiz_question" REFFIELDS="id"/>
+                <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="session_question_user_uix" UNIQUE="true" FIELDS="sessionid, questionid, userid"/>
+                <INDEX NAME="session_user_ix" UNIQUE="false" FIELDS="sessionid, userid"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

@@ -652,6 +652,67 @@ body.iiidem-teacher-dashboard-page #page-navbar {
     color: #64748b;
 }
 
+.iiidem-teacher-assessments__course {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-assessments__table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.iiidem-teacher-assessments__quiz-name {
+    font-weight: 600;
+    color: #0a2540;
+}
+
+.iiidem-teacher-assessments__quiz-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.iiidem-teacher-assessments__score {
+    display: inline-block;
+    min-width: 3rem;
+    font-weight: 700;
+    color: #0a7c6e;
+}
+
+.iiidem-teacher-assessments__score--empty {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.iiidem-teacher-assessments__subtitle {
+    font-weight: 700;
+    color: #0a2540;
+    margin: 1.5rem 0 1rem;
+}
+
+.iiidem-teacher-assessments__student-link {
+    font-weight: 600;
+    color: #004274;
+    text-decoration: none;
+}
+
+.iiidem-teacher-assessments__student-link:hover {
+    text-decoration: underline;
+}
+
+.iiidem-teacher-pill--submitted {
+    background: #e6f7f4;
+    color: #0a7c6e;
+}
+
+.iiidem-teacher-pill--pending {
+    background: #fff4e5;
+    color: #b45309;
+}
+
 .iiidem-teacher-certificates__subtitle {
     font-size: 0.85rem;
     color: #64748b;

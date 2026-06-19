@@ -176,6 +176,31 @@ function theme_iiidem2_get_footer_settings(): array {
 }
 
 /**
+ * Navbar logo URL: Site administration logos first, theme header logo as fallback.
+ *
+ * @return string Empty when no logo is configured.
+ */
+function theme_iiidem2_get_navbar_logo_url(): string {
+    global $OUTPUT;
+
+    // Prefer the main site logo (wide upload from Appearance → Logos).
+    $full = $OUTPUT->get_logo_url(360, 104);
+    if ($full) {
+        return $full->out(false);
+    }
+
+    $compact = $OUTPUT->get_compact_logo_url(360, 104);
+    if ($compact) {
+        return $compact->out(false);
+    }
+
+    $theme = theme_config::load('iiidem2');
+    $themeurl = $theme->setting_file_url('headerlogo', 'headerlogo');
+
+    return $themeurl ?: '';
+}
+
+/**
  * Footer + global template context for layouts.
  *
  * @return array
@@ -185,6 +210,7 @@ function theme_iiidem2_get_footer_context(): array {
 
     $theme = theme_config::load('iiidem2');
     $systemcontext = context_system::instance();
+    $navbarlogo = theme_iiidem2_get_navbar_logo_url();
 
     return array_merge(theme_iiidem2_get_footer_settings(), [
         'sitename' => format_string($SITE->shortname, true, [
@@ -195,7 +221,9 @@ function theme_iiidem2_get_footer_context(): array {
             'wwwroot' => $CFG->wwwroot,
             'homeurl' => new moodle_url('/'),
         ],
-        'headerlogo' => $theme->setting_file_url('headerlogo', 'headerlogo'),
+        'hasnavbarlogo' => !empty($navbarlogo),
+        'navbarlogo' => $navbarlogo,
+        'headerlogo' => $navbarlogo,
         'footerlogo' => $theme->setting_file_url('footerlogo', 'footerlogo'),
     ]);
 }
@@ -1113,6 +1141,123 @@ function theme_iiidem2_get_program_governance_context(): array {
 }
 
 /**
+ * Star rating rows for testimonial cards (1–5 filled stars).
+ *
+ * @param int $rating
+ * @return array
+ */
+function theme_iiidem2_get_star_rating_rows(int $rating): array {
+    $rating = max(1, min(5, $rating));
+    $rows = [];
+    for ($i = 1; $i <= 5; $i++) {
+        $rows[] = ['filled' => $i <= $rating];
+    }
+    return $rows;
+}
+
+/**
+ * Learner testimonials for the course view page (admin-managed quotes, not live Moodle ratings).
+ *
+ * @return array
+ */
+function theme_iiidem2_get_course_testimonials_context(): array {
+    $title = trim((string) get_config('theme_iiidem2', 'testimonialstitle'));
+    if ($title === '') {
+        $title = get_string('testimonialstitle_default', 'theme_iiidem2');
+    }
+
+    $fs = get_file_storage();
+    $context = context_system::instance();
+    $testimonials = [];
+
+    for ($i = 1; $i <= 4; $i++) {
+        $name = trim((string) get_config('theme_iiidem2', 'testimonialname' . $i));
+        $quote = trim((string) get_config('theme_iiidem2', 'testimonialquote' . $i));
+        if ($name === '' || $quote === '') {
+            continue;
+        }
+
+        $subtitle = trim((string) get_config('theme_iiidem2', 'testimonialsubtitle' . $i));
+        $stars = (int) get_config('theme_iiidem2', 'testimonialstars' . $i);
+        if ($stars < 1 || $stars > 5) {
+            $stars = 5;
+        }
+
+        $imageurl = '';
+        $files = $fs->get_area_files(
+            $context->id,
+            'theme_iiidem2',
+            'testimonialimage' . $i,
+            0,
+            'itemid, filepath, filename',
+            false
+        );
+        if ($files) {
+            $file = reset($files);
+            $imageurl = moodle_url::make_pluginfile_url(
+                $file->get_contextid(),
+                $file->get_component(),
+                $file->get_filearea(),
+                $file->get_itemid(),
+                $file->get_filepath(),
+                $file->get_filename()
+            )->out(false);
+        }
+
+        $initials = '';
+        $parts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY);
+        if (!empty($parts)) {
+            $initials = strtoupper(mb_substr($parts[0], 0, 1));
+            if (count($parts) > 1) {
+                $initials .= strtoupper(mb_substr($parts[count($parts) - 1], 0, 1));
+            }
+        }
+
+        $testimonials[] = [
+            'name' => $name,
+            'subtitle' => $subtitle,
+            'hassubtitle' => $subtitle !== '',
+            'quote' => $quote,
+            'stars' => $stars,
+            'starrating' => theme_iiidem2_get_star_rating_rows($stars),
+            'hasimage' => $imageurl !== '',
+            'imageurl' => $imageurl,
+            'imagealt' => $name,
+            'initials' => $initials,
+        ];
+    }
+
+    return [
+        'testimonialstitle' => $title,
+        'testimonials' => $testimonials,
+        'hastestimonials' => !empty($testimonials),
+    ];
+}
+
+/**
+ * Real enrolled-student reviews (local_coursereviews plugin).
+ *
+ * @param stdClass $course
+ * @return array
+ */
+function theme_iiidem2_get_course_student_reviews_context(stdClass $course): array {
+    global $CFG;
+
+    $empty = [
+        'showstudentreviewsection' => false,
+        'hasstudentreviews' => false,
+    ];
+
+    $lib = $CFG->dirroot . '/local/coursereviews/lib.php';
+    if (!is_readable($lib)) {
+        return $empty;
+    }
+
+    require_once($lib);
+    return local_coursereviews_get_course_context($course);
+}
+
+/**
  * About International IDEA block for the front page.
  *
  * @return array Mustache context: aboutideatitle, aboutideabody, hasaboutideabody.
@@ -1250,6 +1395,26 @@ function theme_iiidem2_get_marketing_extra_context(): array {
 }
 
 /**
+ * Emit inner &lt;head&gt; HTML for pages that bypass theme_iiidem2/head.mustache.
+ *
+ * @return void
+ */
+function theme_iiidem2_output_page_head(): void {
+    global $OUTPUT;
+
+    echo '<title>' . $OUTPUT->page_title() . '</title>' . "\n";
+    echo html_writer::empty_tag('link', [
+        'rel' => 'shortcut icon',
+        'href' => $OUTPUT->favicon()->out(false),
+    ]) . "\n";
+    echo $OUTPUT->standard_head_html();
+    echo html_writer::empty_tag('meta', [
+        'name' => 'viewport',
+        'content' => 'width=device-width, initial-scale=1.0',
+    ]) . "\n";
+}
+
+/**
  * Render a public page without $OUTPUT->header() (avoids forced login on course URLs).
  *
  * Uses the same approach as the site front page layout.
@@ -1280,7 +1445,7 @@ function theme_iiidem2_render_public_page(
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
 <head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
+    <?php theme_iiidem2_output_page_head(); ?>
 </head>
 <body <?php echo $OUTPUT->body_attributes([$bodyclass]); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
@@ -1625,6 +1790,15 @@ function theme_iiidem2_apply_custom_quiz_page_assets(?moodle_page $page = null):
         $page->add_body_class('iiidem-custom-quiz-cmid-' . $cmid);
     }
 
+    if (!theme_iiidem2_is_quiz_attempt_page($page) && $cm) {
+        $page->add_body_class('iiidem-quiz-view-page');
+        $context = context_module::instance($cm->id);
+        if (!has_capability('mod/quiz:manage', $context)
+                && !has_capability('moodle/course:manageactivities', $context)) {
+            $page->add_body_class('iiidem-quiz-student-ui');
+        }
+    }
+
     $page->requires->css(new moodle_url('/theme/iiidem2/style/quiz-mcq.css'));
     $page->requires->js_call_amd('theme_iiidem2/quiz_mcq', 'init');
 }
@@ -1666,9 +1840,16 @@ function theme_iiidem2_get_custom_quiz_template_context(): array {
         $watermark = (new moodle_url('/theme/iiidem2/pix/iiidem-white-logo-footer.png'))->out(false);
     }
 
+    $isattempt = theme_iiidem2_is_quiz_attempt_url($PAGE);
+    $canmanage = has_capability('mod/quiz:manage', $context)
+        || has_capability('moodle/course:manageactivities', $context);
+
     return [
         'iiidemcustomquiz' => true,
-        'iiidemquizattempt' => theme_iiidem2_is_quiz_attempt_url($PAGE),
+        'iiidemquizattempt' => $isattempt,
+        'isquizviewpage' => !$isattempt,
+        'showquizmanageui' => $canmanage,
+        'hasquizbacklink' => $isattempt,
         'quizcmid' => $cm->id,
         'quizname' => format_string($quiz->name, true, ['context' => $context]),
         'quizintro' => format_text($quiz->intro, $quiz->introformat, ['context' => $context]),
@@ -1677,6 +1858,10 @@ function theme_iiidem2_get_custom_quiz_template_context(): array {
         'quiztimelimit' => $timelimit,
         'hasquiztimelimit' => !empty($quiz->timelimit),
         'quizviewurl' => (new moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(false),
+        'quizcourseurl' => (new moodle_url('/course/view.php', ['id' => $cm->course]))->out(false),
+        'quizbackurl' => $isattempt
+            ? (new moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(false)
+            : (new moodle_url('/course/view.php', ['id' => $cm->course]))->out(false),
         'quizwatermarkurl' => $watermark ? $watermark : '',
         'hasquizwatermark' => !empty($watermark),
     ];
@@ -1826,6 +2011,54 @@ function theme_iiidem2_apply_live_class_page_assets(?moodle_page $page = null): 
     }
 
     $page->requires->css(new moodle_url('/theme/iiidem2/style/live-class.css'));
+
+    global $CFG;
+    $lib = $CFG->dirroot . '/local/iiidem_livequiz/lib.php';
+    if (file_exists($lib)) {
+        require_once($lib);
+        if (local_iiidem_livequiz_is_available()) {
+            $page->requires->js(new moodle_url('/local/iiidem_livequiz/livequiz.js'), true);
+        }
+    }
+}
+
+/**
+ * Live session MCQ panel context (local_iiidem_livequiz).
+ *
+ * @param int $cmid
+ * @param int $courseid
+ * @return array
+ */
+function theme_iiidem2_get_live_quiz_page_context(int $cmid, int $courseid): array {
+    global $CFG;
+
+    $defaults = [
+        'haslivequiz' => false,
+    ];
+
+    if (!isloggedin() || isguestuser()) {
+        return $defaults;
+    }
+
+    $lib = $CFG->dirroot . '/local/iiidem_livequiz/lib.php';
+    if (!file_exists($lib)) {
+        return $defaults;
+    }
+
+    require_once($lib);
+    if (!local_iiidem_livequiz_is_available()) {
+        return $defaults;
+    }
+
+    $context = local_iiidem_livequiz_get_live_page_context($cmid, $courseid);
+    $context['livequizwaiting'] = get_string('livequizwaiting', 'theme_iiidem2');
+    $context['livequizthanks'] = get_string('livequizthanks', 'theme_iiidem2');
+    $context['livequizsubmit'] = get_string('livequizsubmit', 'theme_iiidem2');
+    $context['livequiztitle'] = get_string('livequiztitle', 'theme_iiidem2');
+    $context['livequizdesc'] = get_string('livequizdesc', 'theme_iiidem2');
+    $context['livequizteachermeta'] = get_string('livequizteachermeta', 'theme_iiidem2');
+
+    return $context;
 }
 
 /**
@@ -1908,9 +2141,10 @@ function theme_iiidem2_get_live_class_template_context(): array {
         ],
     ];
 
-    return [
+    return array_merge([
         'iiidemcustomliveclass' => true,
         'liveclasscmid' => $cm->id,
+        'liveclasscourseid' => (int) $cm->course,
         'liveclassname' => format_string($pagerecord->name, true, ['context' => $context]),
         'liveclassjoinurl' => $joinurl,
         'hasliveclassjoinurl' => $joinurl !== '',
@@ -1918,7 +2152,7 @@ function theme_iiidem2_get_live_class_template_context(): array {
         'liveclassmodified' => $modified,
         'hasliveclassmodified' => $modified !== '',
         'liveclassfeatures' => $features,
-    ];
+    ], theme_iiidem2_get_live_quiz_page_context((int) $cm->id, (int) $cm->course));
 }
 
 /**
@@ -1992,6 +2226,41 @@ function theme_iiidem2_get_course_detail_url(stdClass $course): string {
  */
 function theme_iiidem2_get_register_url(): string {
     return (new moodle_url('/register/'))->out(false);
+}
+
+/**
+ * Template context for the custom login page layout.
+ *
+ * @return array
+ */
+function theme_iiidem2_get_login_page_context(): array {
+    global $CFG, $SITE;
+
+    $theme = theme_config::load('iiidem2');
+    $navbarlogo = theme_iiidem2_get_navbar_logo_url();
+    $loginbackground = $theme->setting_file_url('loginbackgroundimage', 'loginbackgroundimage');
+
+    return [
+        'hasloginlogo' => !empty($navbarlogo),
+        'loginlogo' => $navbarlogo,
+        'hasloginbackground' => !empty($loginbackground),
+        'loginbackgroundurl' => $loginbackground ?: '',
+        'registerurl' => theme_iiidem2_get_register_url(),
+        'loginsignuplabel' => get_string('loginsignup', 'theme_iiidem2'),
+        'logintagline' => get_string('logintagline', 'theme_iiidem2'),
+        'loginwelcome' => get_string('loginwelcome', 'theme_iiidem2'),
+        'loginsubtitle' => get_string('loginsubtitle', 'theme_iiidem2'),
+        'loginfeature1' => get_string('loginfeature1', 'theme_iiidem2'),
+        'loginfeature2' => get_string('loginfeature2', 'theme_iiidem2'),
+        'loginfeature3' => get_string('loginfeature3', 'theme_iiidem2'),
+        'homeurl' => (new moodle_url('/'))->out(false),
+        'abouturl' => $CFG->wwwroot . '/about-us/',
+        'contacturl' => $CFG->wwwroot . '/contact-us/',
+        'sitename' => format_string($SITE->shortname, true, [
+            'context' => context_system::instance(),
+            'escape' => false,
+        ]),
+    ];
 }
 
 /**
@@ -2087,7 +2356,7 @@ function theme_iiidem2_render_register_page(?\theme_iiidem2\form\register_form $
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
 <head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
+    <?php theme_iiidem2_output_page_head(); ?>
 </head>
 <body <?php echo $OUTPUT->body_attributes(['pagelayout-marketing', 'iiidem-register-page']); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
@@ -2327,6 +2596,8 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         $quizzes,
         theme_iiidem2_get_course_fee_payment_context($course),
         theme_iiidem2_get_program_governance_context(),
+        theme_iiidem2_get_course_testimonials_context(),
+        theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
         [
             'sitename' => format_string($SITE->shortname, true, [
@@ -3439,7 +3710,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
 <head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
+    <?php theme_iiidem2_output_page_head(); ?>
 </head>
 <body <?php echo $OUTPUT->body_attributes(['pagelayout-marketing', 'iiidem-enrol-preview']); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
@@ -3480,7 +3751,7 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
 <head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
+    <?php theme_iiidem2_output_page_head(); ?>
 </head>
 <body <?php echo $OUTPUT->body_attributes(['pagelayout-marketing', 'iiidem-course-detail']); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>

@@ -44,9 +44,17 @@ define(['core/config'], function(cfg) {
      * @param {HTMLFormElement} form
      */
     function styleSubmitButtons(form) {
-        form.querySelectorAll('input[type="submit"]').forEach((btn) => {
+        form.querySelectorAll('.submitbtns input[type="submit"]').forEach((btn) => {
             const value = (btn.value || '').trim().toLowerCase();
-            if (value === 'next page' || value === 'next' || value.indexOf('finish attempt') === 0) {
+            const name = (btn.name || '').toLowerCase();
+
+            if (name === 'previous' || value.indexOf('previous') === 0) {
+                btn.value = 'Previous';
+                return;
+            }
+
+            if (name === 'next' || value === 'next page' || value === 'next'
+                    || value.indexOf('finish attempt') === 0 || value.indexOf('finish') === 0) {
                 btn.value = 'Submit';
             }
         });
@@ -109,6 +117,41 @@ define(['core/config'], function(cfg) {
     }
 
     /**
+     * Use Moodle's real slot number (1, 2, 3…) inline with question text.
+     *
+     * @param {HTMLFormElement} form
+     */
+    function fixQuestionNumbers(form) {
+        form.querySelectorAll('.que').forEach((que) => {
+            if (que.dataset.iiidemNumbered === '1') {
+                return;
+            }
+
+            const qno = que.querySelector('.info .qno');
+            const number = qno ? qno.textContent.trim() : '';
+            if (number === '') {
+                return;
+            }
+
+            const qtext = que.querySelector('.formulation .qtext');
+            if (!qtext) {
+                return;
+            }
+
+            const target = qtext.querySelector('p') || qtext.querySelector('div') || qtext;
+            const prefix = number + '. ';
+
+            if (target.firstChild && target.firstChild.nodeType === Node.TEXT_NODE) {
+                target.firstChild.textContent = prefix + target.firstChild.textContent.replace(/^\s+/, '');
+            } else {
+                target.insertAdjacentText('afterbegin', prefix);
+            }
+
+            que.dataset.iiidemNumbered = '1';
+        });
+    }
+
+    /**
      * Initialise quiz MCQ styling helpers.
      */
     function init() {
@@ -122,6 +165,7 @@ define(['core/config'], function(cfg) {
         document.body.classList.add('iiidem-quiz-attempt-active');
         hideQuizNavBlock();
         ensureMcqCardWrapper();
+        fixQuestionNumbers(form);
 
         form.classList.add('iiidem-quiz-responseform');
         styleSubmitButtons(form);

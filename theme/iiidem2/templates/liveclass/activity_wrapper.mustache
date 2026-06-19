@@ -57,6 +57,23 @@
             </div>
 
             <div class="iiidem-live-class__features-col">
+                {{#haslivequiz}}
+                <section class="iiidem-livequiz" aria-labelledby="iiidem-livequiz-heading">
+                    <h2 id="iiidem-livequiz-heading" class="iiidem-livequiz__heading">{{livequiztitle}}</h2>
+                    <p class="iiidem-livequiz__desc">{{livequizdesc}}</p>
+                    <div id="iiidem-livequiz-root"
+                         class="iiidem-livequiz__root"
+                         data-apiurl="{{livequizapiurl}}"
+                         data-courseid="{{livequizcourseid}}"
+                         data-cmid="{{livequizcmid}}"
+                         data-sesskey="{{livequizsesskey}}"
+                         data-waiting="{{livequizwaiting}}"
+                         data-thanks="{{livequizthanks}}"
+                         data-submit="{{livequizsubmit}}"
+                         data-teachermeta="{{livequizteachermeta}}">
+                    </div>
+                </section>
+                {{/haslivequiz}}
                 <ul class="iiidem-live-class__features">
                     {{#liveclassfeatures}}
                     <li class="iiidem-live-class__feature">

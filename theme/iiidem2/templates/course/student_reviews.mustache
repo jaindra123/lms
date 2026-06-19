@@ -1,0 +1,126 @@
+{{!
+    @template theme_iiidem2/course/student_reviews
+
+    Real reviews submitted by enrolled students (local_coursereviews).
+}}
+{{#showstudentreviewsection}}
+<section class="iiidem-course-section iiidem-student-reviews" id="student-reviews">
+    <div class="container">
+        <header class="iiidem-course-section__header mb-4">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+                <div>
+                    <h2 class="iiidem-course-section__title mb-2">{{studentreviewstitle}}</h2>
+                    {{#hasaveragerating}}
+                    <div class="iiidem-student-reviews__summary">
+                        <span class="iiidem-student-reviews__average">{{averageratingdisplay}}</span>
+                        <span class="iiidem-student-reviews__stars">
+                            {{#averagestarrating}}
+                            <span class="fa fa-star{{^filled}}-o{{/filled}}" aria-hidden="true"></span>
+                            {{/averagestarrating}}
+                        </span>
+                        <span class="iiidem-student-reviews__count text-muted">
+                            {{#str}}studentreviewscount, theme_iiidem2, {{reviewcount}} {{/str}}
+                        </span>
+                    </div>
+                    {{/hasaveragerating}}
+                </div>
+            </div>
+        </header>
+
+        {{#canreview}}
+        <div class="card border-0 shadow-sm mb-4 iiidem-review-form-card">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">
+                    {{#hasuserreview}}
+                    {{#str}}studentreviewseditheading, theme_iiidem2{{/str}}
+                    {{/hasuserreview}}
+                    {{^hasuserreview}}
+                    {{#str}}studentreviewswriteheading, theme_iiidem2{{/str}}
+                    {{/hasuserreview}}
+                </h3>
+                <form class="iiidem-review-form" method="post" action="{{reviewformurl}}">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    <input type="hidden" name="courseid" value="{{courseid}}">
+                    <input type="hidden" name="rating" value="{{userrating}}" class="iiidem-review-form__rating-input">
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">{{#str}}studentreviewsratinglabel, theme_iiidem2{{/str}}</label>
+                        <div class="iiidem-review-stars" role="radiogroup" aria-label="{{#str}}studentreviewsratinglabel, theme_iiidem2{{/str}}">
+                            {{#starpicker}}
+                            <button type="button"
+                                    class="iiidem-review-stars__btn{{#active}} is-active{{/active}}"
+                                    data-rating="{{value}}"
+                                    aria-label="{{label}}">
+                                <span class="fa fa-star" aria-hidden="true"></span>
+                            </button>
+                            {{/starpicker}}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="iiidem-review-text">{{#str}}studentreviewstextlabel, theme_iiidem2{{/str}}</label>
+                        <textarea id="iiidem-review-text"
+                                  name="reviewtext"
+                                  class="form-control"
+                                  rows="4"
+                                  required>{{userreviewtext}}</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        {{#hasuserreview}}{{#str}}studentreviewsupdatebtn, theme_iiidem2{{/str}}{{/hasuserreview}}
+                        {{^hasuserreview}}{{#str}}studentreviewssubmitbtn, theme_iiidem2{{/str}}{{/hasuserreview}}
+                    </button>
+                </form>
+            </div>
+        </div>
+        {{/canreview}}
+
+        {{#needlogin}}
+        <div class="alert alert-info mb-4">
+            {{#str}}studentreviewsloginprompt, theme_iiidem2{{/str}}
+            <a href="{{loginurl}}" class="alert-link">{{#str}}login{{/str}}</a>
+        </div>
+        {{/needlogin}}
+
+        {{#needenrol}}
+        <div class="alert alert-secondary mb-4">
+            {{#str}}studentreviewsenrolprompt, theme_iiidem2{{/str}}
+        </div>
+        {{/needenrol}}
+
+        {{#hasreviewitems}}
+        <div class="row g-4">
+            {{#reviewitems}}
+            <div class="col-12 col-md-6 col-lg-4">
+                <article class="iiidem-testimonial-card h-100{{#isown}} iiidem-testimonial-card--own{{/isown}}">
+                    <div class="iiidem-testimonial-card__header">
+                        <img src="{{{imageurl}}}" alt="{{imagealt}}" class="iiidem-testimonial-card__avatar">
+                        <div class="iiidem-testimonial-card__meta">
+                            <h3 class="iiidem-testimonial-card__name">{{name}}</h3>
+                            {{#hassubtitle}}
+                            <p class="iiidem-testimonial-card__subtitle">{{subtitle}}</p>
+                            {{/hassubtitle}}
+                        </div>
+                    </div>
+                    <div class="iiidem-testimonial-card__stars" aria-label="{{stars}} {{#str}}testimonialstarslabel, theme_iiidem2{{/str}}">
+                        {{#starrating}}
+                        <span class="fa fa-star{{^filled}}-o{{/filled}}" aria-hidden="true"></span>
+                        {{/starrating}}
+                    </div>
+                    <blockquote class="iiidem-testimonial-card__quote">
+                        <p>{{quote}}</p>
+                    </blockquote>
+                </article>
+            </div>
+            {{/reviewitems}}
+        </div>
+        {{/hasreviewitems}}
+
+        {{^hasreviewitems}}
+        {{#canreview}}
+        <p class="text-muted mb-0">{{#str}}studentreviewsemptyenrolled, theme_iiidem2{{/str}}</p>
+        {{/canreview}}
+        {{/hasreviewitems}}
+    </div>
+</section>
+{{/showstudentreviewsection}}

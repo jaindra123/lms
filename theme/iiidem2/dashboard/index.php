@@ -29,6 +29,10 @@ $PAGE->activityheader->disable();
 $templatecontext = theme_iiidem2_get_dashboard_context();
 if (!empty($templatecontext['isstudent'])) {
     $PAGE->add_body_class('iiidem-student-dashboard-page');
+    if (!empty($templatecontext['hassupport'])) {
+        $PAGE->requires->css(new moodle_url('/local/iiidem_support/styles.css'));
+        $PAGE->requires->js(new moodle_url('/local/iiidem_support/chatbot.js'));
+    }
 }
 if (!empty($templatecontext['isteacher'])) {
     $PAGE->add_body_class('iiidem-teacher-dashboard-page');

@@ -41,6 +41,29 @@
     align-items: center;
 }
 
+.iiidem-site-header .navbar-brand {
+    flex-shrink: 0;
+    background: #fff;
+    border-radius: 6px;
+    padding: 5px 12px;
+    margin-right: 1rem;
+    line-height: 0;
+}
+
+.iiidem-site-header .navbar-brand .logo,
+.iiidem-site-header .navbar-brand .logo img,
+.iiidem-site-header .navbar-brand img.logo {
+    display: block;
+    height: 50px;
+    max-height: 50px !important;
+    width: auto;
+    max-width: min(300px, 40vw);
+    object-fit: contain;
+    border: 0;
+    background: transparent;
+    padding: 0;
+}
+
 .iiidem-site-header .primary-navigation .moremenu {
     height: auto;
     display: flex;
@@ -261,9 +284,70 @@
     color: #212529 !important;
 }
 
+/* Bell / message popovers: dark text on white panel (#usernavigation a forces white). */
+.top-nav .popover-region-container,
+.iiidem-site-header .popover-region-container {
+    background-color: #fff !important;
+    color: #212529 !important;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.top-nav .popover-region-container .popover-region-header-text,
+.top-nav .popover-region-container .popover-region-header-actions label,
+.top-nav .popover-region-container .content-item-container,
+.top-nav .popover-region-container .content-item-body,
+.top-nav .popover-region-container .content-item-body h3,
+.top-nav .popover-region-container .content-item-body p,
+.top-nav .popover-region-container .notification-message,
+.top-nav .popover-region-container .content-item-footer,
+.top-nav .popover-region-container .content-item-footer .timestamp,
+.top-nav .popover-region-container .view-more,
+.top-nav .popover-region-container .empty-message,
+.top-nav #usernavigation .popover-region-container a:not(.popover-region-toggle),
+.iiidem-site-header .popover-region-container .popover-region-header-text,
+.iiidem-site-header .popover-region-container .content-item-container,
+.iiidem-site-header .popover-region-container .notification-message,
+.iiidem-site-header .popover-region-container .content-item-footer .timestamp,
+.iiidem-site-header #usernavigation .popover-region-container a:not(.popover-region-toggle) {
+    color: #212529 !important;
+}
+
+.top-nav .popover-region-container .content-item-container:hover,
+.top-nav .popover-region-container .content-item-container:hover .notification-message,
+.top-nav .popover-region-container .content-item-container:hover .content-item-footer,
+.top-nav .popover-region-container .content-item-container:hover .content-item-footer .timestamp,
+.top-nav .popover-region-container .content-item-container:hover .view-more,
+.top-nav #usernavigation .popover-region-container .content-item-container:hover a,
+.iiidem-site-header .popover-region-container .content-item-container:hover,
+.iiidem-site-header .popover-region-container .content-item-container:hover .notification-message {
+    color: #fff !important;
+    background-color: #0f6cbf !important;
+}
+
+.notification-area,
+.notification-area .content-area,
+.notification-area .control-area,
+.notification-area .content-item-container,
+.notification-area .notification-message,
+.notification-area a {
+    color: #212529 !important;
+}
+
 /* Secondary navigation (admin tabs, course settings, etc.). */
+.secondary-navigation {
+    position: relative;
+    z-index: 2;
+}
+
 .secondary-navigation .moremenu .nav-link {
     color: #212529 !important;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.path-admin .secondary-navigation .moremenu .nav-link {
+    position: relative;
+    z-index: 1;
 }
 
 .secondary-navigation .moremenu .nav-link:hover,
@@ -1624,6 +1708,129 @@ body.iiidem-course-hero-layout .iiidem-course-hero .hero-overlay {
 
 .iiidem-payment-required-modal .alert-warning {
     border-left: 4px solid #f07b20;
+}
+
+/* Course view — learner testimonials (above footer) */
+.iiidem-course-testimonials {
+    background: #f8fafc;
+    padding: 3.5rem 0;
+    border-top: 1px solid #e8edf3;
+}
+
+.iiidem-testimonial-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.iiidem-testimonial-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.iiidem-testimonial-card__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.iiidem-testimonial-card__avatar--initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e8f0fb;
+    color: #0b3d91;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.iiidem-testimonial-card__name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2a56;
+    line-height: 1.3;
+}
+
+.iiidem-testimonial-card__subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.iiidem-testimonial-card__stars {
+    color: #f59e0b;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+}
+
+.iiidem-testimonial-card__quote {
+    margin: 0;
+}
+
+.iiidem-testimonial-card__quote p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: #334155;
+}
+
+.iiidem-student-reviews {
+    background: #fff;
+    padding: 3.5rem 0;
+    border-top: 1px solid #e8edf3;
+}
+
+.iiidem-student-reviews__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+}
+
+.iiidem-student-reviews__average {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0b3d91;
+    line-height: 1;
+}
+
+.iiidem-student-reviews__stars {
+    color: #f59e0b;
+}
+
+.iiidem-review-stars {
+    display: inline-flex;
+    gap: 0.35rem;
+}
+
+.iiidem-review-stars__btn {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #cbd5e1;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.iiidem-review-stars__btn.is-active,
+.iiidem-review-stars__btn:hover,
+.iiidem-review-stars__btn:focus {
+    color: #f59e0b;
+}
+
+.iiidem-testimonial-card--own {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 1px rgba(11, 61, 145, 0.08);
 }
 
 .iiidem-course-hero .course-sidebar {

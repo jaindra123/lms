@@ -1,71 +1,68 @@
 {{!
-    This file is part of Moodle - http://moodle.org/
-
-    Moodle is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    Moodle is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-}}
-{{!
     @template theme_iiidem2/login
 
-    Login page template
-
-    Example context (json):
-    {
-        "output": {
-            "doctype": "<!DOCTYPE html>",
-            "page_title": "Login page",
-            "favicon": "favicon.ico",
-            "main_content": "<h1>Headers keep HTML validators happy</h1>"
-        }
-    }
+    IIIDEM branded login page (split layout).
 }}
 {{> theme_iiidem2/head }}
 
 <body {{{ bodyattributes }}}>
 {{> core/local/toast/wrapper}}
 
-<div id="page-wrapper">
+{{{ output.standard_top_of_body_html }}}
 
-    {{{ output.standard_top_of_body_html }}}
+<div id="page-wrapper" class="iiidem-login-shell">
+    <div class="iiidem-login-layout"{{#hasloginbackground}} style="--iiidem-login-bg-image: url('{{loginbackgroundurl}}')"{{/hasloginbackground}}>
+        <aside class="iiidem-login-layout__brand" aria-label="{{#str}}loginbrandpanel, theme_iiidem2{{/str}}">
+            <a href="{{homeurl}}" class="iiidem-login-layout__brand-logo">
+                {{#hasloginlogo}}
+                    <img src="{{{loginlogo}}}" class="iiidem-login-layout__logo-img" alt="{{sitename}}">
+                {{/hasloginlogo}}
+                {{^hasloginlogo}}
+                    <span class="iiidem-login-layout__logo-text">{{sitename}}</span>
+                {{/hasloginlogo}}
+            </a>
 
-      {{> theme_iiidem2/navbar }}
-
-    <div id="page" class="container-fluid pt-5 mt-0">
-        <div id="page-content" class="row">
-            <div id="region-main-box" class="col-12">
-                <div id="region-main" class="col-12 h-100">
-                <div class="login-wrapper">
-                    <div class="login-container" style="margin-top: 40px;">
-                    {{{ output.main_content }}}
-                    <p class="iiidem-login-signup text-center mt-4 mb-0">
-                        <a href="{{registerurl}}" class="btn btn-outline-primary iiidem-btn iiidem-login-signup__btn">{{loginsignuplabel}}</a>
-                    </p>
-                    </div>
-                </div>
-                </div>
+            <div class="iiidem-login-layout__brand-body">
+                <p class="iiidem-login-layout__eyebrow">IIIDEM LMS</p>
+                <h1 class="iiidem-login-layout__title">{{logintagline}}</h1>
+                <ul class="iiidem-login-layout__features">
+                    <li><i class="fa fa-graduation-cap" aria-hidden="true"></i><span>{{loginfeature1}}</span></li>
+                    <li><i class="fa fa-video-camera" aria-hidden="true"></i><span>{{loginfeature2}}</span></li>
+                    <li><i class="fa fa-certificate" aria-hidden="true"></i><span>{{loginfeature3}}</span></li>
+                </ul>
             </div>
-        </div>
+
+            <nav class="iiidem-login-layout__nav" aria-label="{{#str}}sitemenubar, admin{{/str}}">
+                <a href="{{homeurl}}">{{#str}}home{{/str}}</a>
+                <a href="{{abouturl}}">{{#str}}aboutus, theme_iiidem2{{/str}}</a>
+                <a href="{{contacturl}}">{{#str}}contactus, theme_iiidem2{{/str}}</a>
+            </nav>
+        </aside>
+
+        <main class="iiidem-login-layout__panel" id="region-main">
+            <div class="iiidem-login-card">
+                <header class="iiidem-login-card__header">
+                    <h2 class="iiidem-login-card__title">{{loginwelcome}}</h2>
+                    <p class="iiidem-login-card__subtitle">{{loginsubtitle}}</p>
+                </header>
+
+                <div class="iiidem-login-card__form">
+                    {{{ output.main_content }}}
+                </div>
+
+                <p class="iiidem-login-signup text-center mb-0">
+                    <span class="iiidem-login-signup__label">{{#str}}loginsignupprompt, theme_iiidem2{{/str}}</span>
+                    <a href="{{registerurl}}" class="btn btn-outline-primary iiidem-btn iiidem-login-signup__btn">{{loginsignuplabel}}</a>
+                </p>
+            </div>
+        </main>
     </div>
-
-    {{> theme_iiidem2/page_end }}
-
 </div>
 
 {{{ output.standard_end_of_body_html }}}
 
 {{#js}}
 M.util.js_pending('theme_iiidem2/loader');
-
 require(['theme_iiidem2/loader'], function() {
     M.util.js_complete('theme_iiidem2/loader');
 });

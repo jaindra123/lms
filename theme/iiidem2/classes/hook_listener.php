@@ -94,6 +94,9 @@ class hook_listener {
         }
 
         if ($PAGE->pagelayout !== 'course' || empty($COURSE->id) || (int) $COURSE->id === SITEID) {
+            if (preg_match('#/(admin/|local/iiidem_support/manage\.php)#', $PAGE->url->get_path(false))) {
+                $PAGE->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
+            }
             return;
         }
 

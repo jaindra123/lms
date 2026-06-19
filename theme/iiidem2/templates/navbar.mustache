@@ -66,17 +66,12 @@
 
         <a href="{{{ config.homeurl }}}" class="navbar-brand d-none d-md-flex align-items-center m-0 me-4 p-0 aabtn">
 
-            {{# output.should_display_navbar_logo }}
-                {{#headerlogo}}
-                    <img src="{{{headerlogo}}}" class="logo me-1" alt="{{sitename}}">
-                {{/headerlogo}}
-                {{^headerlogo}}
-                    <img src="{{output.get_compact_logo_url}}" class="logo me-1" alt="{{sitename}}">
-                {{/headerlogo}}
-            {{/ output.should_display_navbar_logo }}
-            {{^ output.should_display_navbar_logo }}
+            {{#hasnavbarlogo}}
+                <img src="{{{navbarlogo}}}" class="logo me-1" alt="{{sitename}}">
+            {{/hasnavbarlogo}}
+            {{^hasnavbarlogo}}
                 {{{ sitename }}}
-            {{/ output.should_display_navbar_logo }}
+            {{/hasnavbarlogo}}
         </a>
         {{#primarymoremenu}}
             <div class="primary-navigation d-flex align-items-center">

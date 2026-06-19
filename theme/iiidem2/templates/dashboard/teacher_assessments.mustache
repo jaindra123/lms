@@ -1,0 +1,130 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_assessments
+
+    Quiz assessment summary for the instructor dashboard.
+}}
+{{#hasassessmentsummary}}
+<article class="iiidem-teacher-panel iiidem-teacher-assessments" id="teacher-assessments">
+    <header class="iiidem-teacher-panel__header">
+        <div class="iiidem-teacher-panel__title-wrap">
+            <span class="iiidem-teacher-panel__icon"><span class="fa fa-clipboard-check" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-teacher-panel__title mb-0">{{#str}}dashboardteacherassessmentsummary, theme_iiidem2{{/str}}</h2>
+                {{#hasassessmentcoursename}}
+                <p class="iiidem-teacher-assessments__course mb-0">{{assessmentcoursename}}</p>
+                {{/hasassessmentcoursename}}
+            </div>
+        </div>
+    </header>
+    <div class="iiidem-teacher-panel__body">
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="iiidem-teacher-analytic-card">
+                    <div class="iiidem-teacher-analytic-card__value">{{assessmentquizattempts}}</div>
+                    <div class="iiidem-teacher-analytic-card__label">{{#str}}dashboardteacherassessmentattemptslabel, theme_iiidem2{{/str}}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="iiidem-teacher-analytic-card">
+                    <div class="iiidem-teacher-analytic-card__value">{{assessmentaveragescore}}</div>
+                    <div class="iiidem-teacher-analytic-card__label">{{#str}}dashboardteacherassessmentaverage, theme_iiidem2{{/str}}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="iiidem-teacher-analytic-card">
+                    <div class="iiidem-teacher-analytic-card__value">{{assessmenthighestscore}}</div>
+                    <div class="iiidem-teacher-analytic-card__label">{{#str}}dashboardteacherassessmenthighest, theme_iiidem2{{/str}}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="iiidem-teacher-analytic-card">
+                    <div class="iiidem-teacher-analytic-card__value">{{assessmentpendingquizzes}}</div>
+                    <div class="iiidem-teacher-analytic-card__label">{{#str}}dashboardteacherassessmentpending, theme_iiidem2{{/str}}</div>
+                </div>
+            </div>
+        </div>
+
+        {{#hasassessmentquizrows}}
+        <div class="table-responsive">
+            <table class="table table-sm iiidem-teacher-assessments__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteacherassessmentquizcol, theme_iiidem2{{/str}}</th>
+                        <th class="text-end">{{#str}}dashboardteacherassessmentscorecol, theme_iiidem2{{/str}}</th>
+                        <th class="text-end d-none d-md-table-cell">{{#str}}dashboardteacherassessmentattemptscol, theme_iiidem2{{/str}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#assessmentquizrows}}
+                    <tr>
+                        <td>
+                            <div class="iiidem-teacher-assessments__quiz-name">{{name}}</div>
+                            {{^hasassessmentcoursename}}
+                            <div class="iiidem-teacher-assessments__quiz-meta">{{coursename}}</div>
+                            {{/hasassessmentcoursename}}
+                        </td>
+                        <td class="text-end">
+                            <span class="iiidem-teacher-assessments__score{{^hasscore}} iiidem-teacher-assessments__score--empty{{/hasscore}}">{{scorelabel}}</span>
+                        </td>
+                        <td class="text-end d-none d-md-table-cell">{{attempts}}</td>
+                        <td class="text-end">
+                            <a href="{{{reporturl}}}" class="btn btn-outline-primary btn-sm">{{#str}}dashboardteacherassessmentreport, theme_iiidem2{{/str}}</a>
+                        </td>
+                    </tr>
+                    {{/assessmentquizrows}}
+                </tbody>
+            </table>
+        </div>
+        {{/hasassessmentquizrows}}
+
+        {{#hasassessmentsubmissions}}
+        <h3 class="h6 iiidem-teacher-assessments__subtitle">{{#str}}dashboardteacherassessmentsubmissions, theme_iiidem2{{/str}}</h3>
+        <div class="table-responsive">
+            <table class="table table-sm iiidem-teacher-assessments__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteacherassessmentstudentcol, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherassessmentquizcol, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherassessmentstatuscol, theme_iiidem2{{/str}}</th>
+                        <th class="text-end">{{#str}}dashboardteacherassessmentscorecol, theme_iiidem2{{/str}}</th>
+                        <th class="d-none d-md-table-cell">{{#str}}dashboardteacherassessmentdatecol, theme_iiidem2{{/str}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#assessmentsubmissionrows}}
+                    <tr>
+                        <td>
+                            <a href="{{{detailurl}}}" class="iiidem-teacher-assessments__student-link">{{studentname}}</a>
+                            {{#hasstudentemail}}
+                            <div class="iiidem-teacher-assessments__quiz-meta">{{studentemail}}</div>
+                            {{/hasstudentemail}}
+                        </td>
+                        <td>
+                            <div class="iiidem-teacher-assessments__quiz-name">{{quizname}}</div>
+                            {{#showcoursename}}
+                            <div class="iiidem-teacher-assessments__quiz-meta">{{coursename}}</div>
+                            {{/showcoursename}}
+                        </td>
+                        <td>
+                            <span class="iiidem-teacher-pill iiidem-teacher-pill--{{statusclass}}">{{statuslabel}}</span>
+                        </td>
+                        <td class="text-end">
+                            <span class="iiidem-teacher-assessments__score{{^hasscore}} iiidem-teacher-assessments__score--empty{{/hasscore}}">{{scorelabel}}</span>
+                        </td>
+                        <td class="d-none d-md-table-cell">{{datelabel}}</td>
+                        <td class="text-end">
+                            {{#hasreviewurl}}
+                            <a href="{{{reviewurl}}}" class="btn btn-outline-primary btn-sm">{{#str}}dashboardteacherassessmentreview, theme_iiidem2{{/str}}</a>
+                            {{/hasreviewurl}}
+                        </td>
+                    </tr>
+                    {{/assessmentsubmissionrows}}
+                </tbody>
+            </table>
+        </div>
+        {{/hasassessmentsubmissions}}
+    </div>
+</article>
+{{/hasassessmentsummary}}

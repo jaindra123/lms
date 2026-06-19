@@ -57,12 +57,12 @@
             data-region="site-home-link"
             class="aabtn text-reset d-flex align-items-center py-1 h-100"
         >
-            {{# output.should_display_navbar_logo }}
-                <img src="{{output.get_compact_logo_url}}" class="logo py-1 h-100" alt="{{sitename}}">
-            {{/ output.should_display_navbar_logo }}
-            {{^ output.should_display_navbar_logo }}
+            {{#hasnavbarlogo}}
+                <img src="{{{navbarlogo}}}" class="logo py-1 h-100" alt="{{sitename}}">
+            {{/hasnavbarlogo}}
+            {{^hasnavbarlogo}}
                 <span class="sitename" title="{{{ sitename }}}">{{{ sitename }}}</span>
-            {{/ output.should_display_navbar_logo }}
+            {{/hasnavbarlogo}}
         </a>
     {{/drawerheading}}
     {{$drawercontent}}

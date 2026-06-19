@@ -291,3 +291,127 @@ body.iiidem-live-class #region-main {
         min-height: 220px;
     }
 }
+
+/* Live session MCQ panel (local_iiidem_livequiz) */
+.iiidem-livequiz {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 1.25rem 1.35rem 1.5rem;
+    margin-bottom: 1.75rem;
+}
+
+.iiidem-livequiz__heading {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.iiidem-livequiz__desc {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.iiidem-livequiz__root {
+    min-height: 120px;
+}
+
+.iiidem-livequiz__state {
+    text-align: center;
+    padding: 1.25rem 0.5rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.iiidem-livequiz__state--waiting .iiidem-livequiz__pulse {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #eab308;
+    margin-bottom: 0.75rem;
+    animation: iiidem-livequiz-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes iiidem-livequiz-pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.iiidem-livequiz__state--done .fa-check-circle {
+    font-size: 2rem;
+    color: #34d399;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-livequiz__meta {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.iiidem-livequiz__session {
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: #eab308;
+}
+
+.iiidem-livequiz__question {
+    border: none;
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+.iiidem-livequiz__question legend {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.iiidem-livequiz__qno {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #004274;
+    font-size: 0.8rem;
+    margin-right: 0.35rem;
+}
+
+.iiidem-livequiz__option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    margin-bottom: 0.35rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.iiidem-livequiz__option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.iiidem-livequiz__submit {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 999px;
+    background: #004274;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.iiidem-livequiz__submit:hover {
+    background: #005a9e;
+}

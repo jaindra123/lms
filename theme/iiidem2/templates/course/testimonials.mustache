@@ -1,13 +1,47 @@
-<section class="course-testimonials">
+{{!
+    @template theme_iiidem2/course/testimonials
 
-    <h2>Student Reviews</h2>
+    Learner testimonials on the course view page (admin-managed in theme settings).
+}}
+{{#hastestimonials}}
+<section class="iiidem-course-section iiidem-course-testimonials" id="course-testimonials">
+    <div class="container">
+        <header class="iiidem-course-section__header text-center mb-4 mb-md-5">
+            <h2 class="iiidem-course-section__title">{{testimonialstitle}}</h2>
+        </header>
 
-    <div class="testimonial">
-
-        <p>
-            Excellent course experience.
-        </p>
-
+        <div class="row g-4">
+            {{#testimonials}}
+            <div class="col-12 col-md-6 col-lg-3">
+                <article class="iiidem-testimonial-card h-100">
+                    <div class="iiidem-testimonial-card__header">
+                        {{#hasimage}}
+                        <img src="{{{imageurl}}}" alt="{{imagealt}}" class="iiidem-testimonial-card__avatar">
+                        {{/hasimage}}
+                        {{^hasimage}}
+                        <div class="iiidem-testimonial-card__avatar iiidem-testimonial-card__avatar--initials" aria-hidden="true">
+                            {{initials}}
+                        </div>
+                        {{/hasimage}}
+                        <div class="iiidem-testimonial-card__meta">
+                            <h3 class="iiidem-testimonial-card__name">{{name}}</h3>
+                            {{#hassubtitle}}
+                            <p class="iiidem-testimonial-card__subtitle">{{subtitle}}</p>
+                            {{/hassubtitle}}
+                        </div>
+                    </div>
+                    <div class="iiidem-testimonial-card__stars" aria-label="{{stars}} {{#str}}testimonialstarslabel, theme_iiidem2{{/str}}">
+                        {{#starrating}}
+                        <span class="fa fa-star{{^filled}}-o{{/filled}}" aria-hidden="true"></span>
+                        {{/starrating}}
+                    </div>
+                    <blockquote class="iiidem-testimonial-card__quote">
+                        <p>{{quote}}</p>
+                    </blockquote>
+                </article>
+            </div>
+            {{/testimonials}}
+        </div>
     </div>
-
 </section>
+{{/hastestimonials}}

@@ -65,6 +65,7 @@ class teacher_dashboard {
         $attendancecontext = teacher_attendance::get_dashboard_context($courses, $userid);
         $certificatecontext = teacher_certificates::get_dashboard_context($courses, $userid);
         $rostercontext = teacher_students::get_dashboard_context($courses, $userid);
+        $assessmentcontext = teacher_assessments::get_dashboard_context($courses, $userid);
         $analytics = self::get_analytics($courses, $pendingtasks, $certificatecontext);
         $communications = self::get_communications($courses);
 
@@ -101,7 +102,7 @@ class teacher_dashboard {
             'hasnotifications' => !empty($pendingtasks),
             'notificationcount' => min(count($pendingtasks), 99),
             'calendarurl' => (new \moodle_url('/calendar/view.php'))->out(false),
-        ], $attendancecontext, $certificatecontext, $rostercontext);
+        ], $attendancecontext, $certificatecontext, $rostercontext, $assessmentcontext);
     }
 
     /**
@@ -876,13 +877,22 @@ class teacher_dashboard {
 
         $primarycourse = !empty($courses[0]) ? $courses[0] : null;
         if ($primarycourse) {
-            $items[] = [
-                'title' => get_string('dashboardteacherlivepoll', 'theme_iiidem2'),
-                'meta' => get_string('dashboardteacherlivepollmeta', 'theme_iiidem2'),
-                'buttonlabel' => get_string('dashboardteacherbtnenable', 'theme_iiidem2'),
-                'buttonclass' => 'navy',
-                'url' => (new \moodle_url('/course/view.php', ['id' => $primarycourse->id]))->out(false),
-            ];
+            global $CFG;
+            $livequizlib = $CFG->dirroot . '/local/iiidem_livequiz/lib.php';
+            if (file_exists($livequizlib)) {
+                require_once($livequizlib);
+                if (local_iiidem_livequiz_is_available()) {
+                    $items[] = [
+                        'title' => get_string('dashboardteacherlivemcq', 'theme_iiidem2'),
+                        'meta' => get_string('dashboardteacherlivemcqmeta', 'theme_iiidem2'),
+                        'buttonlabel' => get_string('dashboardteacherlivemcqbtn', 'theme_iiidem2'),
+                        'buttonclass' => 'navy',
+                        'url' => (new \moodle_url('/local/iiidem_livequiz/manage.php', [
+                            'courseid' => $primarycourse->id,
+                        ]))->out(false),
+                    ];
+                }
+            }
             $items[] = [
                 'title' => get_string('dashboardteacherautorecord', 'theme_iiidem2'),
                 'meta' => get_string('dashboardteacherautorecordmeta', 'theme_iiidem2'),

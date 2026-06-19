@@ -1,0 +1,25 @@
+{{!
+    @template theme_iiidem2/dashboard/support_chatbot
+
+    FAQ search chatbot widget on student dashboard.
+}}
+<div class="iiidem-support-chatbot"
+     data-api-url="{{{supportchatapiurl}}}"
+     data-ticket-url="{{{supportticketurl}}}"
+     data-sesskey="{{sesskey}}"
+     data-no-results="{{#str}}chatbot_noresults, local_iiidem_support{{/str}}"
+     data-raise-ticket="{{#str}}chatbot_raise_ticket, local_iiidem_support{{/str}}">
+    <div class="iiidem-support-chatbot__panel" role="dialog" aria-label="{{#str}}chatbot_title, local_iiidem_support{{/str}}">
+        <div class="iiidem-support-chatbot__header">{{#str}}chatbot_title, local_iiidem_support{{/str}}</div>
+        <div class="iiidem-support-chatbot__body">
+            <p class="iiidem-support-chatbot__hint">{{#str}}chatbot_hint, local_iiidem_support{{/str}}</p>
+        </div>
+        <div class="iiidem-support-chatbot__footer">
+            <input type="search" class="iiidem-support-chatbot__input" placeholder="{{#str}}chatbot_placeholder, local_iiidem_support{{/str}}" aria-label="{{#str}}chatbot_placeholder, local_iiidem_support{{/str}}">
+            <button type="button" class="iiidem-support-chatbot__send" data-action="send">{{#str}}search, core{{/str}}</button>
+        </div>
+    </div>
+    <button type="button" class="iiidem-support-chatbot__toggle" data-action="toggle" aria-label="{{#str}}chatbot_title, local_iiidem_support{{/str}}">
+        <span class="fa fa-comments" aria-hidden="true"></span>
+    </button>
+</div>

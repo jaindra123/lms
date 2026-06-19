@@ -49,6 +49,7 @@ class student_dashboard {
         $calendarcourseid = theme_iiidem2_get_dashboard_calendar_course_id_for_user($userid);
         $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
         $learningstats = self::get_learning_statistics($userid, $courses);
+        $supportcontext = self::get_support_context($userid);
 
         return array_merge([
             'firstname' => $user->firstname,
@@ -82,7 +83,33 @@ class student_dashboard {
             'messagesurl' => (new \moodle_url('/message/index.php'))->out(false),
             'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
-        ], $calendarcontext);
+        ], $calendarcontext, $supportcontext);
+    }
+
+    /**
+     * Support hub context (tickets, FAQs, chatbot).
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_support_context(int $userid): array {
+        global $CFG;
+
+        $pluginlib = $CFG->dirroot . '/local/iiidem_support/lib.php';
+        if (!is_readable($pluginlib)) {
+            return ['hassupport' => false];
+        }
+
+        require_once($pluginlib);
+
+        if (!\local_iiidem_support\manager::is_installed()) {
+            return ['hassupport' => false];
+        }
+
+        $context = local_iiidem_support_get_dashboard_context($userid);
+        $context['sesskey'] = sesskey();
+
+        return $context;
     }
 
     /**
@@ -686,6 +713,8 @@ class student_dashboard {
                 'url' => (new \moodle_url('/grade/report/overview/index.php'))->out(false), 'active' => false],
             ['key' => 'certificate', 'icon' => 'fa-certificate', 'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
                 'url' => (new \moodle_url('/badges/mybadges.php'))->out(false), 'active' => false],
+            ['key' => 'support', 'icon' => 'fa-life-ring', 'label' => get_string('dashboardnavsupport', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/local/iiidem_support/faqs.php'))->out(false), 'active' => false],
         ];
 
         return $items;

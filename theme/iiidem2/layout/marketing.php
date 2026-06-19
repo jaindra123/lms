@@ -30,7 +30,7 @@ echo $OUTPUT->doctype();
 ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
 <head>
-    <?php echo $OUTPUT->standard_head_html(); ?>
+    <?php theme_iiidem2_output_page_head(); ?>
 </head>
 <body <?php echo $OUTPUT->body_attributes(['pagelayout-marketing']); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>

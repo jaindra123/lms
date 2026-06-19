@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/iiidem_support/db" VERSION="2026061800" COMMENT="IIIDEM support tickets">
+    <TABLES>
+        <TABLE NAME="local_iiidem_support_ticket" COMMENT="Student support tickets">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="category" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="general"/>
+                <FIELD NAME="subject" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="message" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="open"/>
+                <FIELD NAME="adminreply" TYPE="text" NOTNULL="false"/>
+                <FIELD NAME="repliedby" TYPE="int" LENGTH="10" NOTNULL="false"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timereplied" TYPE="int" LENGTH="10" NOTNULL="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="userid_status_ix" UNIQUE="false" FIELDS="userid, status"/>
+                <INDEX NAME="status_time_ix" UNIQUE="false" FIELDS="status, timecreated"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>
