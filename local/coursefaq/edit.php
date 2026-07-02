@@ -18,7 +18,7 @@ $PAGE->set_heading(get_string('editfaq', 'local_coursefaq'));
 
 if (optional_param('submit', false, PARAM_BOOL) && confirm_sesskey()) {
     $faq->question = required_param('question', PARAM_TEXT);
-    $faq->answer = required_param('answer', PARAM_RAW);
+    $faq->answer = clean_text(required_param('answer', PARAM_RAW), FORMAT_HTML);
 
     $DB->update_record('local_coursefaq', $faq);
 

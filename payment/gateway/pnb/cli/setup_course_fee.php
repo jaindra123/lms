@@ -13,7 +13,7 @@ $cost = (float) ($argv[2] ?? 15000);
 $course = get_course($courseid);
 cli_heading('PNB course fee setup for course ' . $courseid);
 
-global $CFG;
+global $CFG, $DB;
 
 if (!enrol_is_enabled('fee')) {
     $enabled = array_filter(explode(',', $CFG->enrol_plugins_enabled ?? ''));
@@ -24,23 +24,24 @@ if (!enrol_is_enabled('fee')) {
     }
 }
 
-$account = $DB->get_record('payment_accounts', ['idnumber' => 'iiidem-pnb'], '*', IGNORE_MISSING);
-if (!$account) {
-    $account = \core_payment\helper::save_payment_account((object) [
+$accountrecord = $DB->get_record('payment_accounts', ['idnumber' => 'iiidem-pnb'], '*', IGNORE_MISSING);
+if (!$accountrecord) {
+    $saved = \core_payment\helper::save_payment_account((object) [
         'name' => 'IIIDEM PNB',
         'idnumber' => 'iiidem-pnb',
         'enabled' => 1,
     ]);
-    cli_writeln('Created payment account id ' . $account->get('id'));
+    $accountid = (int) $saved->get('id');
+    cli_writeln('Created payment account id ' . $accountid);
 } else {
-    $account = new \core_payment\account($account);
-    cli_writeln('Using payment account id ' . $account->get('id'));
+    $accountid = (int) $accountrecord->id;
+    cli_writeln('Using payment account id ' . $accountid);
 }
 
-$accountid = $account->get('id');
-$existing = $DB->get_record('payment_gateways', ['accountid' => $accountid, 'gateway' => 'pnb']);
+$pnbtesturl = rtrim($CFG->wwwroot, '/') . '/payment/gateway/pnb/mock.php';
+$icicitesturl = rtrim($CFG->wwwroot, '/') . '/payment/gateway/icici/mock.php';
 
-if (!$existing) {
+$existing = $DB->get_record('payment_gateways', ['accountid' => $accountid, 'gateway' => 'pnb']);
     \core_payment\helper::save_payment_gateway((object) [
         'accountid' => $accountid,
         'gateway' => 'pnb',
@@ -50,7 +51,7 @@ if (!$existing) {
             'merchantid' => 'MERCHANT_ID',
             'secretkey' => 'CHANGE_ME',
             'gatewayurl' => 'https://gateway.example.pnb.in/pay',
-            'testgatewayurl' => (new moodle_url('/payment/gateway/pnb/mock.php'))->out(false),
+            'testgatewayurl' => $pnbtesturl,
             'environment' => 'test',
             'surcharge' => 0,
         ]),
@@ -60,6 +61,30 @@ if (!$existing) {
     $existing->enabled = 1;
     $DB->update_record('payment_gateways', $existing);
     cli_writeln('PNB gateway already exists — enabled.');
+}
+
+$icici = $DB->get_record('payment_gateways', ['accountid' => $accountid, 'gateway' => 'icici']);
+if (!$icici) {
+    \core_payment\helper::save_payment_gateway((object) [
+        'accountid' => $accountid,
+        'gateway' => 'icici',
+        'enabled' => 1,
+        'config' => json_encode([
+            'brandname' => 'IIIDEM LMS',
+            'merchantid' => 'MERCHANT_ID',
+            'submerchantid' => '',
+            'secretkey' => 'CHANGE_ME',
+            'gatewayurl' => 'https://gateway.example.icici.in/pay',
+            'testgatewayurl' => $icicitesturl,
+            'environment' => 'test',
+            'surcharge' => 0,
+        ]),
+    ]);
+    cli_writeln('Created and enabled ICICI gateway (configure live credentials in admin).');
+} else {
+    $icici->enabled = 1;
+    $DB->update_record('payment_gateways', $icici);
+    cli_writeln('ICICI gateway already exists — enabled.');
 }
 
 $instance = $DB->get_record('enrol', ['courseid' => $courseid, 'enrol' => 'fee']);
@@ -86,3 +111,4 @@ if (!$instance) {
 }
 
 cli_writeln('Configure merchant credentials: Site admin → Payments → Accounts → IIIDEM PNB');
+cli_writeln('PNB: test/mock. ICICI: set Live + real merchant ID/key/URL for actual bank settlement.');

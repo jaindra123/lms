@@ -68,7 +68,12 @@
                     <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
                     <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
                     <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/login/index.php">{{#str}}login{{/str}}</a></li>
+                    {{#isloggedin}}
+                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
+                    {{/isloggedin}}
+                    {{^isloggedin}}
+                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
+                    {{/isloggedin}}
                 </ul>
             </div>
         </div>

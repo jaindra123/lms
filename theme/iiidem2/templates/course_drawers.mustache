@@ -189,6 +189,12 @@
 
                         {{> theme_iiidem2/course/curriculum }}
 
+                        {{#schedule.has_calendar}}
+                        {{#schedule}}
+                        {{> theme_iiidem2/course/schedule }}
+                        {{/schedule}}
+                        {{/schedule.has_calendar}}
+
                         {{#hasinstructors}}
                         {{> theme_iiidem2/course/instructors }}
                         {{/hasinstructors}}
@@ -214,20 +220,20 @@
     {{> theme_iiidem2/program_governance }}
     {{/hasadvisors}}
 
-    {{#pnbpaymentsuccess}}
-    <div class="modal fade" id="iiidemPnbPaymentSuccessModal" tabindex="-1" aria-labelledby="iiidemPnbPaymentSuccessLabel" aria-hidden="true">
+    {{#coursepaymentsuccess}}
+    <div class="modal fade" id="iiidemCoursePaymentSuccessModal" tabindex="-1" aria-labelledby="iiidemCoursePaymentSuccessLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-body text-center p-4 p-md-5">
                     <div class="text-success mb-3" style="font-size:3rem;">&#10003;</div>
-                    <h2 class="h4 mb-3" id="iiidemPnbPaymentSuccessLabel">{{#str}} paymentresultsuccessheading, paygw_pnb {{/str}}</h2>
-                    <p class="mb-4">{{#str}} paymentsuccess, paygw_pnb {{/str}}</p>
-                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-dismiss="modal">{{#str}} continue {{/str}}</button>
+                    <h2 class="h4 mb-3" id="iiidemCoursePaymentSuccessLabel">{{#str}}coursepaymentsuccesstitle, theme_iiidem2{{/str}}</h2>
+                    <p class="mb-4">{{#str}}coursepaymentsuccessbody, theme_iiidem2{{/str}}</p>
+                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-dismiss="modal">{{#str}}continue, core{{/str}}</button>
                 </div>
             </div>
         </div>
     </div>
-    {{/pnbpaymentsuccess}}
+    {{/coursepaymentsuccess}}
 
     {{> theme_iiidem2/page_end }}
 </div>
@@ -252,16 +258,16 @@ require(['theme_iiidem2/course_reviews'], function(CourseReviews) {
     CourseReviews.init();
 });
 {{/showstudentreviewsection}}
-{{#pnbpaymentsuccess}}
+{{#coursepaymentsuccess}}
 require(['jquery'], function() {
     setTimeout(function() {
-        var modalEl = document.getElementById('iiidemPnbPaymentSuccessModal');
+        var modalEl = document.getElementById('iiidemCoursePaymentSuccessModal');
         if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
         }
     }, 100);
 });
-{{/pnbpaymentsuccess}}
+{{/coursepaymentsuccess}}
 {{/js}}
 
 </body>

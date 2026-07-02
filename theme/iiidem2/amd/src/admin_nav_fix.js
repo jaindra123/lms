@@ -105,19 +105,11 @@ const handleSecondaryNavClick = (e) => {
  * Initialise admin navigation fixes.
  */
 export const init = () => {
-    const start = () => {
-        if (!isAdminPath()) {
-            return;
-        }
-
-        redirectAdminIndexHash();
-        window.addEventListener('hashchange', redirectAdminIndexHash);
-        document.addEventListener('click', handleSecondaryNavClick, true);
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start);
-    } else {
-        start();
+    if (!isAdminPath()) {
+        return;
     }
+
+    redirectAdminIndexHash();
+    window.addEventListener('hashchange', redirectAdminIndexHash);
+    document.addEventListener('click', handleSecondaryNavClick, true);
 };

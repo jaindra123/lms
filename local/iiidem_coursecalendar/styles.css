@@ -1,0 +1,28 @@
+.local-iiidem-coursecalendar {
+    margin-top: 1.5rem;
+}
+
+.local-iiidem-coursecalendar__events {
+    list-style: none;
+    padding-left: 0;
+    margin: 0 0 1rem;
+}
+
+.local-iiidem-coursecalendar__events li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.local-iiidem-coursecalendar__events li:last-child {
+    border-bottom: none;
+}
+
+.local-iiidem-coursecalendar__date {
+    display: block;
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.local-iiidem-coursecalendar-preview li {
+    margin-bottom: 0.35rem;
+}

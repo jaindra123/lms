@@ -33,3 +33,15 @@ $ADMIN->add('payment', new admin_externalpage(
     new lang_string('transactionhistory', 'paygw_pnb'),
     new moodle_url('/payment/gateway/pnb/transactions.php'),
     'moodle/site:config'));
+
+$ADMIN->add('payment', new admin_externalpage(
+    'paygw_icici_transactions',
+    new lang_string('transactionhistory', 'paygw_icici'),
+    new moodle_url('/payment/gateway/icici/transactions.php'),
+    'moodle/site:config'));
+
+$ADMIN->add('payment', new admin_externalpage(
+    'paygw_razorpay_transactions',
+    new lang_string('transactionhistory', 'paygw_razorpay'),
+    new moodle_url('/payment/gateway/razorpay/transactions.php'),
+    'moodle/site:config'));

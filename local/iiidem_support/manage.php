@@ -135,8 +135,8 @@ if ($ticketid && $ticket) {
         foreach ($tickets as $row) {
             $viewurl = new moodle_url('/local/iiidem_support/manage.php', ['ticketid' => $row['id']]);
             echo html_writer::tag('tr',
-                html_writer::tag('td', html_writer::link($viewurl, $row['subject'])) .
-                html_writer::tag('td', $row['username'] . '<br><small>' . s($row['useremail']) . '</small>') .
+                html_writer::tag('td', html_writer::link($viewurl, format_string($row['subject']))) .
+                html_writer::tag('td', s($row['username']) . '<br><small>' . s($row['useremail']) . '</small>') .
                 html_writer::tag('td', html_writer::span($row['statuslabel'], 'iiidem-support-status iiidem-support-status--' . $row['statusclass'])) .
                 html_writer::tag('td', $row['date'])
             );

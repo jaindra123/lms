@@ -71,10 +71,12 @@ if ($preloaded) {
     $coursedisplay = $preloaded['display'];
     $curriculum = $preloaded['curriculum'];
     $quizzes = $preloaded['quizzes'];
+    $schedule = $preloaded['schedule'] ?? ['has_calendar' => false];
 } else {
     $coursedisplay = theme_iiidem2_get_course_display_context($COURSE);
     $curriculum = theme_iiidem2_get_course_curriculum_context($COURSE);
     $quizzes = theme_iiidem2_get_course_quizzes_context($COURSE);
+    $schedule = theme_iiidem2_get_course_schedule_context($COURSE);
 }
 
 $templatecontext = [
@@ -104,12 +106,12 @@ $templatecontext = [
 
 ];
 
-$templatecontext = array_merge($templatecontext, $coursedisplay, $curriculum, $quizzes);
+$templatecontext = array_merge($templatecontext, $coursedisplay, $curriculum, $quizzes, ['schedule' => $schedule]);
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_fee_payment_context($COURSE));
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_program_governance_context());
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_testimonials_context());
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_student_reviews_context($COURSE));
-$templatecontext['pnbpaymentsuccess'] = optional_param('pnbpayment', '', PARAM_ALPHA) === 'success';
+$templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_payment_success_context());
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/enroll', 'init');

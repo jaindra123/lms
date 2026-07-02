@@ -4,3 +4,7 @@
 /web/sites/default/settings.local.php
 /node_modules/
 .env
+*.sql
+*.sql.gz
+moodle_backup*
+moodledb_*

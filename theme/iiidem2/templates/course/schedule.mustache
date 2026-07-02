@@ -1,0 +1,29 @@
+<section class="iiidem-course-section local-iiidem-coursecalendar">
+    <div class="container">
+        <header class="iiidem-course-section__header">
+            <h2 class="iiidem-course-section__title">{{heading}}</h2>
+            <p class="iiidem-course-section__subtitle">{{intro}}</p>
+        </header>
+
+        {{#has_events}}
+        <ul class="local-iiidem-coursecalendar__events">
+            {{#events}}
+            <li>
+                <span class="local-iiidem-coursecalendar__date">{{date}}</span>
+                <span class="local-iiidem-coursecalendar__summary">{{summary}}</span>
+            </li>
+            {{/events}}
+        </ul>
+        {{/has_events}}
+
+        {{^has_events}}
+        <p class="text-muted">{{noevents}}</p>
+        {{/has_events}}
+
+        <p class="mb-0">
+            <a href="{{embedurl}}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener noreferrer">
+                {{viewfullcalendar}}
+            </a>
+        </p>
+    </div>
+</section>

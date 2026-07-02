@@ -29,6 +29,7 @@ $PAGE->activityheader->disable();
 $templatecontext = theme_iiidem2_get_dashboard_context();
 if (!empty($templatecontext['isstudent'])) {
     $PAGE->add_body_class('iiidem-student-dashboard-page');
+    $PAGE->requires->js_call_amd('theme_iiidem2/student_dashboard', 'init');
     if (!empty($templatecontext['hassupport'])) {
         $PAGE->requires->css(new moodle_url('/local/iiidem_support/styles.css'));
         $PAGE->requires->js(new moodle_url('/local/iiidem_support/chatbot.js'));

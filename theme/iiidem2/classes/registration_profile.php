@@ -109,6 +109,29 @@ class registration_profile {
     }
 
     /**
+     * Job profile label for display (custom field, then user department fallback).
+     *
+     * @param int $userid
+     * @param \stdClass|null $user Optional user record with department.
+     * @return string
+     */
+    public static function get_job_profile_display(int $userid, ?\stdClass $user = null): string {
+        global $DB;
+
+        $value = trim(self::get_profile_value($userid, 'iiidem_jobprofile'));
+        if ($value !== '') {
+            return $value;
+        }
+
+        if ($user !== null && !empty($user->department)) {
+            return trim((string) $user->department);
+        }
+
+        $department = $DB->get_field('user', 'department', ['id' => $userid]);
+        return $department ? trim((string) $department) : '';
+    }
+
+    /**
      * User registered as Election Management Body (EMB) official.
      *
      * @param int $userid

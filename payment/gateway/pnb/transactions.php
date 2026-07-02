@@ -90,5 +90,16 @@ echo html_writer::div(
     html_writer::link(new moodle_url('/payment/accounts.php'), get_string('paymentaccounts', 'payment')),
     'mt-4'
 );
+echo html_writer::div(
+    html_writer::link(
+        new moodle_url('/payment/gateway/icici/transactions.php'),
+        get_string('viewicicihistory', 'paygw_pnb')
+    ) . ' | ' .
+    html_writer::link(
+        new moodle_url('/payment/gateway/razorpay/transactions.php'),
+        get_string('viewrazorpayhistory', 'paygw_pnb')
+    ),
+    'mt-2'
+);
 
 echo $OUTPUT->footer();

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/iiidem_coursecalendar/db" VERSION="2026061900" COMMENT="Course Google Calendar links">
+    <TABLES>
+        <TABLE NAME="local_iiidem_coursecalendar" COMMENT="Google Calendar URL per course">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="calendarurl" TYPE="char" LENGTH="512" NOTNULL="true"/>
+                <FIELD NAME="icalurl" TYPE="char" LENGTH="512" NOTNULL="true"/>
+                <FIELD NAME="embedurl" TYPE="char" LENGTH="512" NOTNULL="true"/>
+                <FIELD NAME="eventhash" TYPE="char" LENGTH="64" NOTNULL="false"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timenotified" TYPE="int" LENGTH="10" NOTNULL="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+                <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="courseid_uix" UNIQUE="true" FIELDS="courseid"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

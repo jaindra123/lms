@@ -24,7 +24,7 @@ if (optional_param('submit', false, PARAM_BOOL) && confirm_sesskey()) {
     $record = new stdClass();
     $record->courseid = $courseid;
     $record->question = $question;
-    $record->answer   = $answer;
+    $record->answer   = clean_text($answer, FORMAT_HTML);
 
     if ($DB->insert_record('local_coursefaq', $record)) {
 

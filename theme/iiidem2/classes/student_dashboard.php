@@ -42,7 +42,7 @@ class student_dashboard {
 
         $announcements = self::get_announcement_items($userid);
         $notifications = self::get_notifications($userid);
-        $achievements = self::get_achievements($userid);
+        $achievements = self::get_achievements($courses, $userid);
         $coursecards = self::get_course_cards($courses, $userid);
         $upcomingactivities = self::get_upcoming_activities($courses, $userid, $liveclasses);
         $weekendprogress = self::get_weekend_progress_context($courses, $userid);
@@ -50,12 +50,13 @@ class student_dashboard {
         $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
         $learningstats = self::get_learning_statistics($userid, $courses);
         $supportcontext = self::get_support_context($userid);
+        $notificationmeta = self::get_notification_meta($userid);
 
         return array_merge([
             'firstname' => $user->firstname,
             'dashboardurl' => \theme_iiidem2_get_dashboard_url()->out(false),
             'sidenav' => self::get_sidebar_nav($courses, $userid),
-            'quicklinks' => self::get_quick_links($userid, $calendarcourseid),
+            'dashboardtabs' => self::get_dashboard_tabs(),
             'progresscards' => self::get_learning_progress_cards($courses, $userid),
             'coursecards' => $coursecards,
             'hascoursecards' => !empty($coursecards),
@@ -81,6 +82,9 @@ class student_dashboard {
             'badgesurl' => (new \moodle_url('/badges/mybadges.php'))->out(false),
             'gradesurl' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
             'messagesurl' => (new \moodle_url('/message/index.php'))->out(false),
+            'notificationsurl' => $notificationmeta['notificationsurl'],
+            'unreadnotificationcount' => $notificationmeta['unreadcount'],
+            'hasunreadnotifications' => $notificationmeta['unreadcount'] > 0,
             'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
         ], $calendarcontext, $supportcontext);
@@ -306,11 +310,7 @@ class student_dashboard {
             }
         }
 
-        $certificates = (int) $DB->count_records_select(
-            'course_completions',
-            'userid = ? AND timecompleted IS NOT NULL AND timecompleted > 0',
-            [$userid]
-        );
+        $certificates = self::count_user_certificates($userid);
 
         return [
             [
@@ -337,49 +337,53 @@ class student_dashboard {
     }
 
     /**
-     * Horizontal quick links (My courses, Calendar, Grades, etc.).
+     * Dashboard tab panels (Moodle-style my-home sections).
      *
+     * @return array
+     */
+    protected static function get_dashboard_tabs(): array {
+        return [
+            [
+                'id' => 'overview',
+                'icon' => 'fa-gauge-high',
+                'label' => get_string('dashboardtaboverview', 'theme_iiidem2'),
+                'active' => true,
+            ],
+            [
+                'id' => 'learning',
+                'icon' => 'fa-book-open',
+                'label' => get_string('dashboardtablearning', 'theme_iiidem2'),
+                'active' => false,
+            ],
+            [
+                'id' => 'calendar',
+                'icon' => 'fa-calendar',
+                'label' => get_string('dashboardtabcalendar', 'theme_iiidem2'),
+                'active' => false,
+            ],
+            [
+                'id' => 'communication',
+                'icon' => 'fa-comments',
+                'label' => get_string('dashboardtabcommunication', 'theme_iiidem2'),
+                'active' => false,
+            ],
+            [
+                'id' => 'achievements',
+                'icon' => 'fa-award',
+                'label' => get_string('dashboardtabachievements', 'theme_iiidem2'),
+                'active' => false,
+            ],
+        ];
+    }
+
+    /**
+     * @deprecated Use get_dashboard_tabs().
      * @param int $userid
+     * @param int $calendarcourseid
      * @return array
      */
     protected static function get_quick_links(int $userid, int $calendarcourseid = SITEID): array {
-        $calendarurl = new \moodle_url('/calendar/view.php', ['view' => 'month']);
-        if ($calendarcourseid != SITEID) {
-            $calendarurl->param('course', $calendarcourseid);
-        }
-
-        return [
-            [
-                'icon' => 'fa-book',
-                'label' => get_string('dashboardmycourses', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/my/courses.php'))->out(false),
-            ],
-            [
-                'icon' => 'fa-calendar',
-                'label' => get_string('dashboardcalendartitle', 'theme_iiidem2'),
-                'url' => $calendarurl->out(false),
-            ],
-            [
-                'icon' => 'fa-chart-line',
-                'label' => get_string('dashboardnavgrades', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
-            ],
-            [
-                'icon' => 'fa-certificate',
-                'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/badges/mybadges.php'))->out(false),
-            ],
-            [
-                'icon' => 'fa-envelope',
-                'label' => get_string('dashboardquickmessages', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/message/index.php'))->out(false),
-            ],
-            [
-                'icon' => 'fa-user',
-                'label' => get_string('dashboardquickprofile', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
-            ],
-        ];
+        return self::get_dashboard_tabs();
     }
 
     /**
@@ -459,11 +463,12 @@ class student_dashboard {
     /**
      * Certificates and badges summary.
      *
+     * @param array $courses
      * @param int $userid
      * @return array
      */
-    protected static function get_achievements(int $userid): array {
-        global $CFG, $DB;
+    protected static function get_achievements(array $courses, int $userid): array {
+        global $CFG;
 
         $badgecount = 0;
         if (!empty($CFG->enablebadges)) {
@@ -472,11 +477,8 @@ class student_dashboard {
             $badgecount = count($badges);
         }
 
-        $certificatecount = (int) $DB->count_records_select(
-            'course_completions',
-            'userid = ? AND timecompleted IS NOT NULL AND timecompleted > 0',
-            [$userid]
-        );
+        $certificatecount = self::count_user_certificates($userid);
+        $certificatesurl = self::get_certificates_url($courses, $userid);
 
         return [
             'badgecount' => $badgecount,
@@ -484,8 +486,179 @@ class student_dashboard {
             'hasbadges' => $badgecount > 0,
             'hascertificates' => $certificatecount > 0,
             'badgesurl' => (new \moodle_url('/badges/mybadges.php'))->out(false),
-            'certificatesurl' => (new \moodle_url('/grade/report/overview/index.php'))->out(false),
+            'certificatesurl' => $certificatesurl->out(false),
         ];
+    }
+
+    /**
+     * Moodle popup notification metadata for the dashboard header.
+     *
+     * @param int $userid
+     * @return array{notificationsurl:string,unreadcount:int}
+     */
+    protected static function get_notification_meta(int $userid): array {
+        $notificationsurl = (new \moodle_url('/message/output/popup/notifications.php'))->out(false);
+        $unreadcount = 0;
+
+        if (class_exists('\message_popup\api')) {
+            $unreadcount = (int) \message_popup\api::count_unread_popup_notifications($userid);
+        }
+
+        return [
+            'notificationsurl' => $notificationsurl,
+            'unreadcount' => $unreadcount,
+        ];
+    }
+
+    /**
+     * @param int $userid
+     * @return int
+     */
+    protected static function count_user_certificates(int $userid): int {
+        global $DB, $CFG;
+
+        $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_customcert');
+        if ($plugin && $plugin->is_enabled() && $DB->get_manager()->table_exists('customcert_issues')) {
+            return (int) $DB->count_records('customcert_issues', ['userid' => $userid]);
+        }
+
+        return (int) $DB->count_records_select(
+            'course_completions',
+            'userid = ? AND timecompleted IS NOT NULL AND timecompleted > 0',
+            [$userid]
+        );
+    }
+
+    /**
+     * @param array $courses
+     * @param int $userid
+     * @return \moodle_url
+     */
+    protected static function get_certificates_url(array $courses, int $userid): \moodle_url {
+        global $CFG;
+
+        $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_customcert');
+        if ($plugin && $plugin->is_enabled() && is_readable($CFG->dirroot . '/mod/customcert/my_certificates.php')) {
+            return new \moodle_url('/mod/customcert/my_certificates.php');
+        }
+
+        $primary = self::get_primary_course($courses);
+        if ($primary) {
+            return new \moodle_url('/grade/report/user/index.php', ['id' => $primary->id]);
+        }
+
+        return new \moodle_url('/grade/report/overview/index.php');
+    }
+
+    /**
+     * @param array $courses
+     * @return \stdClass|null
+     */
+    protected static function get_primary_course(array $courses): ?\stdClass {
+        return $courses[0] ?? null;
+    }
+
+    /**
+     * @param array $courses
+     * @param int $userid
+     * @return \moodle_url
+     */
+    protected static function get_assignments_url(array $courses, int $userid): \moodle_url {
+        $primary = self::get_primary_course($courses);
+        if ($primary) {
+            return new \moodle_url('/mod/assign/index.php', ['id' => $primary->id]);
+        }
+
+        return \theme_iiidem2_get_dashboard_url();
+    }
+
+    /**
+     * @param array $courses
+     * @param int $userid
+     * @return \moodle_url
+     */
+    protected static function get_discussions_url(array $courses, int $userid): \moodle_url {
+        foreach ($courses as $course) {
+            try {
+                $modinfo = get_fast_modinfo($course, $userid);
+            } catch (\Exception $e) {
+                continue;
+            }
+
+            foreach ($modinfo->get_instances_of('forum') as $cm) {
+                if ($cm->uservisible) {
+                    return new \moodle_url('/mod/forum/view.php', ['id' => $cm->id]);
+                }
+            }
+        }
+
+        return new \moodle_url('/my/courses.php');
+    }
+
+    /**
+     * @param array $courses
+     * @param int $userid
+     * @return \moodle_url
+     */
+    protected static function get_recordings_url(array $courses, int $userid): \moodle_url {
+        foreach ($courses as $course) {
+            try {
+                $modinfo = get_fast_modinfo($course, $userid);
+            } catch (\Exception $e) {
+                continue;
+            }
+
+            foreach ($modinfo->get_instances_of('page') as $cm) {
+                if (!$cm->uservisible) {
+                    continue;
+                }
+                if (preg_match('/\b(record|recording|replay|archive)\b/i', (string) $cm->name)) {
+                    return new \moodle_url('/mod/page/view.php', ['id' => $cm->id]);
+                }
+            }
+
+            foreach ($modinfo->get_instances_of('url') as $cm) {
+                if (!$cm->uservisible) {
+                    continue;
+                }
+                if (preg_match('/\b(record|recording|replay|archive)\b/i', (string) $cm->name)) {
+                    return new \moodle_url('/mod/url/view.php', ['id' => $cm->id]);
+                }
+            }
+        }
+
+        $url = \theme_iiidem2_get_dashboard_url();
+        $url->set_anchor('dashboard-learning');
+        return $url;
+    }
+
+    /**
+     * @param array $courses
+     * @param int $userid
+     * @return \moodle_url
+     */
+    protected static function get_grades_url(array $courses, int $userid): \moodle_url {
+        $primary = self::get_primary_course($courses);
+        if ($primary) {
+            return new \moodle_url('/grade/report/user/index.php', ['id' => $primary->id]);
+        }
+
+        return new \moodle_url('/grade/report/overview/index.php');
+    }
+
+    /**
+     * @param array $courses
+     * @return \moodle_url
+     */
+    protected static function get_curriculum_url(array $courses): \moodle_url {
+        $primary = self::get_primary_course($courses);
+        if ($primary) {
+            $url = new \moodle_url(theme_iiidem2_get_course_detail_url($primary));
+            $url->set_anchor('curriculum');
+            return $url;
+        }
+
+        return new \moodle_url('/my/courses.php');
     }
 
     /**
@@ -691,30 +864,91 @@ class student_dashboard {
      * @return array
      */
     protected static function get_sidebar_nav(array $courses, int $userid): array {
-        $firstcourseid = !empty($courses[0]) ? (int) $courses[0]->id : 0;
-        $courseurl = $firstcourseid
-            ? (new \moodle_url('/course/view.php', ['id' => $firstcourseid]))->out(false)
-            : (new \moodle_url('/my/courses.php'))->out(false);
+        $dashboardbase = \theme_iiidem2_get_dashboard_url()->out(false);
 
         $items = [
-            ['key' => 'dashboard', 'icon' => 'fa-gauge-high', 'label' => get_string('dashboard', 'theme_iiidem2'),
-                'url' => \theme_iiidem2_get_dashboard_url()->out(false), 'active' => true],
-            ['key' => 'livesessions', 'icon' => 'fa-video', 'label' => get_string('dashboardnavlivesessions', 'theme_iiidem2'),
-                'url' => self::get_live_class_page_url($userid)->out(false), 'active' => false],
-            ['key' => 'curriculum', 'icon' => 'fa-book-open', 'label' => get_string('dashboardnavcurriculum', 'theme_iiidem2'),
-                'url' => $courseurl, 'active' => false],
-            ['key' => 'assignments', 'icon' => 'fa-clipboard-list', 'label' => get_string('dashboardnavassignments', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/calendar/view.php'))->out(false), 'active' => false],
-            ['key' => 'discussions', 'icon' => 'fa-comments', 'label' => get_string('dashboardnavdiscussions', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/my/courses.php'))->out(false), 'active' => false],
-            ['key' => 'recordings', 'icon' => 'fa-circle-play', 'label' => get_string('dashboardnavrecordings', 'theme_iiidem2'),
-                'url' => $courseurl, 'active' => false],
-            ['key' => 'grades', 'icon' => 'fa-pen', 'label' => get_string('dashboardnavgrades', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/grade/report/overview/index.php'))->out(false), 'active' => false],
-            ['key' => 'certificate', 'icon' => 'fa-certificate', 'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/badges/mybadges.php'))->out(false), 'active' => false],
-            ['key' => 'support', 'icon' => 'fa-life-ring', 'label' => get_string('dashboardnavsupport', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/local/iiidem_support/faqs.php'))->out(false), 'active' => false],
+            [
+                'key' => 'dashboard',
+                'icon' => 'fa-gauge-high',
+                'label' => get_string('dashboard', 'theme_iiidem2'),
+                'url' => $dashboardbase,
+                'panel' => 'overview',
+                'isinpage' => true,
+                'active' => true,
+            ],
+            [
+                'key' => 'livesessions',
+                'icon' => 'fa-video',
+                'label' => get_string('dashboardnavlivesessions', 'theme_iiidem2'),
+                'url' => self::get_live_class_page_url($userid)->out(false),
+                'panel' => 'learning',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'curriculum',
+                'icon' => 'fa-book-open',
+                'label' => get_string('dashboardnavcurriculum', 'theme_iiidem2'),
+                'url' => self::get_curriculum_url($courses)->out(false),
+                'panel' => '',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'assignments',
+                'icon' => 'fa-clipboard-list',
+                'label' => get_string('dashboardnavassignments', 'theme_iiidem2'),
+                'url' => self::get_assignments_url($courses, $userid)->out(false),
+                'panel' => 'learning',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'discussions',
+                'icon' => 'fa-comments',
+                'label' => get_string('dashboardnavdiscussions', 'theme_iiidem2'),
+                'url' => self::get_discussions_url($courses, $userid)->out(false),
+                'panel' => 'communication',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'recordings',
+                'icon' => 'fa-circle-play',
+                'label' => get_string('dashboardnavrecordings', 'theme_iiidem2'),
+                'url' => self::get_recordings_url($courses, $userid)->out(false),
+                'panel' => 'learning',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'grades',
+                'icon' => 'fa-pen',
+                'label' => get_string('dashboardnavgrades', 'theme_iiidem2'),
+                'url' => self::get_grades_url($courses, $userid)->out(false),
+                'panel' => 'achievements',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'certificate',
+                'icon' => 'fa-certificate',
+                'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
+                'url' => self::get_certificates_url($courses, $userid)->out(false),
+                'panel' => 'achievements',
+                'isinpage' => false,
+                'active' => false,
+            ],
+            [
+                'key' => 'support',
+                'icon' => 'fa-life-ring',
+                'label' => get_string('dashboardnavsupport', 'theme_iiidem2'),
+                'url' => $dashboardbase,
+                'panel' => 'overview',
+                'section' => 'dashboard-support',
+                'isinpage' => true,
+                'active' => false,
+            ],
         ];
 
         return $items;
@@ -1066,22 +1300,34 @@ class student_dashboard {
      * @return array
      */
     protected static function get_notifications(int $userid): array {
+        global $DB;
+
         $items = [];
 
-        $announcements = theme_iiidem2_get_student_announcements($userid, 5);
-        foreach ($announcements['announcements'] as $a) {
-            $items[] = [
-                'type' => 'announcement',
-                'icon' => 'fa-bullhorn',
-                'title' => $a['subject'],
-                'meta' => $a['coursefullname'],
-                'date' => $a['date'],
-                'url' => $a['url'],
-                'sorttime' => $a['timemodified'] ?? time(),
-            ];
+        if (class_exists('\message_popup\api')) {
+            $records = \message_popup\api::get_popup_notifications($userid, 'DESC', 8, 0);
+            foreach ($records as $notification) {
+                $title = trim(strip_tags((string) ($notification->smallmessage ?: $notification->subject)));
+                if ($title === '') {
+                    $title = get_string('dashboardnotificationgeneric', 'theme_iiidem2');
+                }
+                $items[] = [
+                    'type' => 'notification',
+                    'icon' => 'fa-bell',
+                    'title' => $title,
+                    'meta' => !empty($notification->contexturlname)
+                        ? format_string($notification->contexturlname)
+                        : get_string('dashboardnotifications', 'theme_iiidem2'),
+                    'date' => userdate($notification->timecreated, get_string('strftimedatefullshort', 'core_langconfig')),
+                    'url' => !empty($notification->contexturl)
+                        ? $notification->contexturl
+                        : (new \moodle_url('/message/output/popup/notifications.php'))->out(false),
+                    'sorttime' => (int) $notification->timecreated,
+                    'unread' => empty($notification->timeread),
+                ];
+            }
         }
 
-        global $DB;
         $since = time() - (14 * DAYSECS);
         $grades = $DB->get_records_sql(
             "SELECT gg.id, gg.timemodified, gg.finalgrade, gi.itemname, gi.itemtype, c.fullname AS coursename, c.id AS courseid
@@ -1095,7 +1341,7 @@ class student_dashboard {
            ORDER BY gg.timemodified DESC",
             ['userid' => $userid, 'since' => $since],
             0,
-            5
+            4
         );
 
         foreach ($grades as $g) {
@@ -1106,7 +1352,8 @@ class student_dashboard {
                 'meta' => format_string($g->coursename),
                 'date' => userdate($g->timemodified, get_string('strftimedatefullshort', 'core_langconfig')),
                 'url' => (new \moodle_url('/grade/report/user/index.php', ['id' => $g->courseid]))->out(false),
-                'sorttime' => $g->timemodified,
+                'sorttime' => (int) $g->timemodified,
+                'unread' => false,
             ];
         }
 

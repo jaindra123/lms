@@ -29,7 +29,7 @@ if (empty($faqs)) {
         $collapseid = 'faqcollapse' . $faq->id;
         echo html_writer::start_div('accordion-item');
         echo html_writer::tag('h3',
-            html_writer::tag('button', $faq->question, [
+            html_writer::tag('button', s($faq->question), [
                 'class' => 'accordion-button collapsed',
                 'type' => 'button',
                 'data-bs-toggle' => 'collapse',

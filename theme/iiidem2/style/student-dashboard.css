@@ -860,3 +860,100 @@ body.iiidem-student-dashboard-page #page-navbar {
     color: #0a2540;
     font-size: 0.9rem;
 }
+
+/* Interactive dashboard tabs (LMS-standard sections) */
+.iiidem-dashboard-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0.35rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(10, 37, 64, 0.06);
+}
+
+.iiidem-dashboard-tabs__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.iiidem-dashboard-tabs__btn:hover,
+.iiidem-dashboard-tabs__btn:focus {
+    background: #f1f5f9;
+    color: #0a2540;
+    outline: none;
+}
+
+.iiidem-dashboard-tabs__btn.is-active {
+    background: #0a2540;
+    color: #fff;
+}
+
+.iiidem-dashboard-panel {
+    animation: iiidem-dashboard-fadein 0.2s ease;
+}
+
+@keyframes iiidem-dashboard-fadein {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.iiidem-dashboard-lmslinks {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+}
+
+.iiidem-dashboard-lmslinks__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #0a2540;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.iiidem-dashboard-lmslinks__item:hover {
+    background: #fff;
+    border-color: #0b3d91;
+    color: #0b3d91;
+    text-decoration: none;
+}
+
+.iiidem-student-list__item.is-unread {
+    border-left: 3px solid #f07b20;
+    padding-left: 0.65rem;
+}
+
+.iiidem-student-sidebar__item.is-active a {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+@media (max-width: 991.98px) {
+    .iiidem-dashboard-tabs__btn span:not(.fa) {
+        display: none;
+    }
+
+    .iiidem-dashboard-tabs__btn {
+        padding: 0.65rem 0.85rem;
+    }
+}
+

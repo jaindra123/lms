@@ -43,7 +43,6 @@
 
 .iiidem-site-header .navbar-brand {
     flex-shrink: 0;
-    background: #fff;
     border-radius: 6px;
     padding: 5px 12px;
     margin-right: 1rem;
@@ -1005,7 +1004,8 @@ body.pagelayout-frontpage #page {
 
 /* Hero slider: one slide visible, auto-advance (Bootstrap 4 carousel). */
 .iiidem-hero-carousel {
-    --iiidem-hero-height: 650px;
+    --iiidem-hero-height: 600px;
+    height: var(--iiidem-hero-height);
     min-height: var(--iiidem-hero-height);
     margin-top: 0;
 }
@@ -1013,11 +1013,13 @@ body.pagelayout-frontpage #page {
 .iiidem-hero-carousel .carousel-inner {
     overflow: hidden;
     position: relative;
+    height: var(--iiidem-hero-height);
     min-height: var(--iiidem-hero-height);
 }
 
 /* Let Bootstrap carousel control slide visibility; only hide inactive when JS has not run yet. */
 .iiidem-hero-carousel .carousel-item {
+    height: var(--iiidem-hero-height);
     min-height: var(--iiidem-hero-height);
 }
 
@@ -1094,11 +1096,10 @@ body.pagelayout-frontpage #page {
 .iiidem-features {
     padding: 3.5rem 0 4rem;
     background: #fff;
-    margin-top: -2rem;
+    margin-top: 0;
     position: relative;
     z-index: 2;
-    border-radius: 28px 28px 0 0;
-    box-shadow: 0 -12px 40px rgba(11, 61, 145, 0.1);
+    border-radius: 0;
 }
 
 .iiidem-feature-card {
@@ -1483,7 +1484,9 @@ body.pagelayout-frontpage #page {
 
 @media (max-width: 767.98px) {
     .iiidem-hero-carousel {
-        --iiidem-hero-height: 360px;
+        --iiidem-hero-height: 420px;
+        height: 420px;
+        min-height: 420px;
     }
 
     .iiidem-page-section {
@@ -1870,10 +1873,8 @@ body.iiidem-course-hero-layout .iiidem-course-hero .hero-overlay {
 }
 
 .advisor-content span {
-    color: #777;
     font-size: 16px;
     display: block;
-    margin-bottom: 25px;
 }
 
 .social-links {

@@ -41,16 +41,15 @@ $templatecontext['hascourses'] = !empty($frontpagecourses);
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 // Program Governance — not shown on front page (see frontpage.mustache).
+// About International IDEA — not shown on front page (see frontpage.mustache).
 // $governancecontext = theme_iiidem2_get_program_governance_context();
-$ideacontext = theme_iiidem2_get_about_idea_context();
+// $ideacontext = theme_iiidem2_get_about_idea_context();
 
 $templatecontext = array_merge(
     $templatecontext,
     // $governancecontext ?? [],
-    $ideacontext ?? []
+    // $ideacontext ?? []
 );
-
-$templatecontext['aboutideahtml'] = $OUTPUT->render_from_template('theme_iiidem2/about_idea', $ideacontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_slider', 'init');
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_about_tabs', 'init');

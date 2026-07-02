@@ -10,15 +10,17 @@ database:
     type: mariadb
     version: "10.11"
 performance_mode: mutagen
+bind_all_interfaces: true
+hooks:
+    post-start:
+        - exec: bash /mnt/ddev_config/web-build/migrate-moodledata.sh
+host_webserver_port: "8080"
+host_https_port: "8443"
 use_dns_when_possible: true
 composer_version: "2"
 web_environment: []
 corepack_enable: false
 default_container_timeout: "240"
-
-hooks:
-  post-start:
-    - exec: bash /mnt/ddev_config/web-build/migrate-moodledata.sh
 
 # Key features of DDEV's config.yaml:
 

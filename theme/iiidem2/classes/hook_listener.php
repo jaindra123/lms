@@ -96,6 +96,59 @@ class hook_listener {
         if ($PAGE->pagelayout !== 'course' || empty($COURSE->id) || (int) $COURSE->id === SITEID) {
             if (preg_match('#/(admin/|local/iiidem_support/manage\.php)#', $PAGE->url->get_path(false))) {
                 $PAGE->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
+                // Inline fallback: admin tabs must leave /admin/index.php for /admin/search.php.
+                // Runs even when cached AMD bundles are stale or fail to load.
+                if (preg_match('#/admin/index\.php$#', $PAGE->url->get_path(false))) {
+                    $PAGE->requires->js_init_code(<<<'JS'
+(function() {
+    if (!/\/admin\/index\.php$/i.test(window.location.pathname)) {
+        return;
+    }
+    var toSearchUrl = function(href) {
+        if (!href) {
+            return null;
+        }
+        if (href.indexOf('/admin/search.php') !== -1 && href.indexOf('#link') !== -1) {
+            return href;
+        }
+        var hash = href.indexOf('#link') === 0 ? href : null;
+        if (!hash && href.indexOf('#') !== -1) {
+            var candidate = href.substring(href.indexOf('#'));
+            if (candidate.indexOf('#link') === 0) {
+                hash = candidate;
+            }
+        }
+        return hash ? (window.location.origin + '/admin/search.php' + hash) : null;
+    };
+    var redirectHash = function() {
+        var target = toSearchUrl(window.location.hash);
+        if (target) {
+            window.location.replace(target);
+        }
+    };
+    redirectHash();
+    window.addEventListener('hashchange', redirectHash);
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('.secondary-navigation a.nav-link[href]');
+        if (!link) {
+            return;
+        }
+        var href = link.getAttribute('href') || '';
+        if (!href || href === '#') {
+            return;
+        }
+        var target = toSearchUrl(href);
+        if (!target) {
+            return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        window.location.assign(target);
+    }, true);
+})();
+JS
+                    );
+                }
             }
             return;
         }

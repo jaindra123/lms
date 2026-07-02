@@ -137,8 +137,9 @@ try {
             throw new moodle_exception('invalidaction', 'local_iiidem_livequiz');
     }
 } catch (Exception $e) {
+    debugging($e->getMessage(), DEBUG_DEVELOPER);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => get_string('error'),
     ]);
 }

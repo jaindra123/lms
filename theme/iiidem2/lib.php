@@ -211,8 +211,17 @@ function theme_iiidem2_get_footer_context(): array {
     $theme = theme_config::load('iiidem2');
     $systemcontext = context_system::instance();
     $navbarlogo = theme_iiidem2_get_navbar_logo_url();
+    $loggedin = isloggedin() && !isguestuser();
 
-    return array_merge(theme_iiidem2_get_footer_settings(), [
+    $authlinks = [
+        'isloggedin' => $loggedin,
+        'footerloginurl' => (new moodle_url('/login/index.php'))->out(false),
+    ];
+    if ($loggedin) {
+        $authlinks['footerlogouturl'] = (new moodle_url('/login/logout.php', ['sesskey' => sesskey()]))->out(false);
+    }
+
+    return array_merge(theme_iiidem2_get_footer_settings(), $authlinks, [
         'sitename' => format_string($SITE->shortname, true, [
             'context' => $systemcontext,
             'escape' => false,
@@ -2599,6 +2608,7 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         theme_iiidem2_get_course_testimonials_context(),
         theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
+        theme_iiidem2_get_course_payment_success_context(),
         [
             'sitename' => format_string($SITE->shortname, true, [
                 'context' => context_course::instance(SITEID),
@@ -2693,6 +2703,25 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
     }
 
     return '';
+}
+
+/**
+ * Formatted course fee for display (Razorpay gateway amount when configured).
+ *
+ * @param stdClass $feeinstance enrol_fee instance
+ * @return string
+ */
+function theme_iiidem2_get_course_fee_cost_display(stdClass $feeinstance): string {
+    $currency = $feeinstance->currency ?: 'INR';
+    if (class_exists('\paygw_razorpay\course_fee_amount')) {
+        return \paygw_razorpay\course_fee_amount::get_display_string(
+            (int) $feeinstance->id,
+            (float) $feeinstance->cost,
+            $currency
+        );
+    }
+
+    return \core_payment\helper::get_cost_as_string((float) $feeinstance->cost, $currency);
 }
 
 /**
@@ -3032,7 +3061,7 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
             $currency = $feeinstance->currency ?: 'INR';
             $paymentmodal = [
                 'hascurriculumpaymentmodal' => true,
-                'coursefeecost' => \core_payment\helper::get_cost_as_string((float) $feeinstance->cost, $currency),
+                'coursefeecost' => theme_iiidem2_get_course_fee_cost_display($feeinstance),
                 'coursefeeinstanceid' => (int) $feeinstance->id,
                 'showcoursepayment' => !empty(\core_payment\helper::get_available_gateways(
                     'enrol_fee',
@@ -3431,10 +3460,13 @@ function theme_iiidem2_preload_course_layout_context(stdClass $course): void {
     }
     $done[$courseid] = true;
 
+    $schedule = theme_iiidem2_get_course_schedule_context($course);
+
     theme_iiidem2_set_preloaded_course_layout_context($course, [
         'display' => theme_iiidem2_get_course_display_context($course),
         'curriculum' => theme_iiidem2_get_course_curriculum_context($course),
         'quizzes' => theme_iiidem2_get_course_quizzes_context($course),
+        'schedule' => $schedule,
     ]);
 }
 
@@ -3455,6 +3487,22 @@ function theme_iiidem2_set_preloaded_course_layout_context(stdClass $course, arr
 function theme_iiidem2_get_preloaded_course_layout_context(stdClass $course): ?array {
     $store = theme_iiidem2_preloaded_course_layout_store();
     return $store[(int) $course->id] ?? null;
+}
+
+/**
+ * Course schedule widget context from local_iiidem_coursecalendar when installed.
+ *
+ * @param stdClass $course
+ * @return array
+ */
+function theme_iiidem2_get_course_schedule_context(stdClass $course): array {
+    $plugin = \core_plugin_manager::instance()->get_plugin_info('local_iiidem_coursecalendar');
+    if (!$plugin || !$plugin->is_enabled()) {
+        return ['has_calendar' => false];
+    }
+
+    return \local_iiidem_coursecalendar\manager::get_course_display_context((int) $course->id)
+        ?? ['has_calendar' => false];
 }
 
 /**
@@ -3497,17 +3545,18 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
     $instructordata = [];
 
     foreach ($roles as $role) {
-        $users = get_role_users($role->id, $context, false, $userfields . ', u.description');
+        $users = get_role_users($role->id, $context, false, $userfields . ', u.description, u.department');
         foreach ($users as $teacher) {
             if (isset($instructordata[$teacher->id])) {
                 continue;
             }
             $userpicture = new user_picture($teacher);
             $userpicture->size = 150;
+            $jobprofile = \theme_iiidem2\registration_profile::get_job_profile_display((int) $teacher->id, $teacher);
             $instructordata[$teacher->id] = [
                 'name' => fullname($teacher),
                 'image' => $userpicture->get_url($PAGE)->out(false),
-                'role' => role_get_name($role, $context),
+                'role' => $jobprofile !== '' ? $jobprofile : role_get_name($role, $context),
                 'bio' => !empty($teacher->description)
                     ? strip_tags($teacher->description)
                     : get_string('nobio', 'theme_iiidem2'),
@@ -3568,6 +3617,23 @@ function theme_iiidem2_user_has_active_fee_enrolment(int $userid, int $feeinstan
 }
 
 /**
+ * Success modal context after PNB or ICICI course fee payment.
+ *
+ * @return array{coursepaymentsuccess: bool}
+ */
+function theme_iiidem2_get_course_payment_success_context(): array {
+    $success = optional_param('pnbpayment', '', PARAM_ALPHA) === 'success'
+        || optional_param('icicipayment', '', PARAM_ALPHA) === 'success'
+        || optional_param('razorpaypayment', '', PARAM_ALPHA) === 'success';
+
+    return [
+        'coursepaymentsuccess' => $success,
+        // Legacy flag used by older template conditionals.
+        'pnbpaymentsuccess' => $success,
+    ];
+}
+
+/**
  * Course fee / PNB payment context for the course view marketing layout.
  *
  * @param stdClass $course
@@ -3591,7 +3657,7 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
     }
 
     $currency = $feeinstance->currency ?: 'INR';
-    $costdisplay = \core_payment\helper::get_cost_as_string((float) $feeinstance->cost, $currency);
+    $costdisplay = theme_iiidem2_get_course_fee_cost_display($feeinstance);
     $description = get_string('purchasedescription', 'enrol_fee', format_string($course->fullname));
     $successurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
     $loginurl = (new moodle_url('/login/index.php', [
@@ -3629,6 +3695,8 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
         'coursefeesuccessurl' => $successurl,
         'coursefeeloginrequired' => false,
         'haspnbgateway' => in_array('pnb', $gateways, true),
+        'hasicicigateway' => in_array('icici', $gateways, true),
+        'hasrazorpaygateway' => in_array('razorpay', $gateways, true),
     ];
 }
 

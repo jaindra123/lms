@@ -50,3 +50,5 @@ $string['bankreference'] = 'Bank reference';
 $string['paymentnotallowed'] = 'Course fee payment is only available for registered university students. EMB participants are enrolled by course administrators without online payment.';
 $string['amountmismatch'] = 'The payment amount does not match the course fee. Please start the payment again from the course page.';
 $string['paymenttxnreflabel'] = 'Transaction reference';
+$string['viewicicihistory'] = 'View ICICI transaction history';
+$string['viewrazorpayhistory'] = 'View Razorpay transaction history';
