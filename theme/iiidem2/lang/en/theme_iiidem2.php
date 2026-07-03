@@ -138,6 +138,7 @@ $string['dashboardnavrecordings'] = 'Recordings';
 $string['dashboardnavgrades'] = 'Grades';
 $string['dashboardnavcertificate'] = 'Certificate';
 $string['dashboardnavsupport'] = 'Support';
+$string['adminnavpayment'] = 'Payment';
 $string['dashboardsupporttitle'] = 'Help & Support';
 $string['dashboardsupportlead'] = 'Browse FAQs, raise a ticket, or contact the IIIDEM support team.';
 $string['dashboardstatuslive'] = 'Live';

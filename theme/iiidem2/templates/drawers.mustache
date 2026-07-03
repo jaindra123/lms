@@ -193,9 +193,7 @@
 </body>
 </html>
 {{#js}}
-M.util.js_pending('theme_iiidem2/loader');
-require(['theme_iiidem2/loader', 'theme_iiidem2/drawer'], function(Loader, Drawer) {
+require(['theme_iiidem2/drawer'], function(Drawer) {
     Drawer.init();
-    M.util.js_complete('theme_iiidem2/loader');
 });
 {{/js}}

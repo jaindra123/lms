@@ -98,8 +98,13 @@ $forceblockdraweropen = false;
 
 $secondarynavigation = false;
 $overflow = '';
+if (function_exists('theme_iiidem2_prepare_admin_index_secondary_nav')) {
+    theme_iiidem2_prepare_admin_index_secondary_nav($PAGE);
+}
 if ($PAGE->has_secondary_navigation()) {
-    $tablistnav = $PAGE->has_tablist_secondary_navigation();
+    $tablistnav = theme_iiidem2_is_admin_index_page($PAGE)
+        ? false
+        : $PAGE->has_tablist_secondary_navigation();
     $moremenu = new \core\navigation\output\more_menu($PAGE->secondarynav, 'nav-tabs', true, $tablistnav);
     $secondarynavigation = $moremenu->export_for_template($OUTPUT);
     $overflowdata = $PAGE->secondarynav->get_overflow_menu_data();
@@ -149,6 +154,7 @@ $templatecontext = [
     'headercontent' => $headercontent,
     'addblockbutton' => $addblockbutton,
     'hidestandardpageheader' => $hidestandardpageheader,
+    'isadminindexpage' => theme_iiidem2_is_admin_index_page($PAGE),
 ];
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);

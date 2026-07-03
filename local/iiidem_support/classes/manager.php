@@ -409,7 +409,7 @@ class manager {
             ];
 
             if ($includeuser) {
-                $user = $DB->get_record('user', ['id' => $ticket->userid], 'id,firstname,lastname,email', MUST_EXIST);
+                $user = $DB->get_record('user', ['id' => $ticket->userid], '*', MUST_EXIST);
                 $item['username'] = fullname($user);
                 $item['useremail'] = $user->email;
             }
@@ -448,7 +448,7 @@ class manager {
             : '';
 
         if ($admin) {
-            $user = $DB->get_record('user', ['id' => $ticket->userid], 'id,firstname,lastname,email', MUST_EXIST);
+            $user = $DB->get_record('user', ['id' => $ticket->userid], '*', MUST_EXIST);
             $ticket->username = fullname($user);
             $ticket->useremail = $user->email;
         }

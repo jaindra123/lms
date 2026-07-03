@@ -27,6 +27,6 @@ $callbacks = [
     [
         'hook' => \core\hook\output\before_http_headers::class,
         'callback' => [\theme_iiidem2\hook_listener::class, 'before_http_headers'],
-        'priority' => 100,
+        'priority' => 99,
     ],
 ];

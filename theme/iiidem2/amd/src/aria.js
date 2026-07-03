@@ -24,7 +24,6 @@
 import $ from 'jquery';
 import Pending from 'core/pending';
 import * as FocusLockManager from 'core/local/aria/focuslock';
-import {resolveAdminSearchUrl} from './admin_nav_fix';
 
 /**
  * Drop downs from bootstrap don't support keyboard accessibility by default.
@@ -484,38 +483,15 @@ const tabElementFix = () => {
     });
 
     document.addEventListener('click', e => {
-        const tab = e.target.closest('[role="tablist"] [data-toggle="tab"], [role="tablist"] [data-toggle="pill"]');
-        if (!tab) {
-            return;
+        if (e.target.matches('[role="tablist"] [data-toggle="tab"], [role="tablist"] [data-toggle="pill"]')) {
+            const tabs = e.target.closest('[role="tablist"]').querySelectorAll('[data-toggle="tab"], [data-toggle="pill"]');
+            e.preventDefault();
+            $(e.target).tab('show');
+            tabs.forEach(tab => {
+                tab.tabIndex = -1;
+            });
+            e.target.tabIndex = 0;
         }
-        const href = tab.getAttribute('href') || '';
-        // Full-page secondary nav links (e.g. Support) must navigate normally.
-        if (href && !href.startsWith('#')) {
-            return;
-        }
-        if (/\/admin\/index\.php$/i.test(window.location.pathname) && tab.closest('.secondary-navigation')) {
-            if (href.startsWith('#link')) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                window.location.assign(resolveAdminSearchUrl(href));
-            }
-            return;
-        }
-        const pane = href ? document.querySelector(href) : null;
-        if (!pane) {
-            if (href.startsWith('#link') && /\/admin\/index\.php$/i.test(window.location.pathname)) {
-                e.preventDefault();
-                window.location.assign(resolveAdminSearchUrl(href));
-            }
-            return;
-        }
-        const tabs = tab.closest('[role="tablist"]').querySelectorAll('[data-toggle="tab"], [data-toggle="pill"]');
-        e.preventDefault();
-        $(tab).tab('show');
-        tabs.forEach(item => {
-            item.tabIndex = -1;
-        });
-        tab.tabIndex = 0;
     });
 };
 

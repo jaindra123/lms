@@ -1,0 +1,68 @@
+{{!
+    @template theme_iiidem2/dashboard/live_classes
+
+    Live classes / meetings panel (Webex, Zoom, BBB).
+}}
+<article class="iiidem-student-panel iiidem-live-classes-panel" id="live-classes">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-video" aria-hidden="true"></span></span>
+            <h2 class="iiidem-student-panel__title">{{#str}}dashboardliveclasses, theme_iiidem2{{/str}}</h2>
+        </div>
+        {{#hasjoinnow}}
+        <a href="{{{joinnowurl}}}" class="btn iiidem-student-btn-join">{{#str}}dashboardjoinnow, theme_iiidem2{{/str}}</a>
+        {{/hasjoinnow}}
+    </header>
+    <div class="iiidem-student-panel__body">
+        {{#hasliveclassestoday}}
+        <div class="iiidem-live-classes-section mb-4">
+            <h3 class="iiidem-live-classes-section__title">{{#str}}dashboardliveclassestoday, theme_iiidem2{{/str}}</h3>
+            <ul class="iiidem-student-list list-unstyled mb-0">
+                {{#liveclassestoday}}
+                <li class="iiidem-student-list__item iiidem-live-classes-item iiidem-live-classes-item--today">
+                    <div class="iiidem-student-list__content">
+                        <div class="iiidem-student-list__type">{{#str}}dashboardstatustoday, theme_iiidem2{{/str}}</div>
+                        <div class="iiidem-student-list__title">{{title}}</div>
+                        <div class="iiidem-student-list__meta">{{meta}}</div>
+                        <div class="iiidem-student-list__meta">{{datetime}}</div>
+                    </div>
+                    <div class="iiidem-live-classes-item__actions">
+                        <span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{status}}</span>
+                        {{#hasjoinurl}}
+                        <a href="{{{joinurl}}}" class="btn btn-sm btn-primary mt-2">{{#str}}dashboardjoin, theme_iiidem2{{/str}}</a>
+                        {{/hasjoinurl}}
+                    </div>
+                </li>
+                {{/liveclassestoday}}
+            </ul>
+        </div>
+        {{/hasliveclassestoday}}
+
+        {{#hasliveclassesupcoming}}
+        <div class="iiidem-live-classes-section">
+            <h3 class="iiidem-live-classes-section__title">{{#str}}dashboardliveclassesupcoming, theme_iiidem2{{/str}}</h3>
+            <ul class="iiidem-student-list list-unstyled mb-0">
+                {{#liveclassesupcoming}}
+                <li class="iiidem-student-list__item iiidem-live-classes-item">
+                    <div class="iiidem-student-list__content">
+                        <div class="iiidem-student-list__title">{{title}}</div>
+                        <div class="iiidem-student-list__meta">{{meta}}</div>
+                        <div class="iiidem-student-list__meta">{{datetime}}</div>
+                    </div>
+                    <div class="iiidem-live-classes-item__actions">
+                        <span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{status}}</span>
+                        {{#hasjoinurl}}
+                        <a href="{{{joinurl}}}" class="btn btn-sm btn-outline-primary mt-2">{{#str}}dashboardjoin, theme_iiidem2{{/str}}</a>
+                        {{/hasjoinurl}}
+                    </div>
+                </li>
+                {{/liveclassesupcoming}}
+            </ul>
+        </div>
+        {{/hasliveclassesupcoming}}
+
+        {{^hasliveclassestoday}}{{^hasliveclassesupcoming}}
+        <p class="iiidem-student-empty mb-0">{{#str}}dashboardnolive, theme_iiidem2{{/str}}</p>
+        {{/hasliveclassesupcoming}}{{/hasliveclassestoday}}
+    </div>
+</article>

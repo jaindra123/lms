@@ -93,8 +93,10 @@ const handleSecondaryNavClick = (e) => {
         return;
     }
 
-    // Full-page links rendered as Bootstrap tabs (e.g. Support on /admin/search.php).
-    if (!href.startsWith('#') && link.getAttribute('data-toggle') === 'tab') {
+    // Full-page links rendered as Bootstrap tabs (e.g. Payment, Support on /admin/search.php).
+    const istab = link.getAttribute('data-toggle') === 'tab'
+        || link.getAttribute('data-bs-toggle') === 'tab';
+    if (!href.startsWith('#') && istab) {
         e.preventDefault();
         e.stopImmediatePropagation();
         window.location.assign(href);

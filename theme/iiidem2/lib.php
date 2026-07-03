@@ -2551,6 +2551,95 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
 }
 
 /**
+ * Whether the page is Site administration notifications (/admin/index.php).
+ *
+ * @param moodle_page $page
+ * @return bool
+ */
+function theme_iiidem2_is_admin_index_page(moodle_page $page): bool {
+    return (bool) preg_match('#/admin/index\.php$#', $page->url->get_path(false));
+}
+
+/**
+ * Admin notifications: menubar links to /admin/search.php (not in-page hash tabs).
+ *
+ * @param moodle_page $page
+ * @return void
+ */
+function theme_iiidem2_prepare_admin_index_secondary_nav(moodle_page $page): void {
+    if (function_exists('local_iiidem_support_prepare_admin_index_secondary_nav')) {
+        local_iiidem_support_prepare_admin_index_secondary_nav($page);
+        return;
+    }
+
+    if (!theme_iiidem2_is_admin_index_page($page)) {
+        return;
+    }
+
+    $page->set_secondary_navigation(true, false);
+
+    if (!$page->has_secondary_navigation() || !$page->secondarynav->has_children()) {
+        return;
+    }
+
+    foreach ($page->secondarynav->children as $child) {
+        if (empty($child->key)) {
+            continue;
+        }
+        $child->action = new moodle_url('/admin/search.php', [], 'link' . $child->key);
+        $child->tab = null;
+    }
+}
+
+/**
+ * Add a Payment tab to site administration secondary navigation (next to Support).
+ *
+ * @param moodle_page $page
+ * @return void
+ */
+function theme_iiidem2_extend_admin_secondary_nav(moodle_page $page): void {
+    if ($page->context->contextlevel !== CONTEXT_SYSTEM) {
+        return;
+    }
+
+    if ($page->pagelayout !== 'admin' && !str_starts_with($page->pagetype ?? '', 'admin-')) {
+        return;
+    }
+
+    $context = context_system::instance();
+    if (!has_capability('moodle/site:config', $context)
+            && !has_capability('moodle/payment:manageaccounts', $context)
+            && !has_capability('moodle/payment:viewpayments', $context)) {
+        return;
+    }
+
+    $secondary = $page->secondarynav;
+    if ($secondary->get('theme_iiidem2_payment', navigation_node::TYPE_SETTING)) {
+        return;
+    }
+
+    $url = new moodle_url('/admin/category.php', ['category' => 'payment']);
+    $node = navigation_node::create(
+        get_string('adminnavpayment', 'theme_iiidem2'),
+        $url,
+        navigation_node::TYPE_SETTING,
+        null,
+        'theme_iiidem2_payment'
+    );
+    $node->tab = $url->out(false);
+
+    $beforekey = $secondary->get('local_iiidem_support_manage', navigation_node::TYPE_SETTING)
+        ? 'local_iiidem_support_manage'
+        : null;
+    $secondary->add_node($node, $beforekey);
+
+    if ($page->url->compare($url, URL_MATCH_PARAMS)) {
+        $node->make_active();
+        $page->set_secondary_active_tab('theme_iiidem2_payment');
+    }
+}
+
+/**
  * Render a full-page Mustache template and resolve Moodle footer placeholders.
  *
  * @param string $templatename
@@ -3873,6 +3962,10 @@ function theme_iiidem2_page_init($page) {
     global $CFG;
 
     $page->requires->js_call_amd('theme_iiidem2/footer-popover', 'init');
+
+    if ($page->pagelayout === 'admin' || str_starts_with($page->pagetype ?? '', 'admin-')) {
+        $page->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
+    }
 
     if (isloggedin() && !isguestuser() && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {
         $path = $page->url->get_path(false);

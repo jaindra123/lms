@@ -1,0 +1,31 @@
+{{!
+    @template theme_iiidem2/dashboard/recent_activities
+
+    Recent activity: last lesson, submissions, opened courses.
+}}
+<article class="iiidem-student-panel" id="recent-activities">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-clock-rotate-left" aria-hidden="true"></span></span>
+            <h2 class="iiidem-student-panel__title">{{#str}}dashboardrecentactivity, theme_iiidem2{{/str}}</h2>
+        </div>
+    </header>
+    <div class="iiidem-student-panel__body">
+        {{#hasrecentactivities}}
+        <ul class="iiidem-student-list list-unstyled mb-0">
+            {{#recentactivities}}
+            <li class="iiidem-student-list__item">
+                <div class="iiidem-student-list__content">
+                    <span class="fa {{icon}} iiidem-student-list__notif-icon" aria-hidden="true"></span>
+                    <a href="{{{url}}}" class="iiidem-student-list__title iiidem-student-list__link">{{title}}</a>
+                    <div class="iiidem-student-list__meta">{{meta}}{{#date}} · {{date}}{{/date}}</div>
+                </div>
+            </li>
+            {{/recentactivities}}
+        </ul>
+        {{/hasrecentactivities}}
+        {{^hasrecentactivities}}
+        <p class="iiidem-student-empty mb-0">{{#str}}dashboardnorecent, theme_iiidem2{{/str}}</p>
+        {{/hasrecentactivities}}
+    </div>
+</article>

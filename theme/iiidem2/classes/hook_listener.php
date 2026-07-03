@@ -23,11 +23,24 @@ class hook_listener {
     private static $courseexporterautoloadregistered = false;
 
     /**
+     * Whether theme_iiidem2 is the active site theme.
+     *
+     * @return bool
+     */
+    private static function is_theme_active(): bool {
+        global $CFG;
+        return ($CFG->theme ?? '') === 'iiidem2';
+    }
+
+    /**
      * Register theme override for course list progress (My courses block webservice).
      *
      * @param \core\hook\after_config $hook
      */
     public static function after_config(\core\hook\after_config $hook): void {
+        if (!self::is_theme_active()) {
+            return;
+        }
         if (self::$courseexporterautoloadregistered) {
             return;
         }
@@ -52,6 +65,10 @@ class hook_listener {
      */
     public static function after_login_completed(\core_user\hook\after_login_completed $hook): void {
         global $CFG, $SESSION;
+
+        if (!self::is_theme_active()) {
+            return;
+        }
 
         if (isguestuser()) {
             return;
@@ -80,7 +97,13 @@ class hook_listener {
     public static function before_http_headers(\core\hook\output\before_http_headers $hook): void {
         global $CFG, $PAGE, $COURSE;
 
+        if (!self::is_theme_active()) {
+            return;
+        }
+
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        \theme_iiidem2_extend_admin_secondary_nav($PAGE);
 
         if (\theme_iiidem2_is_quiz_attempt_page($PAGE) && \theme_iiidem2_use_custom_quiz_ui($PAGE)) {
             if ($PAGE->state < \moodle_page::STATE_IN_BODY) {
@@ -94,62 +117,6 @@ class hook_listener {
         }
 
         if ($PAGE->pagelayout !== 'course' || empty($COURSE->id) || (int) $COURSE->id === SITEID) {
-            if (preg_match('#/(admin/|local/iiidem_support/manage\.php)#', $PAGE->url->get_path(false))) {
-                $PAGE->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
-                // Inline fallback: admin tabs must leave /admin/index.php for /admin/search.php.
-                // Runs even when cached AMD bundles are stale or fail to load.
-                if (preg_match('#/admin/index\.php$#', $PAGE->url->get_path(false))) {
-                    $PAGE->requires->js_init_code(<<<'JS'
-(function() {
-    if (!/\/admin\/index\.php$/i.test(window.location.pathname)) {
-        return;
-    }
-    var toSearchUrl = function(href) {
-        if (!href) {
-            return null;
-        }
-        if (href.indexOf('/admin/search.php') !== -1 && href.indexOf('#link') !== -1) {
-            return href;
-        }
-        var hash = href.indexOf('#link') === 0 ? href : null;
-        if (!hash && href.indexOf('#') !== -1) {
-            var candidate = href.substring(href.indexOf('#'));
-            if (candidate.indexOf('#link') === 0) {
-                hash = candidate;
-            }
-        }
-        return hash ? (window.location.origin + '/admin/search.php' + hash) : null;
-    };
-    var redirectHash = function() {
-        var target = toSearchUrl(window.location.hash);
-        if (target) {
-            window.location.replace(target);
-        }
-    };
-    redirectHash();
-    window.addEventListener('hashchange', redirectHash);
-    document.addEventListener('click', function(e) {
-        var link = e.target.closest('.secondary-navigation a.nav-link[href]');
-        if (!link) {
-            return;
-        }
-        var href = link.getAttribute('href') || '';
-        if (!href || href === '#') {
-            return;
-        }
-        var target = toSearchUrl(href);
-        if (!target) {
-            return;
-        }
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.location.assign(target);
-    }, true);
-})();
-JS
-                    );
-                }
-            }
             return;
         }
 
@@ -162,6 +129,10 @@ JS
     }
 
     public static function primary_extend(\core\hook\navigation\primary_extend $hook): void {
+        if (!self::is_theme_active()) {
+            return;
+        }
+
         $view = $hook->get_primaryview();
         $view->add(
             get_string('aboutus', 'theme_iiidem2'),
