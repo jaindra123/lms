@@ -1,102 +1,152 @@
 <section class="iiidem-course-section iiidem-course-curriculum">
     <div class="container">
-        <header class="iiidem-course-section__header">
-            <h2 class="iiidem-course-section__title">{{#str}}coursecontentheading, theme_iiidem2{{/str}}</h2>
-            <p class="iiidem-course-section__subtitle">{{totalsections}} sections • {{totalactivities}} lectures</p>
-        </header>
-
-        {{#hascoursesummary}}
-        <div class="iiidem-course-section__intro course-description">
-            {{{ coursesummary }}}
-        </div>
-        {{/hascoursesummary}}
-
-        <div class="iiidem-curriculum">
-            <div class="accordion iiidem-accordion" id="courseAccordion">
-                {{#sections}}
-                <div class="accordion-item">
-                    <h3 class="accordion-header" id="heading{{id}}">
-                        <button class="accordion-button collapsed"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapse{{id}}"
-                                aria-expanded="false"
-                                aria-controls="collapse{{id}}">
-                            <span class="iiidem-accordion__label">
-                                <span class="iiidem-accordion__title">{{name}}</span>
-                                <span class="iiidem-accordion__meta">{{#str}}coursecontentlectures, theme_iiidem2, {{activitycount}} {{/str}}</span>
+        <div class="row g-4 iiidem-course-content-layout">
+            <div class="col-lg-{{#hascoursefee}}8{{/hascoursefee}}{{^hascoursefee}}12{{/hascoursefee}} iiidem-course-content-layout__main">
+                <header class="iiidem-curriculum-header">
+                    <div class="iiidem-curriculum-header__intro">
+                        <h2 class="iiidem-curriculum-header__title">{{#str}}coursecontentheading, theme_iiidem2{{/str}}</h2>
+                        <p class="iiidem-curriculum-header__subtitle">{{#str}}curriculumintro, theme_iiidem2{{/str}}</p>
+                    </div>
+                    <div class="iiidem-curriculum-stats">
+                        <div class="iiidem-curriculum-stat">
+                            <span class="iiidem-curriculum-stat__icon iiidem-curriculum-stat__icon--blue">
+                                <span class="fa fa-calendar" aria-hidden="true"></span>
                             </span>
-                        </button>
-                    </h3>
-
-                    <div id="collapse{{id}}" class="accordion-collapse collapse" data-bs-parent="#courseAccordion">
-                        <div class="accordion-body">
-                            {{#activities}}
-                            <div class="lecture-item">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <div class="iiidem-lecture-item__title">▶ {{title}}</div>
-                                    {{#preview}}
-                                    <div>
-                                        {{#canpreviewcurriculum}}
-                                        <button class="btn btn-sm btn-primary iiidem-curriculum-preview-btn" type="button"
-                                                data-bs-toggle="collapse"
-                                                data-bs-target="#preview{{id}}"
-                                                aria-expanded="false"
-                                                aria-controls="preview{{id}}"
-                                                data-cmid="{{cmid}}"
-                                                {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
-                                                {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
-                                            {{previewlabel}}
-                                        </button>
-                                        {{/canpreviewcurriculum}}
-                                        {{^canpreviewcurriculum}}
-                                        {{#curriculumpreviewneedspayment}}
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary iiidem-curriculum-pay-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#iiidemPaymentRequiredModal"
-                                                data-scroll-target="#iiidem-course-fee">
-                                            {{previewlabel}}
-                                        </button>
-                                        {{/curriculumpreviewneedspayment}}
-                                        {{^curriculumpreviewneedspayment}}
-                                        {{#hasloginmodal}}
-                                        <button type="button" class="btn btn-sm btn-primary"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#iiidemLoginModal">
-                                            {{previewlabel}}
-                                        </button>
-                                        {{/hasloginmodal}}
-                                        {{^hasloginmodal}}
-                                        <a href="{{loginurl}}" class="btn btn-sm btn-primary">
-                                            {{previewlabel}}
-                                        </a>
-                                        {{/hasloginmodal}}
-                                        {{/curriculumpreviewneedspayment}}
-                                        {{/canpreviewcurriculum}}
-                                    </div>
-                                    {{/preview}}
-                                </div>
-
-                                {{#canpreviewcurriculum}}
-                                {{#haspreviewcontent}}
-                                <div class="collapse mt-2" id="preview{{id}}"
-                                     data-cmid="{{cmid}}"
-                                     {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
-                                     {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
-                                    <div class="card card-body">
-                                        {{{previewcontent}}}
-                                    </div>
-                                </div>
-                                {{/haspreviewcontent}}
-                                {{/canpreviewcurriculum}}
-                            </div>
-                            {{/activities}}
+                            <span class="iiidem-curriculum-stat__body">
+                                <span class="iiidem-curriculum-stat__label">{{#str}}curriculumtotalduration, theme_iiidem2{{/str}}</span>
+                                <span class="iiidem-curriculum-stat__value">{{curriculumduration}}</span>
+                            </span>
+                        </div>
+                        <div class="iiidem-curriculum-stat">
+                            <span class="iiidem-curriculum-stat__icon iiidem-curriculum-stat__icon--green">
+                                <span class="fa fa-play-circle" aria-hidden="true"></span>
+                            </span>
+                            <span class="iiidem-curriculum-stat__body">
+                                <span class="iiidem-curriculum-stat__label">{{#str}}curriculumtotallectures, theme_iiidem2{{/str}}</span>
+                                <span class="iiidem-curriculum-stat__value">{{#str}}curriculumlecturescount, theme_iiidem2, {{totalactivities}}{{/str}}</span>
+                            </span>
                         </div>
                     </div>
+                </header>
+
+                {{#hascoursesummary}}
+                <div class="iiidem-course-section__intro course-description">
+                    {{{ coursesummary }}}
                 </div>
-                {{/sections}}
+                {{/hascoursesummary}}
+
+                 <div class="iiidem-curriculum">
+                    <div class="accordion iiidem-accordion" id="courseAccordion">
+                        {{#sections}}
+                        <div class="accordion-item">
+                            <h3 class="accordion-header" id="heading{{id}}">
+                                <button class="accordion-button collapsed"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{id}}"
+                                        aria-expanded="false"
+                                        aria-controls="collapse{{id}}">
+                                    <span class="iiidem-accordion__label">
+                                        <span class="iiidem-accordion__index" aria-hidden="true"></span>
+                                        <span class="iiidem-accordion__heading">
+                                            <span class="iiidem-accordion__title">{{name}}</span>
+                                            {{#hassummary}}
+                                            <span class="iiidem-accordion__subtitle">{{summary}}</span>
+                                            {{/hassummary}}
+                                        </span>
+                                        <span class="iiidem-accordion__meta">{{#str}}curriculumlecturescount, theme_iiidem2, {{activitycount}}{{/str}}</span>
+                                    </span>
+                                </button>
+                            </h3>
+
+                            <div id="collapse{{id}}" class="accordion-collapse collapse" data-bs-parent="#courseAccordion">
+                                <div class="accordion-body">
+                                    {{#activities}}
+                                    <div class="lecture-item">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                            <div class="iiidem-lecture-item__main">
+                                                <span class="iiidem-lecture-item__icon" aria-hidden="true">
+                                                    <span class="fa {{iconclass}}"></span>
+                                                </span>
+                                                <span class="iiidem-lecture-item__title">{{title}}</span>
+                                            </div>
+                                            <div class="iiidem-lecture-item__actions">
+                                                {{#duration}}
+                                                <span class="iiidem-lecture-item__duration">
+                                                    <span class="fa fa-clock-o" aria-hidden="true"></span>{{duration}}
+                                                </span>
+                                                {{/duration}}
+                                                {{#preview}}
+                                                {{#canpreviewcurriculum}}
+                                                <button class="btn btn-sm btn-primary iiidem-curriculum-preview-btn" type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#preview{{id}}"
+                                                        aria-expanded="false"
+                                                        aria-controls="preview{{id}}"
+                                                        data-cmid="{{cmid}}"
+                                                        {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
+                                                        {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
+                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                </button>
+                                                {{/canpreviewcurriculum}}
+                                                {{^canpreviewcurriculum}}
+                                                {{#curriculumpreviewneedspayment}}
+                                                <button type="button"
+                                                        class="btn btn-sm btn-primary iiidem-curriculum-pay-btn"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#iiidemPaymentRequiredModal"
+                                                        data-scroll-target="#iiidem-course-fee">
+                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                </button>
+                                                {{/curriculumpreviewneedspayment}}
+                                                {{^curriculumpreviewneedspayment}}
+                                                {{#hasloginmodal}}
+                                                <button type="button" class="btn btn-sm btn-primary"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#iiidemLoginModal">
+                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                </button>
+                                                {{/hasloginmodal}}
+                                                {{^hasloginmodal}}
+                                                <a href="{{loginurl}}" class="btn btn-sm btn-primary">
+                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                </a>
+                                                {{/hasloginmodal}}
+                                                {{/curriculumpreviewneedspayment}}
+                                                {{/canpreviewcurriculum}}
+                                                {{/preview}}
+                                            </div>
+                                        </div>
+
+                                        {{#canpreviewcurriculum}}
+                                        {{#haspreviewcontent}}
+                                        <div class="collapse mt-2" id="preview{{id}}"
+                                             data-cmid="{{cmid}}"
+                                             {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
+                                             {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
+                                            <div class="card card-body">
+                                                {{{previewcontent}}}
+                                            </div>
+                                        </div>
+                                        {{/haspreviewcontent}}
+                                        {{/canpreviewcurriculum}}
+                                    </div>
+                                    {{/activities}}
+                                </div>
+                            </div>
+                        </div>
+                        {{/sections}}
+                    </div>
+                </div>
+                
             </div>
+
+            {{#hascoursefee}}
+            <div class="col-lg-4 iiidem-course-content-layout__aside pay-now-sidebar">
+                {{> theme_iiidem2/course/payment_sidebar }}
+            </div>
+            {{/hascoursefee}}
+
         </div>
     </div>
 </section>

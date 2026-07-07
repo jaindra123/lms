@@ -1,10 +1,38 @@
+# =========================================================================
+# Moodle .gitignore
+# =========================================================================
+
+# --- Moodle runtime data (user files, sessions, caches) ------------------
+/moodledata/
+/moodledata*/
+
+# --- Dependencies --------------------------------------------------------
 /vendor/
-/web/core/
-/web/sites/default/files/
-/web/sites/default/settings.local.php
 /node_modules/
+
+# --- Environment secrets -------------------------------------------------
 .env
+
+# Per-environment secret configs (real credentials live here, never commit).
+# Templates (config.*.php.example) ARE tracked.
+/config.dev.php
+/config.staging.php
+/config.production.php
+
+# --- Database dumps & backups --------------------------------------------
 *.sql
 *.sql.gz
 moodle_backup*
 moodledb_*
+
+# --- Local build / test artefacts ----------------------------------------
+/phpunit.xml
+/behat.yml
+.phpunit.result.cache
+
+# --- OS / editor cruft ---------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1336,6 +1336,27 @@ function theme_iiidem2_get_course_image_url(stdClass $course): string {
 }
 
 /**
+ * Truncate plain text to a maximum number of words.
+ *
+ * @param string $text
+ * @param int $maxwords
+ * @return string
+ */
+function theme_iiidem2_truncate_words(string $text, int $maxwords = 350): string {
+    $text = trim(preg_replace('/\s+/u', ' ', $text));
+    if ($text === '') {
+        return '';
+    }
+
+    $words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+    if (count($words) <= $maxwords) {
+        return $text;
+    }
+
+    return implode(' ', array_slice($words, 0, $maxwords)) . '…';
+}
+
+/**
  * Visible courses for the front page listing.
  *
  * @return array
@@ -1351,14 +1372,25 @@ function theme_iiidem2_get_frontpage_courses(): array {
             continue;
         }
 
+        $summaryplain = trim(html_to_text($course->summary, 0));
+
         $coursedata[] = [
             'id' => $course->id,
             'fullname' => format_string($course->fullname),
-            'summary' => shorten_text(strip_tags($course->summary), 120),
+            'summaryplain' => $summaryplain,
             'viewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             'courseimage' => theme_iiidem2_get_course_image_url($course),
         ];
     }
+
+    $singlecourse = count($coursedata) === 1;
+    foreach ($coursedata as &$courseitem) {
+        $courseitem['summary'] = $singlecourse
+            ? theme_iiidem2_truncate_words($courseitem['summaryplain'], 55)
+            : shorten_text($courseitem['summaryplain'], 120);
+        unset($courseitem['summaryplain']);
+    }
+    unset($courseitem);
 
     return $coursedata;
 }
@@ -2548,6 +2580,8 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
     if (is_readable($bs5js)) {
         $page->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
     }
+
+    $page->requires->js_call_amd('theme_iiidem2/course_enrol_sidebar', 'init');
 }
 
 /**
@@ -3114,10 +3148,21 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                 $trackcompletion = $canpreview && $completion && $completion->is_enabled($cm)
                     && in_array($cm->modname, ['page', 'url', 'resource'], true);
 
+                $iconmap = [
+                    'quiz' => 'fa-clipboard-check',
+                    'assign' => 'fa-clipboard-check',
+                    'webexactivity' => 'fa-video',
+                    'url' => 'fa-video',
+                    'page' => 'fa-play-circle',
+                    'resource' => 'fa-file-lines',
+                    'book' => 'fa-book-open',
+                ];
+
                 $activities[] = [
                     'id' => $cm->id,
                     'title' => $cm->name,
                     'type' => $cm->modname,
+                    'iconclass' => $iconmap[$cm->modname] ?? 'fa-play-circle',
                     'preview' => $haspreviewcontent,
                     'duration' => '5min',
                     'previewcontent' => $canpreview ? $previewcontentraw : '',
@@ -3135,9 +3180,17 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
             }
         }
 
+        $sectionsummary = '';
+        if (!empty($section->summary)) {
+            $sectionsummary = trim(html_to_text($section->summary, 0));
+            $sectionsummary = shorten_text($sectionsummary, 90);
+        }
+
         $sectionsdata[] = [
             'id' => $section->id,
             'name' => get_section_name($course, $section),
+            'summary' => $sectionsummary,
+            'hassummary' => $sectionsummary !== '',
             'activitycount' => count($activities),
             'activities' => $activities,
         ];
@@ -3167,10 +3220,15 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         }
     }
 
+    $curriculumduration = count($sectionsdata) > 0
+        ? get_string('coursestatdurationweeks', 'theme_iiidem2', count($sectionsdata))
+        : '—';
+
     return array_merge($loginmodal, $paymentmodal, [
         'sections' => $sectionsdata,
         'totalsections' => count($sectionsdata),
         'totalactivities' => $totalactivities,
+        'curriculumduration' => $curriculumduration,
         'canpreviewcurriculum' => $canpreview,
         'curriculumpreviewneedspayment' => $needspaymentforpreview,
         'curriculumtrackcompletion' => $canpreview,
@@ -3723,6 +3781,47 @@ function theme_iiidem2_get_course_payment_success_context(): array {
 }
 
 /**
+ * Quick stats and included items for the course enrolment sidebar.
+ *
+ * @param stdClass $course
+ * @return array
+ */
+function theme_iiidem2_get_course_enrol_sidebar_context(stdClass $course): array {
+    $modinfo = get_fast_modinfo($course);
+    $sections = 0;
+    $activities = 0;
+
+    foreach ($modinfo->get_section_info_all() as $section) {
+        if ((int) $section->section === 0) {
+            continue;
+        }
+        $sections++;
+        if (!empty($modinfo->sections[$section->section])) {
+            foreach ($modinfo->sections[$section->section] as $cmid) {
+                if ($modinfo->cms[$cmid]->uservisible) {
+                    $activities++;
+                }
+            }
+        }
+    }
+
+    return [
+        'coursestatduration' => $sections > 0
+            ? get_string('coursestatdurationweeks', 'theme_iiidem2', $sections)
+            : '—',
+        'coursestatmode' => get_string('coursestatmodelive', 'theme_iiidem2'),
+        'coursestatlectures' => (string) $activities,
+        'coursestatcertificate' => get_string('yes'),
+        'courseincludeditems' => [
+            ['text' => get_string('courseincludeditem1', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem2', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem3', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem4', 'theme_iiidem2')],
+        ],
+    ];
+}
+
+/**
  * Course fee / PNB payment context for the course view marketing layout.
  *
  * @param stdClass $course
@@ -3754,13 +3853,16 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
     ]))->out(false);
 
     if (!isloggedin() || isguestuser()) {
-        return [
-            'hascoursefee' => true,
-            'showcoursepayment' => false,
-            'coursefeecost' => $costdisplay,
-            'coursefeeloginrequired' => true,
-            'coursefeeloginurl' => $loginurl,
-        ];
+        return array_merge(
+            theme_iiidem2_get_course_enrol_sidebar_context($course),
+            [
+                'hascoursefee' => true,
+                'showcoursepayment' => false,
+                'coursefeecost' => $costdisplay,
+                'coursefeeloginrequired' => true,
+                'coursefeeloginurl' => $loginurl,
+            ]
+        );
     }
 
     // Fee payment is for registered university students only (not EMB / working / instructor).
@@ -3775,18 +3877,21 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
 
     $gateways = \core_payment\helper::get_available_gateways('enrol_fee', 'fee', (int) $feeinstance->id);
 
-    return [
-        'hascoursefee' => true,
-        'showcoursepayment' => !empty($gateways),
-        'coursefeecost' => $costdisplay,
-        'coursefeeinstanceid' => (int) $feeinstance->id,
-        'coursefeedescription' => $description,
-        'coursefeesuccessurl' => $successurl,
-        'coursefeeloginrequired' => false,
-        'haspnbgateway' => in_array('pnb', $gateways, true),
-        'hasicicigateway' => in_array('icici', $gateways, true),
-        'hasrazorpaygateway' => in_array('razorpay', $gateways, true),
-    ];
+    return array_merge(
+        theme_iiidem2_get_course_enrol_sidebar_context($course),
+        [
+            'hascoursefee' => true,
+            'showcoursepayment' => in_array('razorpay', $gateways, true),
+            'coursefeecost' => $costdisplay,
+            'coursefeeinstanceid' => (int) $feeinstance->id,
+            'coursefeedescription' => $description,
+            'coursefeesuccessurl' => $successurl,
+            'coursefeeloginrequired' => false,
+            'haspnbgateway' => false,
+            'hasicicigateway' => false,
+            'hasrazorpaygateway' => in_array('razorpay', $gateways, true),
+        ]
+    );
 }
 
 /**

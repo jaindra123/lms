@@ -38,6 +38,7 @@ $templatecontext = [
 $frontpagecourses = theme_iiidem2_get_frontpage_courses();
 $templatecontext['courses'] = $frontpagecourses;
 $templatecontext['hascourses'] = !empty($frontpagecourses);
+$templatecontext['singlecourse'] = count($frontpagecourses) === 1;
 
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 // Program Governance — not shown on front page (see frontpage.mustache).

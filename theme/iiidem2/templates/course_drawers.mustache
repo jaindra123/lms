@@ -164,29 +164,6 @@
                         {{{ maincontentplaceholder }}}
                         {{/courseediting}}
                         {{^courseediting}}
-                        {{#ispubliccourseview}}
-                        <section class="iiidem-course-detail-cta py-4">
-                            <div class="container">
-                                <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
-                                    <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        {{#hasloginmodal}}
-                                        <button type="button" class="btn btn-primary"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#iiidemLoginModal">
-                                            {{#str}}coursedetaillogin, theme_iiidem2{{/str}}
-                                        </button>
-                                        {{/hasloginmodal}}
-                                        {{^hasloginmodal}}
-                                        <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
-                                        {{/hasloginmodal}}
-                                        <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                        {{/ispubliccourseview}}
-
                         {{> theme_iiidem2/course/curriculum }}
 
                         {{#schedule.has_calendar}}

@@ -142,6 +142,14 @@
     color: #fff !important;
     background-color: transparent !important;
 }
+.pay-now-sidebar{
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    position: sticky;
+    align-self: flex-start;
+    overflow: auto;
+    top: 100px;
+}
 
 /* Remove white tab bar strip under primary menu (Boost moremenu default). */
 .top-nav .moremenu .nav-tabs,
@@ -162,10 +170,10 @@
     border-radius: 0 !important;
 }
 
-.top-nav .usermenu .login a:hover,
-.top-nav .usermenu .login a:focus,
-.top-nav #usernavigation a:hover,
-.top-nav #usernavigation a:focus {
+.top-nav .usermenu .login a:not(.iiidem-nav-login):hover,
+.top-nav .usermenu .login a:not(.iiidem-nav-login):focus,
+.top-nav #usernavigation a:not(.iiidem-nav-login):hover,
+.top-nav #usernavigation a:not(.iiidem-nav-login):focus {
     color: #fff !important;
     text-decoration: underline;
 }
@@ -174,13 +182,25 @@
     color: #fff !important;
     background-color: transparent !important;
     border-color: #fff !important;
+    text-decoration: none !important;
+    font-weight: 600;
+    padding: 0.4rem 1.1rem;
+    border-radius: 0.375rem;
 }
 
+.top-nav .usermenu .login .iiidem-nav-login {
+    white-space: nowrap;
+}
+
+.top-nav .usermenu .login a.iiidem-nav-login:hover,
+.top-nav .usermenu .login a.iiidem-nav-login:focus,
 .top-nav #usernavigation .iiidem-nav-login:hover,
 .top-nav #usernavigation .iiidem-nav-login:focus {
     color: #004274 !important;
     background-color: #fff !important;
     border-color: #fff !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
 }
 
 .top-nav .primary-navigation .moremenu .nav-link:hover,
@@ -406,27 +426,23 @@
     box-shadow: 0 0 0 0.2rem rgba(11, 61, 145, 0.25);
 }
 
-/* Course curriculum & FAQ accordions — blue header, white text. */
-.iiidem-course-curriculum .iiidem-accordion .accordion-item,
+/* FAQ accordion — blue header, white text. */
 .iiidem-course-faq .iiidem-accordion .accordion-item {
     border: none;
     border-radius: 0;
     margin-bottom: 0;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-item + .accordion-item,
 .iiidem-course-faq .iiidem-accordion .accordion-item + .accordion-item {
     border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.iiidem-course-curriculum .iiidem-accordion,
 .iiidem-course-faq .iiidem-accordion {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(11, 61, 145, 0.12);
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-button,
 .iiidem-course-faq .iiidem-accordion .accordion-button {
     color: #fff;
     background-color: #0b3d91;
@@ -436,25 +452,21 @@
     text-align: left;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-button:not(.collapsed),
 .iiidem-course-faq .iiidem-accordion .accordion-button:not(.collapsed) {
     color: #fff;
     background-color: #0a3580;
     box-shadow: none;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-button:hover,
 .iiidem-course-faq .iiidem-accordion .accordion-button:hover {
     background-color: #0a3580;
     color: #fff;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-button:focus,
 .iiidem-course-faq .iiidem-accordion .accordion-button:focus {
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
 }
 
-.iiidem-course-curriculum .iiidem-accordion .accordion-button::after,
 .iiidem-course-faq .iiidem-accordion .accordion-button::after {
     filter: brightness(0) invert(1);
 }
@@ -471,20 +483,322 @@
     margin-bottom: 0;
 }
 
-/* Curriculum lecture rows — compact spacing, aligned preview buttons. */
-.iiidem-course-curriculum .lecture-item {
-    padding: 0.5rem 0;
+/* ============================================================
+   Course curriculum — header with stats box
+   ============================================================ */
+.iiidem-course-curriculum .iiidem-curriculum-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: 100%;
+    margin-bottom: 1.75rem;
+}
+
+.iiidem-curriculum-header__intro {
+    flex: 1 1 320px;
+    min-width: 240px;
+}
+
+.iiidem-curriculum-header__title {
+    margin: 0 0 0.75rem;
+    font-family: inherit;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: #1f2a56;
+    letter-spacing: -0.02em;
+    position: relative;
+    padding-bottom: 0.6rem;
+}
+
+.iiidem-curriculum-header__title::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 3.5rem;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #1356c5 0%, #7c4dff 100%);
+}
+
+.iiidem-curriculum-header__subtitle {
     margin: 0;
-    border-bottom: 1px solid #e8ecf4;
+    max-width: 34rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: #7a869f;
+}
+
+.iiidem-curriculum-stats {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10rem;
+    padding: 1rem 1.5rem;
+    background: #f5f7fc;
+    border: 1px solid #e6ebf5;
+    border-radius: 14px;
+}
+
+/* Stats box placed just above the accordion (weekend list), aligned right. */
+.iiidem-curriculum-stats--above {
+    display: flex;
+}
+
+.iiidem-curriculum-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.iiidem-curriculum-stat__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    color: #fff;
+}
+
+.iiidem-curriculum-stat__icon--blue {
+    background: #1356c5;
+}
+
+.iiidem-curriculum-stat__icon--green {
+    background: #0f9d58;
+}
+
+.iiidem-curriculum-stat__body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.iiidem-curriculum-stat__label {
+    font-size: 0.8rem;
+    color: #7a869f;
+}
+
+.iiidem-curriculum-stat__value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1f2a56;
+}
+
+/* ============================================================
+   Course curriculum accordion — card style (numbered sections)
+   ============================================================ */
+.iiidem-course-curriculum .iiidem-accordion {
+    counter-reset: iiidem-section;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    background: transparent;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-item {
+    counter-increment: iiidem-section;
+    border: 1px solid #e6ebf5;
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-item:last-child {
+    margin-bottom: 0;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-item:has(.accordion-button:not(.collapsed)) {
+    border-color: #c7d7f5;
+    box-shadow: 0 8px 24px rgba(11, 61, 145, 0.1);
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button {
+    color: #1f2a56;
+    background-color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 1.15rem 1.35rem;
+    text-align: left;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button:not(.collapsed) {
+    color: #1f2a56;
+    background: linear-gradient(180deg, #f5f8ff 0%, #ffffff 100%);
+    border-radius: 14px 14px 0 0;
+    box-shadow: none;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button:hover {
+    background-color: #f7faff;
+    color: #1f2a56;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button:focus {
+    box-shadow: 0 0 0 0.2rem rgba(11, 61, 145, 0.15);
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button::after {
+    filter: none;
+    width: 1rem;
+    height: 1rem;
+    background-size: 1rem;
+    margin-left: 0.75rem;
+}
+
+/* Section header layout: number badge + title/subtitle + lectures pill. */
+.iiidem-course-curriculum .iiidem-accordion__label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+.iiidem-course-curriculum .iiidem-accordion__index {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 10px;
+    background: #eef3ff;
+    color: #1356c5;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.iiidem-course-curriculum .iiidem-accordion__index::before {
+    content: counter(iiidem-section, decimal-leading-zero);
+}
+
+.iiidem-course-curriculum .iiidem-accordion .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    filter: none;
+}
+
+/* Multi-colour section badges + matching lecture pills (cycle of 5). */
+.iiidem-course-curriculum .accordion-item:nth-child(5n+1) .iiidem-accordion__index {
+    background: #eaf1ff;
+    color: #1356c5;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+1) .iiidem-accordion__meta {
+    background: #eaf1ff;
+    color: #1356c5;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+1) .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    background: #1356c5;
+    color: #fff;
+}
+
+.iiidem-course-curriculum .accordion-item:nth-child(5n+2) .iiidem-accordion__index {
+    background: #e5f6ee;
+    color: #0f9d58;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+2) .iiidem-accordion__meta {
+    background: #e5f6ee;
+    color: #0f9d58;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+2) .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    background: #0f9d58;
+    color: #fff;
+}
+
+.iiidem-course-curriculum .accordion-item:nth-child(5n+3) .iiidem-accordion__index {
+    background: #f0eaff;
+    color: #7c4dff;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+3) .iiidem-accordion__meta {
+    background: #f0eaff;
+    color: #7c4dff;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+3) .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    background: #7c4dff;
+    color: #fff;
+}
+
+.iiidem-course-curriculum .accordion-item:nth-child(5n+4) .iiidem-accordion__index {
+    background: #fff2e0;
+    color: #f5921b;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+4) .iiidem-accordion__meta {
+    background: #fff2e0;
+    color: #f5921b;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+4) .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    background: #f5921b;
+    color: #fff;
+}
+
+.iiidem-course-curriculum .accordion-item:nth-child(5n+5) .iiidem-accordion__index {
+    background: #fde7ef;
+    color: #e91e63;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+5) .iiidem-accordion__meta {
+    background: #fde7ef;
+    color: #e91e63;
+}
+.iiidem-course-curriculum .accordion-item:nth-child(5n+5) .accordion-button:not(.collapsed) .iiidem-accordion__index {
+    background: #e91e63;
+    color: #fff;
+}
+
+.iiidem-course-curriculum .iiidem-accordion__heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .iiidem-accordion__title {
+    color: #1f2a56;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.iiidem-course-curriculum .iiidem-accordion__subtitle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #7a869f;
+    line-height: 1.4;
+}
+
+.iiidem-course-curriculum .iiidem-accordion .iiidem-accordion__meta {
+    flex-shrink: 0;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    background: #eef3ff;
+    color: #1356c5;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+/* Curriculum lecture rows. */
+.iiidem-course-curriculum .accordion-body {
+    padding: 0.5rem 1.35rem 1.15rem;
+}
+
+.iiidem-course-curriculum .lecture-item {
+    padding: 0.85rem 0;
+    margin: 0;
+    border-bottom: 1px solid #eef1f7;
 }
 
 .iiidem-course-curriculum .lecture-item:last-child {
     border-bottom: none;
-    padding-bottom: 0;
-}
-
-.iiidem-course-curriculum .lecture-item:first-child {
-    padding-top: 0;
+    padding-bottom: 0.25rem;
 }
 
 .iiidem-course-curriculum .lecture-item > .d-flex {
@@ -493,20 +807,67 @@
     flex-wrap: nowrap;
 }
 
-.iiidem-course-curriculum .lecture-item .iiidem-lecture-item__title {
+.iiidem-course-curriculum .iiidem-lecture-item__main {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
     flex: 1;
     min-width: 0;
 }
 
-.iiidem-course-curriculum .lecture-item .iiidem-curriculum-preview-btn,
-.iiidem-course-curriculum .lecture-item .btn-primary {
-    margin: 0;
-    min-width: 5.25rem;
+.iiidem-course-curriculum .iiidem-lecture-item__icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: #eaf1ff;
+    color: #1356c5;
+    font-size: 1rem;
+}
+
+.iiidem-course-curriculum .lecture-item .iiidem-lecture-item__title {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2a56;
+}
+
+.iiidem-course-curriculum .iiidem-lecture-item__actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.iiidem-course-curriculum .iiidem-lecture-item__duration {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: #7a869f;
     white-space: nowrap;
 }
 
-.iiidem-course-curriculum .accordion-body {
-    padding: 0.75rem 1.25rem 1rem;
+.iiidem-course-curriculum .lecture-item .iiidem-curriculum-preview-btn,
+.iiidem-course-curriculum .lecture-item .iiidem-lecture-item__actions .btn-primary {
+    margin: 0;
+    min-width: 6rem;
+    white-space: nowrap;
+    border-radius: 9px;
+    font-weight: 600;
+    padding: 0.45rem 1.1rem;
+    background-color: #0b3d91;
+    border-color: #12235c;
+}
+
+.iiidem-course-curriculum .lecture-item .iiidem-curriculum-preview-btn:hover,
+.iiidem-course-curriculum .lecture-item .iiidem-lecture-item__actions .btn-primary:hover {
+    background-color: #1a2f70;
+    border-color: #1a2f70;
 }
 
 /* Course view sections — unified headings, spacing, and typography. */
@@ -608,9 +969,6 @@
     text-align: left;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .iiidem-accordion__title {
-    color: #fff;
-}
 
 .iiidem-accordion__meta {
     flex-shrink: 0;
@@ -620,9 +978,6 @@
     color: #5d6785;
 }
 
-.iiidem-course-curriculum .iiidem-accordion .iiidem-accordion__meta {
-    color: rgba(255, 255, 255, 0.88);
-}
 
 .iiidem-accordion .accordion-body {
     font-family: inherit;
@@ -1298,6 +1653,87 @@ body.pagelayout-frontpage #page {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
 }
 
+.iiidem-course-grid--single {
+    max-width: 1140px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal {
+    overflow: hidden;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal:hover {
+    transform: translateY(-4px);
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: 280px;
+    max-height: 280px;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-media {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    background: #0a1f3d;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem 2rem;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__title--featured {
+    font-size: 1.25rem;
+    line-height: 1.35;
+    margin-bottom: 0.65rem;
+    color: #1f2a56;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__summary--featured {
+    font-size: 0.925rem;
+    line-height: 1.65;
+    margin-bottom: 1rem;
+    color: #5d6785 !important;
+    text-align: justify;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-body .iiidem-course-card__btn {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+.iiidem-courses-section .iiidem-course-card--horizontal:hover .iiidem-course-card__split-image {
+    transform: none;
+}
+
 .iiidem-course-card__media {
     overflow: hidden;
 }
@@ -1337,6 +1773,46 @@ body.pagelayout-frontpage #page {
 .iiidem-course-card__btn:hover {
     background-color: #1356c5;
     border-color: #1356c5;
+}
+
+@media (max-width: 991.98px) {
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split {
+        grid-template-columns: 260px 1fr;
+        height: 260px;
+        max-height: 260px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-height: none;
+    }
+
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-media {
+        height: 200px;
+    }
+
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-image {
+        height: 200px;
+    }
+
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__split-body {
+        height: auto;
+        padding: 1.25rem 1.25rem 1.5rem;
+        overflow: visible;
+    }
+
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__title--featured {
+        -webkit-line-clamp: unset;
+        display: block;
+    }
+
+    .iiidem-courses-section .iiidem-course-card--horizontal .iiidem-course-card__summary--featured {
+        -webkit-line-clamp: unset;
+        display: block;
+    }
 }
 
 .iiidem-cta {
@@ -1704,9 +2180,132 @@ body.iiidem-course-hero-layout .iiidem-course-hero .hero-overlay {
     border-color: #082d6b;
 }
 
-#iiidem-course-fee.iiidem-course-fee--highlight .iiidem-course-payment-card {
+#iiidem-course-fee.iiidem-course-fee--highlight .iiidem-course-payment-card,
+#iiidem-course-fee.iiidem-course-fee--highlight .iiidem-course-enrol-card {
     box-shadow: 0 0 0 3px rgba(240, 123, 32, 0.45), 0 0.5rem 1.25rem rgba(11, 61, 145, 0.18);
     transition: box-shadow 0.3s ease;
+}
+
+.iiidem-course-content-layout {
+    align-items: flex-start;
+}
+
+.iiidem-course-content-layout__aside {
+    align-self: flex-start;
+}
+
+body.iiidem-course-hero-layout .course-sidebar {
+    position: relative;
+    top: auto;
+}
+
+body.iiidem-course-hero-layout #page-content,
+body.iiidem-course-hero-layout #region-main,
+body.iiidem-course-hero-layout #region-main-box,
+body.iiidem-course-hero-layout .iiidem-course-curriculum,
+body.iiidem-course-hero-layout .iiidem-course-content-layout {
+    overflow: visible;
+}
+
+@media (min-width: 992px) {
+    .iiidem-course-enrol-sidebar--stuck .iiidem-course-enrol-card {
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+    }
+}
+
+.iiidem-course-enrol-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.iiidem-course-enrol-card__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.iiidem-course-enrol-card__stat {
+    padding: 1rem 1.1rem;
+    border-right: 1px solid #e8edf3;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.iiidem-course-enrol-card__stat:nth-child(2n) {
+    border-right: none;
+}
+
+.iiidem-course-enrol-card__stat:nth-last-child(-n+2) {
+    border-bottom: none;
+}
+
+.iiidem-course-enrol-card__stat-icon {
+    display: block;
+    color: #0b3d91;
+    font-size: 1.1rem;
+    margin-bottom: 0.35rem;
+}
+
+.iiidem-course-enrol-card__stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.15rem;
+}
+
+.iiidem-course-enrol-card__stat-value {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1f2a56;
+    line-height: 1.3;
+}
+
+.iiidem-course-enrol-card__section.border-top {
+    border-color: #e8edf3 !important;
+}
+
+.iiidem-course-enrol-card__label {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 0;
+}
+
+.iiidem-course-enrol-card__price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0b3d91;
+    line-height: 1.2;
+}
+
+.iiidem-course-enrol-card__included-title {
+    font-weight: 700;
+    color: #1f2a56;
+    font-size: 0.95rem;
+}
+
+.iiidem-course-enrol-card__included li {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+    line-height: 1.45;
+}
+
+.iiidem-course-enrol-card__included li:last-child {
+    margin-bottom: 0;
+}
+
+.iiidem-course-enrol-card__paybtn {
+    background: #0b3d91;
+    border-color: #0b3d91;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.iiidem-course-enrol-card__paybtn:hover {
+    background: #082d6b;
+    border-color: #082d6b;
 }
 
 .iiidem-payment-required-modal .alert-warning {
