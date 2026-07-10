@@ -199,7 +199,7 @@ class teacher_attendance {
                     'attendanceid = ? AND lasttaken > 0',
                     [$attendanceid],
                     '',
-                    'id'
+                    'id, lasttaken'
                 );
 
                 foreach ($sessions as $session) {
@@ -288,9 +288,10 @@ class teacher_attendance {
             return [];
         }
 
-        $students = get_enrolled_users($coursecontext, 'mod/attendance:canbelisted', 0, 'u.id, u.firstname, u.lastname, u.email');
+        $userfields = teacher_students::get_enrolled_user_fieldlist();
+        $students = get_enrolled_users($coursecontext, 'mod/attendance:canbelisted', 0, $userfields);
         if (empty($students)) {
-            $students = get_enrolled_users($coursecontext, '', 0, 'u.id, u.firstname, u.lastname, u.email');
+            $students = get_enrolled_users($coursecontext, '', 0, $userfields);
         }
 
         list($insql, $params) = $DB->get_in_or_equal($takensessionids, SQL_PARAMS_NAMED);

@@ -58,63 +58,62 @@
 
 
 <nav class="navbar navbar-dark navbar-expand top-nav iiidem-site-header fixed-top" aria-label="{{#str}}sitemenubar, admin{{/str}}">
-    <div class="container-fluid align-items-center">
-        <button class="navbar-toggler aabtn d-block d-md-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_iiidem2-drawers-primary">
-            <span class="navbar-toggler-icon"></span>
-            <span class="sr-only">{{#str}}sidepanel, core{{/str}}</span>
-        </button>
+    <div class="container-fluid iiidem-header-bar align-items-center">
+        <div class="iiidem-header-bar__start d-flex align-items-center">
+            <button class="navbar-toggler aabtn d-block d-md-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_iiidem2-drawers-primary">
+                <span class="navbar-toggler-icon"></span>
+                <span class="sr-only">{{#str}}sidepanel, core{{/str}}</span>
+            </button>
 
-        <a href="{{{ config.homeurl }}}" class="navbar-brand d-none d-md-flex align-items-center m-0 me-4 p-0 aabtn">
+            <a href="{{{ config.homeurl }}}" class="navbar-brand d-none d-md-flex align-items-center m-0 p-0 aabtn">
+                {{#hasnavbarlogo}}
+                    <img src="{{{navbarlogo}}}" class="logo me-1" alt="{{sitename}}">
+                {{/hasnavbarlogo}}
+                {{^hasnavbarlogo}}
+                    {{{ sitename }}}
+                {{/hasnavbarlogo}}
+            </a>
+        </div>
 
-            {{#hasnavbarlogo}}
-                <img src="{{{navbarlogo}}}" class="logo me-1" alt="{{sitename}}">
-            {{/hasnavbarlogo}}
-            {{^hasnavbarlogo}}
-                {{{ sitename }}}
-            {{/hasnavbarlogo}}
-        </a>
         {{#primarymoremenu}}
-            <div class="primary-navigation d-flex align-items-center">
+            <div class="iiidem-header-bar__center primary-navigation d-none d-md-flex align-items-center justify-content-center">
                 {{> core/moremenu}}
             </div>
         {{/primarymoremenu}}
 
-        {{# output.page_heading_menu}}
-            <ul class="navbar-nav d-none d-md-flex my-1 px-1">
-                <!-- page_heading_menu -->
-                {{{ output.page_heading_menu }}}
-            </ul>
-        {{/output.page_heading_menu}}
+        <div class="iiidem-header-bar__end d-flex align-items-center ms-auto ms-md-0">
+            {{# output.page_heading_menu}}
+                <ul class="navbar-nav d-none d-md-flex my-1 px-1">
+                    {{{ output.page_heading_menu }}}
+                </ul>
+            {{/output.page_heading_menu}}
 
-        <div id="usernavigation" class="navbar-nav ms-auto align-items-center">
-            {{# output.search_box }}
-                {{{ output.search_box }}}
-                <div class="divider border-start h-75 align-self-center mx-1"></div>
-            {{/output.search_box}}
-            {{#langmenu}}
-                {{> theme_iiidem2/language_menu }}
-                <div class="divider border-start h-75 align-self-center mx-1"></div>
-            {{/langmenu}}
-            {{{ output.navbar_plugin_output }}}
+            <div id="usernavigation" class="navbar-nav align-items-center">
+                {{# output.search_box }}
+                    {{{ output.search_box }}}
+                    <div class="divider border-start h-75 align-self-center mx-1"></div>
+                {{/output.search_box}}
+                {{#langmenu}}
+                    {{> theme_iiidem2/language_menu }}
+                    <div class="divider border-start h-75 align-self-center mx-1"></div>
+                {{/langmenu}}
+                {{{ output.navbar_plugin_output }}}
 
-        
-            {{#usermenu}}
-            <!-- LOGGED IN: SHOW USER MENU -->
-            <div class="d-flex align-items-stretch usermenu-container" data-region="usermenu">
-                {{> core/user_menu }}
+                {{#usermenu}}
+                <div class="d-flex align-items-stretch usermenu-container" data-region="usermenu">
+                    {{> core/user_menu }}
+                </div>
+                {{/usermenu}}
+
+                {{^usermenu}}
+                <a href="{{config.wwwroot}}/login/index.php"
+                   class="btn btn-outline-light iiidem-nav-login">
+                    {{#str}}login, core{{/str}}
+                </a>
+                {{/usermenu}}
+
+                {{{ output.edit_switch }}}
             </div>
-            {{/usermenu}}
-
-            {{^usermenu}}
-            <!-- GUEST: SHOW LOGIN -->
-            <a href="{{config.wwwroot}}/login/index.php"
-               class="btn btn-outline-light iiidem-nav-login">
-                {{#str}}login, core{{/str}}
-            </a>
-            {{/usermenu}}
-
-
-            {{{ output.edit_switch }}}
         </div>
     </div>
 </nav>

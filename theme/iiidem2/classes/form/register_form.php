@@ -138,7 +138,7 @@ class register_form extends \moodleform {
         $mform->setType('password', \core_user::get_property_type('password'));
         $mform->addRule('password', get_string('required'), 'required', null, 'client');
 
-        $mform->addElement('password', 'password2', get_string('passwordagain'), [
+        $mform->addElement('password', 'password2', get_string('password') . ' (' . get_string('again') . ')', [
             'maxlength' => MAX_PASSWORD_CHARACTERS,
             'autocomplete' => 'new-password',
         ]);

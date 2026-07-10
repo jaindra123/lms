@@ -260,8 +260,7 @@ img.gov-logo {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    padding: 120px 0;
-    min-height: 620px;
+    min-height: 650px;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -283,18 +282,19 @@ img.gov-logo {
 }
 
 .course-title {
-    font-size: 55px;
-    font-weight: 800;
-    line-height: 1.1;
+    font-family: inherit;
+    font-size: var(--iiidem-hero-title-size);
+    font-weight: 700;
+    line-height: 1.15;
     margin-bottom: 28px;
     color: #fff;
-    letter-spacing: -1px;
+    letter-spacing: -0.025em;
 }
 
 .course-description {
-    font-size: 18px;
-    line-height: 1.5;
-    font-family: sans-serif;
+    font-size: var(--iiidem-lead-size);
+    line-height: 1.75;
+    font-family: inherit;
 }
 .ws-info {
     background-color: #D9EEE1;
@@ -351,29 +351,12 @@ img.gov-logo {
         min-height: auto;
     }
 
-    .course-title {
-        font-size: 44px;
-    }
-
-    .course-description {
-        font-size: 18px;
-        line-height: 1.7;
-    }
-
     .hero-content {
         max-width: 100%;
     }
 }
 
 @media (max-width: 576px) {
-
-    .course-title {
-        font-size: 34px;
-    }
-
-    .course-description {
-        font-size: 16px;
-    }
 
     .enroll-btn {
         width: 100%;
@@ -437,7 +420,6 @@ img.gov-logo {
 
 .card {
     border: 1px solid #ddd;
-    margin-bottom: 10px;
 }
 
 .card-header {

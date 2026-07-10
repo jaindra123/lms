@@ -175,6 +175,11 @@
                         {{#hasinstructors}}
                         {{> theme_iiidem2/course/instructors }}
                         {{/hasinstructors}}
+
+                        {{#hasadvisors}}
+                        {{> theme_iiidem2/program_governance }}
+                        {{/hasadvisors}}
+
                         {{> theme_iiidem2/course/faq }}
 
                         {{#showstudentreviewsection}}
@@ -193,10 +198,6 @@
             </div>
         </div>
     </div>
-    {{#hasadvisors}}
-    {{> theme_iiidem2/program_governance }}
-    {{/hasadvisors}}
-
     {{#coursepaymentsuccess}}
     <div class="modal fade" id="iiidemCoursePaymentSuccessModal" tabindex="-1" aria-labelledby="iiidemCoursePaymentSuccessLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

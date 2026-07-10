@@ -934,6 +934,45 @@ function theme_iiidem2_get_visible_course_ids_for_calendar(): array {
 }
 
 /**
+ * Course or site log report URL when the user may view logs.
+ *
+ * @param int|null $userid
+ * @param array|null $courses Optional courses to check first (e.g. teaching courses).
+ * @return string|null
+ */
+function theme_iiidem2_get_report_log_url(?int $userid = null, ?array $courses = null): ?string {
+    global $USER, $CFG;
+
+    if ($userid === null) {
+        $userid = (int) $USER->id;
+    }
+
+    $systemcontext = context_system::instance();
+    if (has_capability('report/log:view', $systemcontext, $userid)) {
+        return (new moodle_url('/report/log/index.php'))->out(false);
+    }
+
+    $checkcourses = $courses ?? [];
+    if (empty($checkcourses)) {
+        require_once($CFG->libdir . '/enrollib.php');
+        $checkcourses = enrol_get_users_courses($userid, true, 'id', 'sortorder ASC');
+    }
+
+    foreach ($checkcourses as $course) {
+        $courseid = is_object($course) ? (int) $course->id : (int) $course;
+        if ($courseid <= 0 || $courseid === SITEID) {
+            continue;
+        }
+        $coursecontext = context_course::instance($courseid);
+        if (has_capability('report/log:view', $coursecontext, $userid)) {
+            return (new moodle_url('/report/log/index.php', ['id' => $courseid]))->out(false);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Template context for role dashboards.
  *
  * @param int|null $userid
@@ -948,6 +987,7 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
 
     $user = core_user::get_user($userid, '*', MUST_EXIST);
     $role = theme_iiidem2_get_user_dashboard_role($userid);
+    $reportsurl = theme_iiidem2_get_report_log_url($userid);
 
     $context = [
         'fullname' => fullname($user),
@@ -960,7 +1000,8 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
         'mycoursesurl' => (new moodle_url('/my/courses.php'))->out(false),
         'profileurl' => (new moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
         'coursesurl' => (new moodle_url('/course/management.php'))->out(false),
-        'reportsurl' => (new moodle_url('/report/log/index.php'))->out(false),
+        'hasreports' => $reportsurl !== null,
+        'reportsurl' => $reportsurl ?? '',
         'usersurl' => (new moodle_url('/admin/user.php'))->out(false),
         'siteadminurl' => (new moodle_url('/admin/search.php'))->out(false),
     ];
@@ -1094,12 +1135,15 @@ function theme_iiidem2_get_program_governance_context(): array {
             continue;
         }
 
+        $role1 = trim((string) get_config('theme_iiidem2', 'advisorrole1' . $i));
+        $role2 = trim((string) get_config('theme_iiidem2', 'advisorrole2' . $i));
+
         $roles = [];
-        foreach (['advisorrole1', 'advisorrole2'] as $rolekey) {
-            $line = trim((string) get_config('theme_iiidem2', $rolekey . $i));
-            if ($line !== '') {
-                $roles[] = ['text' => $line];
-            }
+        if ($role1 !== '') {
+            $roles[] = ['text' => $role1];
+        }
+        if ($role2 !== '') {
+            $roles[] = ['text' => $role2];
         }
         // Legacy: old textarea / comma-separated advisorroles setting.
         $rolesraw = trim((string) get_config('theme_iiidem2', 'advisorroles' . $i));
@@ -1109,6 +1153,12 @@ function theme_iiidem2_get_program_governance_context(): array {
                 if ($line !== '') {
                     $roles[] = ['text' => $line];
                 }
+            }
+            if (isset($roles[0])) {
+                $role1 = $roles[0]['text'];
+            }
+            if (isset($roles[1])) {
+                $role2 = $roles[1]['text'];
             }
         }
 
@@ -1135,6 +1185,10 @@ function theme_iiidem2_get_program_governance_context(): array {
 
         $advisors[] = [
             'name' => $name,
+            'role1' => $role1,
+            'role2' => $role2,
+            'hasrole1' => $role1 !== '',
+            'hasrole2' => $role2 !== '',
             'roles' => $roles,
             'hasroles' => !empty($roles),
             'imageurl' => $imageurl,
@@ -1482,6 +1536,9 @@ function theme_iiidem2_render_public_page(
         $extracontext
     ));
 
+    $PAGE->set_cacheable(false);
+
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -1492,10 +1549,12 @@ function theme_iiidem2_render_public_page(
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
 <?php
     echo $OUTPUT->render_from_template($template, $templatecontext);
+    echo $OUTPUT->render_from_template('theme_iiidem2/page_end', $templatecontext);
 ?>
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 /**
@@ -2311,9 +2370,10 @@ function theme_iiidem2_get_login_page_context(): array {
  * @return array
  */
 function theme_iiidem2_filter_register_from_nav_items(array $items): array {
+    $hiddenkeys = ['register', 'home'];
     $filtered = [];
     foreach ($items as $item) {
-        if (!empty($item['key']) && $item['key'] === 'register') {
+        if (!empty($item['key']) && in_array($item['key'], $hiddenkeys, true)) {
             continue;
         }
         if (!empty($item['children']) && is_array($item['children'])) {
@@ -2524,6 +2584,61 @@ function theme_iiidem2_is_student_dashboard_page(?moodle_page $page = null): boo
 }
 
 /**
+ * Send HTTP headers for pages that bypass $OUTPUT->header().
+ *
+ * @return void
+ */
+function theme_iiidem2_send_page_headers(): void {
+    global $PAGE;
+
+    if (headers_sent()) {
+        return;
+    }
+
+    if ($PAGE->state === moodle_page::STATE_BEFORE_HEADER) {
+        $PAGE->set_state(moodle_page::STATE_PRINTING_HEADER);
+    }
+
+    send_headers('text/html', $PAGE->cacheable);
+}
+
+/**
+ * Finish a buffered custom page: send headers, echo HTML, advance page state safely.
+ *
+ * @param string $html
+ * @return void
+ */
+function theme_iiidem2_finish_buffered_page(string $html): void {
+    global $PAGE;
+
+    theme_iiidem2_send_page_headers();
+    echo theme_iiidem2_finalize_page_html($html);
+
+    while ($PAGE->state < moodle_page::STATE_DONE) {
+        $PAGE->set_state($PAGE->state + 1);
+    }
+}
+
+/**
+ * Register plugin CSS for custom full-page renders that bypass $OUTPUT->header().
+ *
+ * @param moodle_page $page
+ * @return void
+ */
+function theme_iiidem2_register_course_page_assets(moodle_page $page): void {
+    global $CFG;
+
+    if (!$page->context || $page->context->contextlevel !== CONTEXT_COURSE) {
+        return;
+    }
+
+    $calendarcss = $CFG->dirroot . '/local/iiidem_coursecalendar/styles.css';
+    if (is_readable($calendarcss)) {
+        $page->requires->css('/local/iiidem_coursecalendar/styles.css');
+    }
+}
+
+/**
  * Replace Moodle footer placeholders (%%PERFORMANCEINFO%%, %%ENDHTML%%) with real output.
  *
  * Full-page Mustache templates that bypass $OUTPUT->footer() leave these tokens visible.
@@ -2540,6 +2655,13 @@ function theme_iiidem2_finalize_page_html(string $html): string {
     $perfprop = $reflection->getProperty('unique_performance_info_token');
     $perfprop->setAccessible(true);
     $html = str_replace((string) $perfprop->getValue($renderer), '', $html);
+
+    if (!empty($PAGE->context->id)) {
+        $PAGE->requires->js_call_amd('core/notification', 'init', [
+            $PAGE->context->id,
+            \core\notification::fetch_as_array($renderer),
+        ]);
+    }
 
     $endprop = $reflection->getProperty('unique_end_html_token');
     $endprop->setAccessible(true);
@@ -2681,8 +2803,14 @@ function theme_iiidem2_extend_admin_secondary_nav(moodle_page $page): void {
  * @return void
  */
 function theme_iiidem2_echo_page_template(string $templatename, $context): void {
-    global $OUTPUT;
+    global $OUTPUT, $PAGE;
+
+    theme_iiidem2_send_page_headers();
     echo theme_iiidem2_finalize_page_html($OUTPUT->render_from_template($templatename, $context));
+
+    while ($PAGE->state < moodle_page::STATE_DONE) {
+        $PAGE->set_state($PAGE->state + 1);
+    }
 }
 
 /**
@@ -2700,7 +2828,8 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $PAGE->set_url(new moodle_url('/course/view.php', ['id' => $course->id]));
     $PAGE->set_pagelayout('course');
     $PAGE->set_pagetype('course-view-' . $course->format);
-    $PAGE->set_cacheable(true);
+    // Must not be cacheable: page embeds per-session M.cfg.sesskey and user-specific navbar widgets.
+    $PAGE->set_cacheable(false);
     $PAGE->set_title(format_string($course->fullname));
     $PAGE->set_heading(format_string($course->fullname));
 
@@ -2708,6 +2837,10 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $PAGE->theme->init_page($PAGE);
     theme_iiidem2_apply_course_view_page_assets($PAGE);
     theme_iiidem2_preload_course_layout_context($course);
+
+    // This custom path bypasses $OUTPUT->header(), which normally loads the page
+    // blocks. Load them here so blocklib doesn't warn on null block regions.
+    $PAGE->blocks->load_blocks();
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
@@ -3946,7 +4079,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
     $PAGE->set_course($course);
     $PAGE->set_url(new moodle_url('/enrol/index.php', ['id' => $course->id]));
     $PAGE->set_pagelayout('marketing');
-    $PAGE->set_cacheable(true);
+    $PAGE->set_cacheable(false);
     $PAGE->set_title(format_string($course->fullname));
     $PAGE->set_heading(format_string($course->fullname));
 
@@ -3968,6 +4101,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
         'config' => ['wwwroot' => $CFG->wwwroot],
     ]));
 
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -3982,10 +4116,15 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 function theme_iiidem2_render_course_detail_page(stdClass $course): void {
     global $OUTPUT, $PAGE, $SITE;
+
+    $PAGE->set_cacheable(false);
+    $PAGE->theme->init_page($PAGE);
+    theme_iiidem2_register_course_page_assets($PAGE);
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
@@ -4009,6 +4148,7 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
         ]
     ));
 
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -4023,6 +4163,7 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 /**

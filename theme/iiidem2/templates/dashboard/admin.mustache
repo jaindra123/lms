@@ -27,6 +27,7 @@
         </div>
     </div>
     <div class="col-md-3">
+        {{#hasreports}}
         <div class="card h-100 shadow-sm">
             <div class="card-body">
                 <h2 class="h5 card-title">{{#str}}dashboardreports, theme_iiidem2{{/str}}</h2>
@@ -34,6 +35,7 @@
                 <a class="btn btn-outline-secondary" href="{{reportsurl}}">{{#str}}view{{/str}}</a>
             </div>
         </div>
+        {{/hasreports}}
     </div>
 </div>
 

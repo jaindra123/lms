@@ -14,6 +14,11 @@ class hook_listener {
             return;
         }
 
+        // Custom theme pages may print <head> before $OUTPUT->header() runs.
+        if ($PAGE->state >= \moodle_page::STATE_IN_BODY) {
+            return;
+        }
+
         $PAGE->requires->css('/local/iiidem_coursecalendar/styles.css');
     }
 }

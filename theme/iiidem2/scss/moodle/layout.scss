@@ -314,11 +314,7 @@
     padding: 20px;
 }
 
-.career-content h3 {
-    margin: 0 0 18px;
-    font-size: 30px;
-    color: #1f2a56;
-}
+/* Instructor name typography is defined in custom.css (.iiidem-course-instructors__name). */
 
 .career-meta {
     display: flex;
@@ -353,9 +349,5 @@
 
     .career-grid {
         grid-template-columns: 1fr;
-    }
-
-    .career-content h3 {
-        font-size: 24px;
     }
 }

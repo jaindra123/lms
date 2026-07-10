@@ -60,7 +60,7 @@ class teacher_dashboard {
         $livecontrolitems = self::get_live_control_items($courses, $livesessions, $userid);
         $gradingqueueitems = self::get_grading_queue_items($courses, $pendingtasks);
         $teachercourses = self::get_course_cards($courses, $userid);
-        $quickactions = self::get_quick_actions();
+        $quickactions = self::get_quick_actions($userid, $courses);
         $studentperformance = self::get_student_performance($courses);
         $attendancecontext = teacher_attendance::get_dashboard_context($courses, $userid);
         $certificatecontext = teacher_certificates::get_dashboard_context($courses, $userid);
@@ -188,10 +188,12 @@ class teacher_dashboard {
     }
 
     /**
+     * @param int $userid
+     * @param array $courses
      * @return array
      */
-    protected static function get_quick_actions(): array {
-        return [
+    protected static function get_quick_actions(int $userid, array $courses): array {
+        $actions = [
             [
                 'icon' => 'fa-folder-plus',
                 'label' => get_string('dashboardteacheractioncreate', 'theme_iiidem2'),
@@ -217,12 +219,18 @@ class teacher_dashboard {
                 'label' => get_string('dashboardteacheractionmessages', 'theme_iiidem2'),
                 'url' => (new \moodle_url('/message/index.php'))->out(false),
             ],
-            [
+        ];
+
+        $reporturl = theme_iiidem2_get_report_log_url($userid, $courses);
+        if ($reporturl !== null) {
+            $actions[] = [
                 'icon' => 'fa-chart-bar',
                 'label' => get_string('dashboardreports', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/report/log/index.php'))->out(false),
-            ],
-        ];
+                'url' => $reporturl,
+            ];
+        }
+
+        return $actions;
     }
 
     /**
@@ -641,8 +649,9 @@ class teacher_dashboard {
         $dashboardcertificates->set_anchor('teacher-certificates');
         $dashboardstudents = \theme_iiidem2_get_dashboard_url();
         $dashboardstudents->set_anchor('teacher-students');
+        $reporturl = theme_iiidem2_get_report_log_url($userid, $courses);
 
-        return [
+        $nav = [
             [
                 'icon' => 'fa-gauge-high',
                 'label' => get_string('dashboard', 'theme_iiidem2'),
@@ -685,19 +694,25 @@ class teacher_dashboard {
                 'url' => (new \moodle_url('/course/management.php'))->out(false),
                 'active' => false,
             ],
-            [
+        ];
+
+        if ($reporturl !== null) {
+            $nav[] = [
                 'icon' => 'fa-chart-line',
                 'label' => get_string('dashboardteacheranalytics', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/report/log/index.php'))->out(false),
+                'url' => $reporturl,
                 'active' => false,
-            ],
-            [
+            ];
+        }
+
+        $nav[] = [
                 'icon' => 'fa-diagram-project',
                 'label' => get_string('dashboardteachernavcapstone', 'theme_iiidem2'),
                 'url' => $gradeurl,
                 'active' => false,
-            ],
         ];
+
+        return $nav;
     }
 
     /**

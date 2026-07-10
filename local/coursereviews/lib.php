@@ -175,8 +175,10 @@ function local_coursereviews_get_course_context(stdClass $course): array {
     $items = [];
     $totalrating = 0;
 
+    $userfields = implode(',', \core_user\fields::get_picture_fields());
+
     foreach ($records as $record) {
-        $user = $DB->get_record('user', ['id' => $record->userid], 'id, firstname, lastname, picture, imagealt', IGNORE_MISSING);
+        $user = $DB->get_record('user', ['id' => $record->userid], $userfields, IGNORE_MISSING);
         if (!$user) {
             continue;
         }
