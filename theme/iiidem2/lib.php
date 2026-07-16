@@ -1548,8 +1548,8 @@ function theme_iiidem2_render_public_page(
 <body <?php echo $OUTPUT->body_attributes([$bodyclass]); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
 <?php
+    // Page templates (about-us, contact-us, etc.) already include theme_iiidem2/page_end.
     echo $OUTPUT->render_from_template($template, $templatecontext);
-    echo $OUTPUT->render_from_template('theme_iiidem2/page_end', $templatecontext);
 ?>
 </body>
 </html>
@@ -1642,6 +1642,12 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
         $from = core_user::get_noreply_user();
     }
 
+    $usersender = clone core_user::get_support_user();
+    if (!empty($themeemail) && validate_email($themeemail)) {
+        $usersender->email = $themeemail;
+    }
+    $usersender->maildisplay = true;
+
     $subject = get_string('contactusemailsubject', 'theme_iiidem2', [
         'site' => format_string($SITE->fullname),
         'subject' => $data->subject,
@@ -1654,16 +1660,42 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
         'message' => $data->message,
     ]);
 
-    return email_to_user(
+    $adminsent = email_to_user(
         $recipient,
         $from,
         $subject,
         $body,
-        '',
-        '',
-        true,
-        $data->email,
-        $data->name
+        ''
+    );
+
+    if (!$adminsent) {
+        return false;
+    }
+
+    $userrecipient = clone core_user::get_noreply_user();
+    $userrecipient->email = trim((string) ($data->email ?? ''));
+    $userrecipient->firstname = trim((string) ($data->name ?? ''));
+    $userrecipient->lastname = '';
+    $userrecipient->maildisplay = true;
+
+    if (!validate_email($userrecipient->email)) {
+        return true;
+    }
+
+    $sitename = format_string($SITE->fullname);
+    $username = $userrecipient->firstname !== '' ? $userrecipient->firstname : 'Participant';
+    $useracksubject = '[' . $sitename . '] We received your message';
+    $userackbody = "Dear {$username},\n\n"
+        . "Thank you for contacting {$sitename}. We have received your message and will get back to you soon.\n\n"
+        . "Subject: {$data->subject}\n\n"
+        . "Your message:\n{$data->message}";
+
+    return email_to_user(
+        $userrecipient,
+        $usersender,
+        $useracksubject,
+        $userackbody,
+        ''
     );
 }
 

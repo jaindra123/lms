@@ -1127,6 +1127,59 @@ body {
     margin-bottom: 0.35rem;
 }
 
+.iiidem-footer .footer-quick-links a,
+.iiidem-footer .footer-quick-links li {
+    text-align: left;
+}
+
+/* Footer columns: about left, Quick Links centered, contact right-aligned block */
+.iiidem-footer .footer-contact {
+    align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+    .iiidem-footer .footer-col--links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .iiidem-footer .footer-col--links h5 {
+        width: auto;
+        text-align: center;
+    }
+
+    .iiidem-footer .footer-col--links .footer-quick-links {
+        display: inline-block;
+        text-align: left;
+        margin: 0 auto;
+    }
+
+    .iiidem-footer .footer-col--contact {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: left;
+    }
+
+    .iiidem-footer .footer-col--contact .loc,
+    .iiidem-footer .footer-col--contact .telph,
+    .iiidem-footer .footer-col--contact .mail {
+        max-width: 22rem;
+        width: 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .iiidem-footer .footer-col--links,
+    .iiidem-footer .footer-col--contact {
+        margin-top: 1.5rem;
+        align-items: flex-start;
+        text-align: left;
+    }
+}
+
 .iiidem-footer .footer-social li {
     margin-left: 0.75rem;
 }
@@ -1717,7 +1770,6 @@ body.pagelayout-frontpage #page {
 
 .iiidem-programme-overview__tabbar {
     margin-bottom: 1.5rem;
-    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(11, 61, 145, 0.35) transparent;

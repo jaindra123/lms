@@ -390,6 +390,15 @@ $string['contactusemailbody'] = 'Contact form submission from {$a->name} ({$a->e
 Subject: {$a->subject}
 
 {$a->message}';
+$string['contactususeremailsubject'] = '[{$a->site}] We received your message';
+$string['contactususeremailbody'] = 'Dear {$a->name},
+
+Thank you for contacting {$a->site}. We have received your message and will get back to you soon.
+
+Subject: {$a->subject}
+
+Your message:
+{$a->message}';
 $string['marketingtemplaterequired'] = 'A marketing page template must be set before rendering this layout.';
 
 $string['aboutideasettings'] = 'About International IDEA';

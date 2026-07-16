@@ -75,4 +75,53 @@
     {{{ output.main_content }}}
 </div>
 
+{{#js}}
+(function() {
+    var form = document.querySelector('#contact-us-page form.mform');
+    if (!form) {
+        return;
+    }
+
+    var syncRequiredMarker = function(field) {
+        if (!field || !field.name) {
+            return;
+        }
+
+        var item = field.closest('.fitem');
+        if (!item) {
+            return;
+        }
+
+        var requiredIcon = item.querySelector('.form-label-addon .text-danger');
+        if (!requiredIcon) {
+            return;
+        }
+
+        var hasValue = field.value.trim() !== '';
+        requiredIcon.classList.toggle('text-danger', !hasValue);
+        requiredIcon.classList.toggle('text-success', hasValue);
+
+        if (hasValue) {
+            field.classList.remove('is-invalid');
+            field.removeAttribute('aria-invalid');
+            var feedback = item.querySelector('.form-control-feedback');
+            if (feedback) {
+                feedback.textContent = '';
+                feedback.style.display = 'none';
+            }
+        }
+    };
+
+    form.querySelectorAll('input[aria-required="true"], textarea[aria-required="true"]').forEach(function(field) {
+        syncRequiredMarker(field);
+        field.addEventListener('input', function() {
+            syncRequiredMarker(field);
+        });
+        field.addEventListener('blur', function() {
+            syncRequiredMarker(field);
+        });
+    });
+})();
+{{/js}}
+
 {{> theme_iiidem2/page_end }}

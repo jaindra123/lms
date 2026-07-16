@@ -46,11 +46,31 @@
                 </a>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-5 footer-col footer-col--about">
                 {{#footerdescription}}
                     <p>{{{footerdescription}}}</p>
                 {{/footerdescription}}
-                {{#address}}
+                
+            </div>
+
+            <div class="col-md-3 footer-col footer-col--links">
+                <h5>Quick Links</h5>
+                <ul class="footer-quick-links list-unstyled">
+                    <li><a href="{{{ config.wwwroot }}}">{{#str}}home{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
+                    <!-- {{#isloggedin}}
+                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
+                    {{/isloggedin}}
+                    {{^isloggedin}}
+                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
+                    {{/isloggedin}} -->
+                </ul>
+            </div>
+
+            <div class="col-md-4 footer-col footer-col--contact">
+               {{#address}}
                     <div class="loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> {{{address}}}</div>
                 {{/address}}
                 {{#phone}}
@@ -59,22 +79,6 @@
                 {{#email}}
                     <div class="mail"><i class="fa-regular fa-envelope" aria-hidden="true"></i> {{{email}}}</div>
                 {{/email}}
-            </div>
-
-            <div class="col-md-6">
-                <h5>Quick Links</h5>
-                <ul class="footer-quick-links list-unstyled">
-                    <li><a href="{{{ config.wwwroot }}}">{{#str}}home{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
-                    {{#isloggedin}}
-                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
-                    {{/isloggedin}}
-                    {{^isloggedin}}
-                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
-                    {{/isloggedin}}
-                </ul>
             </div>
         </div>
 
