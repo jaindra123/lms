@@ -509,9 +509,116 @@ $string['registerfirstname'] = 'First name';
 $string['registermiddlename'] = 'Middle name';
 $string['registerlastname'] = 'Last name';
 $string['registercontact'] = 'Contact number';
+$string['registercontact_help'] = 'Select your country code, then enter your mobile number. Example for India: 9876543210 (saved as +919876543210).';
+$string['registerphoneinvalid'] = 'Please enter a valid contact number with country code.';
+$string['registerphoneplaceholder'] = 'Mobile number';
 $string['registercreateaccount'] = 'Create account';
 $string['registerhaveaccount'] = 'Already have an account?';
 $string['registersuccess'] = 'Your account has been created. Welcome!';
+$string['registersuccesstitle'] = 'Registration successful';
+$string['registersuccessbody'] = 'Your account has been created successfully. You can now explore the course and complete enrolment when you are ready.';
+$string['registeremailusersubject'] = '{$a->sitename}: Account created';
+$string['registeremailuserbody'] = 'Hi {$a->firstname},
+
+Your account on {$a->sitename} has been created successfully.
+
+Username: {$a->username}
+Email: {$a->email}
+
+If you need to set or reset your password, use this secure link:
+{$a->resetlink}
+
+This link is valid for about {$a->resetminutes} minutes.
+
+You can also sign in here:
+{$a->loginurl}
+
+{$a->admin}
+';
+$string['registeremailuserhtml'] = '<p>Hi {$a->firstname},</p>
+<p>Your account on <strong>{$a->sitename}</strong> has been created successfully.</p>
+<ul>
+<li><strong>Username:</strong> {$a->username}</li>
+<li><strong>Email:</strong> {$a->email}</li>
+</ul>
+<p>If you need to set or reset your password, use this secure link:</p>
+<p><a href="{$a->resetlink}">{$a->resetlink}</a></p>
+<p>This link is valid for about {$a->resetminutes} minutes.</p>
+<p>You can also <a href="{$a->loginurl}">sign in here</a>.</p>
+<p>{$a->admin}</p>';
+$string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
+$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
+
+Name: {$a->fullname}
+Username: {$a->username}
+Email: {$a->email}
+Contact: {$a->phone}
+Country: {$a->country}
+City: {$a->city}
+Occupation: {$a->occupation}
+
+Profile: {$a->profileurl}
+
+{$a->admin}
+';
+$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong>.</p>
+<ul>
+<li><strong>Name:</strong> {$a->fullname}</li>
+<li><strong>Username:</strong> {$a->username}</li>
+<li><strong>Email:</strong> {$a->email}</li>
+<li><strong>Contact:</strong> {$a->phone}</li>
+<li><strong>Country:</strong> {$a->country}</li>
+<li><strong>City:</strong> {$a->city}</li>
+<li><strong>Occupation:</strong> {$a->occupation}</li>
+</ul>
+<p><a href="{$a->profileurl}">View user profile</a></p>
+<p>{$a->admin}</p>';
+$string['registersmsbody'] = 'Hi {$a->firstname}, your {$a->sitename} account is ready. Username: {$a->username}. Set password: {$a->resetlink}';
+$string['registerwhatsappbody'] = 'Hi {$a->firstname}, welcome to {$a->sitename}. Username: {$a->username}. Set your password here: {$a->resetlink}';
+$string['registrationmessagingsettings'] = 'Registration SMS / WhatsApp';
+$string['registrationmessagingheading'] = 'SMS and WhatsApp after registration';
+$string['registrationmessagingheading_desc'] = 'Optional messaging. Without Twilio/MSG91, choose Local test (log only), enable SMS and WhatsApp, then register a user and check the log file. Email still goes to Mailpit. Real SMS/WhatsApp need a paid provider account.';
+$string['enableregistrationsms'] = 'Send SMS on registration';
+$string['enableregistrationsms_desc'] = 'Sends a welcome SMS with username and password-reset link to the user contact number. Provider charges apply per SMS.';
+$string['enableregistrationwhatsapp'] = 'Send WhatsApp on registration';
+$string['enableregistrationwhatsapp_desc'] = 'Sends a WhatsApp message to the user contact number. Requires WhatsApp Business setup; Meta/provider charges apply.';
+$string['messagingprovider'] = 'Messaging provider';
+$string['messagingprovider_desc'] = 'Use Local test (log only) until you have a paid Twilio or MSG91 account. Log mode writes SMS/WhatsApp text to local_dev_logs/registration_messages.log in the project folder (and also under Moodle dataroot).';
+$string['messagingproviderlog'] = 'Local test (log only — no account needed)';
+$string['registrationmessagingtestok'] = 'SMS/WhatsApp were NOT sent to {$a->phone}. Local test mode saved the message text in your project folder: local_dev_logs/registration_messages.log (full path: {$a->logfile}). Real delivery needs Twilio or MSG91.';
+$string['messagingprovidertwilio'] = 'Twilio';
+$string['messagingprovidermsg91'] = 'MSG91';
+$string['registrationsmsbody'] = 'SMS message body';
+$string['registrationsmsbody_desc'] = 'Leave blank for default. Placeholders: {$a->firstname}, {$a->username}, {$a->sitename}, {$a->resetlink}, {$a->loginurl}. Keep short (SMS length limits).';
+$string['registrationwhatsappbody'] = 'WhatsApp message body';
+$string['registrationwhatsappbody_desc'] = 'Leave blank for default. Same placeholders as SMS. For production WhatsApp, prefer approved templates (Twilio ContentSid / MSG91 template name).';
+$string['twilioheading'] = 'Twilio credentials';
+$string['twilioheading_desc'] = 'From your Twilio console: Account SID, Auth Token, SMS from-number, and WhatsApp-enabled from-number.';
+$string['twilioaccountsid'] = 'Twilio Account SID';
+$string['twilioauthtoken'] = 'Twilio Auth Token';
+$string['twiliosmsfrom'] = 'Twilio SMS From number';
+$string['twiliosmsfrom_desc'] = 'E.164 sender, e.g. +12025550123';
+$string['twiliowhatsappfrom'] = 'Twilio WhatsApp From';
+$string['twiliowhatsappfrom_desc'] = 'e.g. whatsapp:+14155238886 (sandbox) or your WhatsApp Business number';
+$string['twiliowhatsappcontentsid'] = 'Twilio WhatsApp ContentSid (optional)';
+$string['twiliowhatsappcontentsid_desc'] = 'Approved Content Template SID for business-initiated WhatsApp. If set, Body text is not used.';
+$string['twiliowhatsappcontentvars'] = 'Twilio ContentVariables JSON (optional)';
+$string['twiliowhatsappcontentvars_desc'] = 'Example: {"1":"Firstname","2":"username","3":"https://…/reset"} — must match your template variables.';
+$string['msg91heading'] = 'MSG91 credentials';
+$string['msg91heading_desc'] = 'From MSG91 dashboard: Auth key, SMS sender ID (DLT), and WhatsApp integrated number.';
+$string['msg91authkey'] = 'MSG91 Auth key';
+$string['msg91smssender'] = 'MSG91 SMS sender ID';
+$string['msg91smssender_desc'] = 'Approved 6-character sender ID (India DLT).';
+$string['msg91smsroute'] = 'MSG91 SMS route';
+$string['msg91smsroute_desc'] = 'Usually 4 for transactional.';
+$string['msg91smstemplateid'] = 'MSG91 / DLT SMS template ID (optional)';
+$string['msg91smstemplateid_desc'] = 'Required in India for transactional SMS in many cases.';
+$string['msg91whatsappfrom'] = 'MSG91 WhatsApp integrated number';
+$string['msg91whatsappfrom_desc'] = 'Digits only or E.164 — your MSG91 WhatsApp Business number.';
+$string['msg91whatsapptemplate'] = 'MSG91 WhatsApp template name';
+$string['msg91whatsapptemplate_desc'] = 'Approved template name. Body variables map to firstname, username, resetlink. Leave blank to try plain text (session only).';
+$string['msg91whatsappnamespace'] = 'MSG91 WhatsApp template namespace (optional)';
+$string['msg91whatsappnamespace_desc'] = 'Meta template namespace if your MSG91 setup requires it.';
 $string['registeroccupation'] = 'Occupation';
 $string['registeroccupationworking'] = 'Working profile';
 $string['registeroccupationstudent'] = 'University student';

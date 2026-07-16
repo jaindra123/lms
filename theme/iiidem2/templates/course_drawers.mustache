@@ -213,6 +213,21 @@
     </div>
     {{/coursepaymentsuccess}}
 
+    {{#registersuccess}}
+    <div class="modal fade" id="iiidemRegisterSuccessModal" tabindex="-1" aria-labelledby="iiidemRegisterSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4 p-md-5">
+                    <div class="text-success mb-3" style="font-size:3rem;">&#10003;</div>
+                    <h2 class="h4 mb-3" id="iiidemRegisterSuccessLabel">{{#str}}registersuccesstitle, theme_iiidem2{{/str}}</h2>
+                    <p class="mb-4">{{#str}}registersuccessbody, theme_iiidem2{{/str}}</p>
+                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-dismiss="modal">{{#str}}continue, core{{/str}}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/registersuccess}}
+
     {{> theme_iiidem2/page_end }}
 </div>
 
@@ -246,6 +261,18 @@ require(['jquery'], function() {
     }, 100);
 });
 {{/coursepaymentsuccess}}
+{{#registersuccess}}
+require(['jquery'], function() {
+    setTimeout(function() {
+        var modalEl = document.getElementById('iiidemRegisterSuccessModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (modalEl && window.jQuery) {
+            window.jQuery(modalEl).modal('show');
+        }
+    }, 150);
+});
+{{/registersuccess}}
 {{/js}}
 
 </body>

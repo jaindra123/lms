@@ -45,9 +45,17 @@ class register_form extends \moodleform {
         $mform->addRule('email', get_string('required'), 'required', null, 'client');
         $mform->setForceLtr('email');
 
-        $mform->addElement('text', 'phone1', get_string('registercontact', 'theme_iiidem2'));
-        $mform->setType('phone1', \core_user::get_property_type('phone1'));
+        $mform->addElement('text', 'phone1', get_string('registercontact', 'theme_iiidem2'), [
+            'maxlength' => 20,
+            'autocomplete' => 'tel',
+            'inputmode' => 'tel',
+            'data-invalid-phone' => get_string('registerphoneinvalid', 'theme_iiidem2'),
+            'placeholder' => get_string('registerphoneplaceholder', 'theme_iiidem2'),
+        ]);
+        $mform->setType('phone1', PARAM_TEXT);
         $mform->addRule('phone1', get_string('required'), 'required', null, 'client');
+        $mform->addHelpButton('phone1', 'registercontact', 'theme_iiidem2');
+        $mform->setForceLtr('phone1');
 
         $countries = get_string_manager()->get_list_of_countries();
         $countryoptions = ['' => get_string('selectacountry')] + $countries;
@@ -55,6 +63,8 @@ class register_form extends \moodleform {
         $mform->addRule('country', get_string('required'), 'required', null, 'client');
         if (!empty($CFG->country)) {
             $mform->setDefault('country', $CFG->country);
+        } else {
+            $mform->setDefault('country', 'IN');
         }
 
         $mform->addElement('text', 'city', get_string('city'));
@@ -162,6 +172,35 @@ class register_form extends \moodleform {
     }
 
     /**
+     * Normalise contact number to E.164 when possible.
+     *
+     * @param string $phone
+     * @param string $countryiso2
+     * @return string
+     */
+    public static function normalize_phone(string $phone, string $countryiso2 = ''): string {
+        $phone = preg_replace('/[\s\-()]/', '', $phone);
+        $countryiso2 = strtoupper(trim($countryiso2));
+
+        if ($phone === '') {
+            return '';
+        }
+
+        if (!str_starts_with($phone, '+')) {
+            $dialcodes = [
+                'IN' => '91', 'US' => '1', 'GB' => '44', 'AE' => '971', 'SG' => '65',
+                'AU' => '61', 'CA' => '1', 'DE' => '49', 'FR' => '33', 'NP' => '977',
+                'BD' => '880', 'LK' => '94', 'PK' => '92', 'ZA' => '27',
+            ];
+            if (isset($dialcodes[$countryiso2]) && preg_match('/^\d{6,14}$/', $phone)) {
+                $phone = '+' . $dialcodes[$countryiso2] . $phone;
+            }
+        }
+
+        return $phone;
+    }
+
+    /**
      * @param array $data
      * @param array $files
      * @return array
@@ -177,6 +216,13 @@ class register_form extends \moodleform {
             if ($DB->record_exists('user', ['email' => $data['email'], 'mnethostid' => $CFG->mnet_localhost_id])) {
                 $errors['email'] = get_string('emailexists');
             }
+        }
+
+        $phone = self::normalize_phone((string) ($data['phone1'] ?? ''), (string) ($data['country'] ?? ''));
+        if ($phone === '') {
+            $errors['phone1'] = get_string('required');
+        } else if (!preg_match('/^\+[1-9]\d{6,14}$/', $phone)) {
+            $errors['phone1'] = get_string('registerphoneinvalid', 'theme_iiidem2');
         }
 
         if ($data['password'] !== $data['password2']) {

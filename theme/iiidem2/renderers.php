@@ -8,3 +8,4 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/classes/mod_quiz_renderer.php');
 require_once(__DIR__ . '/classes/output/mod_quiz/renderer.php');
+require_once(__DIR__ . '/classes/core_course_renderer.php');

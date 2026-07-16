@@ -112,6 +112,7 @@ $templatecontext = array_merge($templatecontext, theme_iiidem2_get_program_gover
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_testimonials_context());
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_student_reviews_context($COURSE));
 $templatecontext = array_merge($templatecontext, theme_iiidem2_get_course_payment_success_context());
+$templatecontext = array_merge($templatecontext, theme_iiidem2_get_register_success_context());
 $templatecontext = theme_iiidem2_merge_footer_context($templatecontext);
 
 $PAGE->requires->js_call_amd('theme_iiidem2/enroll', 'init');

@@ -620,4 +620,184 @@ $page->add($setting);
 
 // Save Contacts Page.
 $settings->add($page);
+
+/*
+|--------------------------------------------------------------------------
+| Registration messaging (SMS + WhatsApp) — paid third-party APIs
+|--------------------------------------------------------------------------
+*/
+$page = new admin_settingpage(
+    'theme_iiidem2_registration_messaging',
+    get_string('registrationmessagingsettings', 'theme_iiidem2')
+);
+
+$page->add(new admin_setting_heading(
+    'theme_iiidem2/messagingheading',
+    get_string('registrationmessagingheading', 'theme_iiidem2'),
+    get_string('registrationmessagingheading_desc', 'theme_iiidem2')
+));
+
+$page->add(new admin_setting_configcheckbox(
+    'theme_iiidem2/enableregistrationsms',
+    get_string('enableregistrationsms', 'theme_iiidem2'),
+    get_string('enableregistrationsms_desc', 'theme_iiidem2'),
+    0
+));
+
+$page->add(new admin_setting_configcheckbox(
+    'theme_iiidem2/enableregistrationwhatsapp',
+    get_string('enableregistrationwhatsapp', 'theme_iiidem2'),
+    get_string('enableregistrationwhatsapp_desc', 'theme_iiidem2'),
+    0
+));
+
+$page->add(new admin_setting_configselect(
+    'theme_iiidem2/messagingprovider',
+    get_string('messagingprovider', 'theme_iiidem2'),
+    get_string('messagingprovider_desc', 'theme_iiidem2'),
+    'log',
+    [
+        'log' => get_string('messagingproviderlog', 'theme_iiidem2'),
+        'twilio' => get_string('messagingprovidertwilio', 'theme_iiidem2'),
+        'msg91' => get_string('messagingprovidermsg91', 'theme_iiidem2'),
+    ]
+));
+
+$page->add(new admin_setting_configtextarea(
+    'theme_iiidem2/registrationsmsbody',
+    get_string('registrationsmsbody', 'theme_iiidem2'),
+    get_string('registrationsmsbody_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT,
+    4,
+    60
+));
+
+$page->add(new admin_setting_configtextarea(
+    'theme_iiidem2/registrationwhatsappbody',
+    get_string('registrationwhatsappbody', 'theme_iiidem2'),
+    get_string('registrationwhatsappbody_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT,
+    4,
+    60
+));
+
+$page->add(new admin_setting_heading(
+    'theme_iiidem2/twilioheading',
+    get_string('twilioheading', 'theme_iiidem2'),
+    get_string('twilioheading_desc', 'theme_iiidem2')
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/twilioaccountsid',
+    get_string('twilioaccountsid', 'theme_iiidem2'),
+    '',
+    '',
+    PARAM_ALPHANUMEXT
+));
+
+$page->add(new admin_setting_configpasswordunmask(
+    'theme_iiidem2/twilioauthtoken',
+    get_string('twilioauthtoken', 'theme_iiidem2'),
+    '',
+    ''
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/twiliosmsfrom',
+    get_string('twiliosmsfrom', 'theme_iiidem2'),
+    get_string('twiliosmsfrom_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/twiliowhatsappfrom',
+    get_string('twiliowhatsappfrom', 'theme_iiidem2'),
+    get_string('twiliowhatsappfrom_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/twiliowhatsappcontentsid',
+    get_string('twiliowhatsappcontentsid', 'theme_iiidem2'),
+    get_string('twiliowhatsappcontentsid_desc', 'theme_iiidem2'),
+    '',
+    PARAM_ALPHANUMEXT
+));
+
+$page->add(new admin_setting_configtextarea(
+    'theme_iiidem2/twiliowhatsappcontentvars',
+    get_string('twiliowhatsappcontentvars', 'theme_iiidem2'),
+    get_string('twiliowhatsappcontentvars_desc', 'theme_iiidem2'),
+    '',
+    PARAM_RAW,
+    2,
+    60
+));
+
+$page->add(new admin_setting_heading(
+    'theme_iiidem2/msg91heading',
+    get_string('msg91heading', 'theme_iiidem2'),
+    get_string('msg91heading_desc', 'theme_iiidem2')
+));
+
+$page->add(new admin_setting_configpasswordunmask(
+    'theme_iiidem2/msg91authkey',
+    get_string('msg91authkey', 'theme_iiidem2'),
+    '',
+    ''
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91smssender',
+    get_string('msg91smssender', 'theme_iiidem2'),
+    get_string('msg91smssender_desc', 'theme_iiidem2'),
+    '',
+    PARAM_ALPHANUMEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91smsroute',
+    get_string('msg91smsroute', 'theme_iiidem2'),
+    get_string('msg91smsroute_desc', 'theme_iiidem2'),
+    '4',
+    PARAM_INT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91smstemplateid',
+    get_string('msg91smstemplateid', 'theme_iiidem2'),
+    get_string('msg91smstemplateid_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91whatsappfrom',
+    get_string('msg91whatsappfrom', 'theme_iiidem2'),
+    get_string('msg91whatsappfrom_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91whatsapptemplate',
+    get_string('msg91whatsapptemplate', 'theme_iiidem2'),
+    get_string('msg91whatsapptemplate_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/msg91whatsappnamespace',
+    get_string('msg91whatsappnamespace', 'theme_iiidem2'),
+    get_string('msg91whatsappnamespace_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+
+$settings->add($page);
 }

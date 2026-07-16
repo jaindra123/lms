@@ -40,7 +40,7 @@ class ical_parser {
                 continue;
             }
 
-            $endtime = $end ?? ($start + DAYSECS);
+            $endtime = $end ?? ($start + \DAYSECS);
             if ($endtime < $fromtime) {
                 continue;
             }

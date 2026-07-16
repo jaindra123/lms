@@ -2504,7 +2504,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     $user->middlename = $data->middlename ?? '';
     $user->lastname = $data->lastname;
     $user->email = $data->email;
-    $user->phone1 = $data->phone1;
+    $user->phone1 = \theme_iiidem2\form\register_form::normalize_phone(
+        (string) $data->phone1,
+        (string) ($data->country ?? '')
+    );
     $user->country = $data->country;
     $user->city = $data->city;
     $user->auth = $auth;
@@ -2554,6 +2557,76 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     \theme_iiidem2\registration_profile::save_user_data($userid, $data);
 
     return $userid;
+}
+
+/**
+ * Email the new user (with password-reset link) and site administrators after registration.
+ *
+ * @param stdClass $user Newly created user record.
+ * @param stdClass|null $formdata Original registration submission (optional).
+ * @return void
+ */
+function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formdata = null): void {
+    global $CFG, $SITE;
+
+    require_once($CFG->dirroot . '/login/lib.php');
+
+    $supportuser = \core_user::get_support_user();
+    $sitename = format_string($SITE->fullname);
+    $resetminutes = isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30;
+
+    // One-time password reset token (same mechanism as forgot password).
+    $resetrecord = core_login_generate_password_reset($user);
+    $resetlink = (new moodle_url('/login/forgot_password.php', ['token' => $resetrecord->token]))->out(false);
+    $loginurl = (new moodle_url('/login/index.php'))->out(false);
+
+    $occupation = '';
+    if ($formdata) {
+        $occupation = \theme_iiidem2\registration_profile::get_occupation_type($formdata);
+    }
+
+    $userdata = (object) [
+        'firstname' => $user->firstname,
+        'fullname' => fullname($user),
+        'username' => $user->username,
+        'email' => $user->email,
+        'phone' => $user->phone1 ?? '',
+        'country' => $user->country ?? '',
+        'city' => $user->city ?? '',
+        'occupation' => $occupation !== '' ? $occupation : get_string('none'),
+        'sitename' => $sitename,
+        'resetlink' => $resetlink,
+        'resetminutes' => $resetminutes,
+        'loginurl' => $loginurl,
+        'profileurl' => (new moodle_url('/user/profile.php', ['id' => $user->id]))->out(false),
+        'admin' => generate_email_signoff(),
+    ];
+
+    // Email to the registered user.
+    $usersubject = get_string('registeremailusersubject', 'theme_iiidem2', $userdata);
+    $usertext = get_string('registeremailuserbody', 'theme_iiidem2', $userdata);
+    $userhtml = get_string('registeremailuserhtml', 'theme_iiidem2', $userdata);
+    email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+
+    // Email to each site administrator.
+    $adminsubject = get_string('registeremailadminsubject', 'theme_iiidem2', $userdata);
+    $admintext = get_string('registeremailadminbody', 'theme_iiidem2', $userdata);
+    $adminhtml = get_string('registeremailadminhtml', 'theme_iiidem2', $userdata);
+    foreach (get_admins() as $admin) {
+        if (empty($admin->email) || !validate_email($admin->email)) {
+            continue;
+        }
+        email_to_user($admin, $supportuser, $adminsubject, $admintext, $adminhtml);
+    }
+
+    // Optional SMS + WhatsApp to the user's contact number (same reset link).
+    $messaging = \theme_iiidem2\registration_messaging::notify_user($user, $userdata);
+    if (!empty($messaging['provider']) && $messaging['provider'] === 'log' && (!empty($messaging['sms']) || !empty($messaging['whatsapp']))) {
+        \core\notification::info(get_string('registrationmessagingtestok', 'theme_iiidem2', (object) [
+            'phone' => $messaging['phone'],
+            'logfile' => $messaging['logfile'],
+        ]));
+    }
 }
 
 /**
@@ -2865,6 +2938,7 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
         theme_iiidem2_get_course_payment_success_context(),
+        theme_iiidem2_get_register_success_context(),
         [
             'sitename' => format_string($SITE->shortname, true, [
                 'context' => context_course::instance(SITEID),
@@ -3914,6 +3988,17 @@ function theme_iiidem2_get_course_payment_success_context(): array {
 }
 
 /**
+ * Success modal context after custom registration redirect.
+ *
+ * @return array{registersuccess: bool}
+ */
+function theme_iiidem2_get_register_success_context(): array {
+    return [
+        'registersuccess' => optional_param('registered', 0, PARAM_INT) === 1,
+    ];
+}
+
+/**
  * Quick stats and included items for the course enrolment sidebar.
  *
  * @param stdClass $course
@@ -4087,7 +4172,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
 
     $display = theme_iiidem2_get_course_display_context($course);
     $loginurl = new moodle_url('/login/index.php');
-    $loginurl->param('wantsurl', (new moodle_url('/enrol/index.php', ['id' => $course->id]))->out(false));
+    $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
     $templatecontext = theme_iiidem2_merge_footer_context(array_merge($display, [
         'sitename' => format_string($SITE->fullname),

@@ -33,6 +33,18 @@ function local_iiidem_coursecalendar_extend_settings_navigation(
         'iiidem_coursecalendar',
         new \pix_icon('i/calendar', '')
     );
+
+    $scheduleurl = new \moodle_url('/local/iiidem_coursecalendar/schedule_event.php', [
+        'courseid' => $context->instanceid,
+    ]);
+    $coursenode->add(
+        get_string('scheduleliveclass', 'local_iiidem_coursecalendar'),
+        $scheduleurl,
+        \navigation_node::TYPE_SETTING,
+        null,
+        'iiidem_coursecalendar_schedule',
+        new \pix_icon('i/calendar', '')
+    );
 }
 
 /**
