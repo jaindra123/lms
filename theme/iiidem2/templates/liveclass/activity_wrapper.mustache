@@ -43,9 +43,14 @@
 
                 <div class="iiidem-live-class__actions">
                     {{#hasliveclassjoinurl}}
-                    <a href="{{liveclassjoinurl}}" class="iiidem-live-class__join-btn" target="_blank" rel="noopener noreferrer">
+                    <button type="button"
+                            class="iiidem-live-class__join-btn"
+                            data-action="open-liveclass-modal"
+                            data-join-url="{{liveclassjoinurl}}"
+                            aria-haspopup="dialog"
+                            aria-controls="iiidem-liveclass-modal">
                         {{#str}}liveclassjoin, theme_iiidem2{{/str}}
-                    </a>
+                    </button>
                     {{/hasliveclassjoinurl}}
                     {{^hasliveclassjoinurl}}
                     <p class="iiidem-live-class__no-link">{{#str}}liveclassnojoin, theme_iiidem2{{/str}}</p>
@@ -90,4 +95,51 @@
             </div>
         </div>
     </div>
+
+    {{#hasliveclassjoinurl}}
+    <div class="iiidem-liveclass-modal"
+         id="iiidem-liveclass-modal"
+         hidden
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="iiidem-liveclass-modal-title">
+        <div class="iiidem-liveclass-modal__backdrop" data-action="close-liveclass-modal"></div>
+        <div class="iiidem-liveclass-modal__dialog" role="document">
+            <div class="iiidem-liveclass-modal__header">
+                <h2 id="iiidem-liveclass-modal-title" class="iiidem-liveclass-modal__title">
+                    {{#str}}liveclassmodaltitle, theme_iiidem2{{/str}}
+                </h2>
+                <button type="button"
+                        class="iiidem-liveclass-modal__close"
+                        data-action="close-liveclass-modal"
+                        aria-label="{{#str}}closebuttontitle, core{{/str}}">
+                    &times;
+                </button>
+            </div>
+            <div class="iiidem-liveclass-modal__body">
+                <div class="iiidem-liveclass-modal__frame-wrap">
+                    <iframe class="iiidem-liveclass-modal__frame"
+                            title="{{#str}}liveclassmodaltitle, theme_iiidem2{{/str}}"
+                            allow="camera; microphone; display-capture; autoplay; fullscreen"
+                            allowfullscreen></iframe>
+                    <div class="iiidem-liveclass-modal__fallback" hidden>
+                        <p class="iiidem-liveclass-modal__fallback-text">
+                            {{#str}}liveclassmodalblocked, theme_iiidem2{{/str}}
+                        </p>
+                        <button type="button"
+                                class="iiidem-live-class__join-btn iiidem-liveclass-modal__fallback-btn"
+                                data-action="open-liveclass-window">
+                            {{#str}}liveclassmodalopenexternal, theme_iiidem2{{/str}}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/hasliveclassjoinurl}}
 </div>
+{{#js}}
+require(['theme_iiidem2/liveclass_join_modal'], function(modal) {
+    modal.init();
+});
+{{/js}}

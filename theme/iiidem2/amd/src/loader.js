@@ -24,7 +24,13 @@
 
 import $ from 'jquery';
 import * as Aria from './aria';
+import {init as initAdminNavFix, resolveAdminSearchUrl} from './admin_nav_fix';
 import Bootstrap from './index';
+// Side-effect imports: register Bootstrap 4 data-api handlers (data-toggle, not data-bs-*).
+import './bootstrap/collapse';
+import './bootstrap/tab';
+import './bootstrap/carousel';
+import './bootstrap/modal';
 import Pending from 'core/pending';
 import {DefaultWhitelist} from './bootstrap/tools/sanitizer';
 import setupBootstrapPendingChecks from './pending';
@@ -32,25 +38,46 @@ import setupBootstrapPendingChecks from './pending';
 /**
  * Rember the last visited tabs.
  */
+const isAdminIndexPage = () => /\/admin\/index\.php$/i.test(window.location.pathname);
+
 const rememberTabs = () => {
-    if (/\/admin(?:\/|$)/.test(window.location.pathname)) {
-        return;
-    }
     $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
         var hash = $(e.target).attr('href');
+        if (!hash || !hash.startsWith('#')) {
+            return;
+        }
+        // Admin notifications page: do not swap hash in-place — go to settings search UI.
+        if (hash.startsWith('#link') && isAdminIndexPage()) {
+            window.location.assign(resolveAdminSearchUrl(hash));
+            return;
+        }
         if (history.replaceState) {
             history.replaceState(null, null, hash);
         } else {
             location.hash = hash;
         }
     });
-    const hash = window.location.hash;
-    if (hash) {
-        const tab = document.querySelector('[role="tablist"] [href="' + hash + '"]');
-        if (tab) {
-            tab.click();
+    const activateTabFromHash = () => {
+        const hash = window.location.hash;
+        if (!hash || !hash.startsWith('#')) {
+            return;
         }
-    }
+        if (hash.startsWith('#link') && isAdminIndexPage()) {
+            window.location.replace(resolveAdminSearchUrl(hash));
+            return;
+        }
+        // Do not simulate in-page tab clicks on the notifications page.
+        if (isAdminIndexPage()) {
+            return;
+        }
+        const tab = document.querySelector('[role="tablist"] [href="' + hash + '"]')
+            || document.querySelector('[role="tablist"] [href$="' + hash + '"]');
+        if (tab) {
+            $(tab).tab('show');
+        }
+    };
+    activateTabFromHash();
+    window.addEventListener('hashchange', activateTabFromHash);
 };
 
 /**
@@ -104,7 +131,7 @@ const enableTooltips = () => {
 const pendingPromise = new Pending('theme_iiidem2/loader:init');
 
 const disableAdminIndexBootstrapTabs = () => {
-    if (!/\/admin\/index\.php$/i.test(window.location.pathname)) {
+    if (!isAdminIndexPage()) {
         return;
     }
     $(document).off('click.bs.tab.data-api', '[data-toggle="tab"]');
@@ -113,6 +140,7 @@ const disableAdminIndexBootstrapTabs = () => {
 
 setupBootstrapPendingChecks();
 disableAdminIndexBootstrapTabs();
+initAdminNavFix();
 Aria.init();
 rememberTabs();
 enablePopovers();

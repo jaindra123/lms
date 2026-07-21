@@ -32,3 +32,14 @@ export const verifyPayment = (orderId, paymentId, signature) => {
     };
     return Ajax.call([request])[0];
 };
+
+export const reportPaymentFailure = (orderId, reason = '') => {
+    const request = {
+        methodname: 'paygw_razorpay_report_payment_failure',
+        args: {
+            orderid: orderId,
+            reason: reason,
+        },
+    };
+    return Ajax.call([request])[0];
+};

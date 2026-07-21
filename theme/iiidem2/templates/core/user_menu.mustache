@@ -5,10 +5,13 @@
 }}
 <div class="usermenu">
     {{#unauthenticateduser}}
-        <span class="login ps-2">
+        <span class="login ps-2 d-flex align-items-center gap-2">
             {{#guest}}
                 {{#str}} loggedinasguest, core {{/str}}
                 <div class="divider border-start h-75 align-self-center mx-2"></div>
+            {{/guest}}
+            {{^guest}}
+                <a href="{{registerurl}}" class="btn btn-light iiidem-nav-signup">{{#str}}loginsignup, theme_iiidem2{{/str}}</a>
             {{/guest}}
             {{#url}}
                 <a href="{{url}}" class="btn btn-outline-light iiidem-nav-login">{{#str}} login, core {{/str}}</a>

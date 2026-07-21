@@ -877,15 +877,6 @@ class student_dashboard {
                 'active' => true,
             ],
             [
-                'key' => 'livesessions',
-                'icon' => 'fa-video',
-                'label' => get_string('dashboardnavlivesessions', 'theme_iiidem2'),
-                'url' => self::get_live_class_page_url($userid)->out(false),
-                'panel' => 'learning',
-                'isinpage' => false,
-                'active' => false,
-            ],
-            [
                 'key' => 'curriculum',
                 'icon' => 'fa-book-open',
                 'label' => get_string('dashboardnavcurriculum', 'theme_iiidem2'),

@@ -1,5 +1,5 @@
 /**
- * Direct course fee payment via PNB or ICICI gateway (no gateway picker modal).
+ * Direct course fee payment via PNB, ICICI, or Razorpay gateway (no gateway picker modal).
  *
  * @module     theme_iiidem2/course_payment
  * @copyright  2026 IIIDEM
@@ -9,6 +9,47 @@ define(['core/notification'], function(Notification) {
 
     var SELECTOR = '[data-action="theme_iiidem2/triggerCoursePayment"]';
     var initialised = false;
+
+    /**
+     * Pull a readable message from Moodle Ajax / Error / string rejects.
+     *
+     * @param {*} err
+     * @returns {string}
+     */
+    function extractErrorMessage(err) {
+        if (!err) {
+            return '';
+        }
+        if (typeof err === 'string') {
+            return err;
+        }
+        if (err.message && typeof err.message === 'string') {
+            return err.message;
+        }
+        if (typeof err.error === 'string') {
+            return err.error;
+        }
+        if (err.error && typeof err.error === 'object' && err.error.message) {
+            return err.error.message;
+        }
+        if (err.exception && typeof err.exception === 'object' && err.exception.message) {
+            return err.exception.message;
+        }
+        if (err.exception && typeof err.exception === 'string') {
+            return err.exception;
+        }
+        return '';
+    }
+
+    /**
+     * Show exactly one Moodle dialog — never Razorpay UI.
+     *
+     * @param {string} message
+     */
+    function showPaymentError(message) {
+        var text = message || 'Payment could not be started. Please try again.';
+        Notification.alert('Payment not started', text, 'OK');
+    }
 
     /**
      * Redirect to the selected payment gateway.
@@ -27,7 +68,7 @@ define(['core/notification'], function(Notification) {
                     .then(resolve)
                     .catch(reject);
             }, function(err) {
-                reject(err);
+                reject(err || new Error('Payment module could not be loaded.'));
             });
         });
     }
@@ -62,14 +103,7 @@ define(['core/notification'], function(Notification) {
             processPayment(gateway, component, paymentArea, itemId, description)
                 .catch(function(err) {
                     trigger.disabled = false;
-                    var message = err;
-                    if (err && typeof err === 'object') {
-                        message = err.message || err.error || err.exception || '';
-                    }
-                    if (!message || typeof message !== 'string') {
-                        message = 'Payment could not be started. Please try again.';
-                    }
-                    Notification.alert('', message);
+                    showPaymentError(extractErrorMessage(err));
                 });
         });
     }

@@ -13,6 +13,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+import $ from 'jquery';
+
 const isAdminIndexPage = () => /\/admin\/index\.php$/i.test(window.location.pathname);
 
 const isAdminSearchPage = () => /\/admin\/search\.php$/i.test(window.location.pathname);
@@ -59,6 +61,26 @@ export const resolveAdminSearchUrl = (href) => {
     return new URL('/admin/search.php' + hash, window.location.origin).href;
 };
 
+/**
+ * Whether a secondary-nav href should switch in-page admin settings tabs.
+ *
+ * @param {string} href Tab href (hash-only or full URL).
+ * @returns {boolean}
+ */
+const isInPageAdminSettingsTab = (href) => {
+    if (!href) {
+        return false;
+    }
+    if (href.startsWith('#') && isAdminSettingsHash(href)) {
+        return true;
+    }
+    const target = resolveAdminSearchUrl(href);
+    if (!target) {
+        return false;
+    }
+    return isAdminSettingsHash(new URL(target, window.location.origin).hash);
+};
+
 const redirectAdminIndexHash = () => {
     if (!isAdminIndexPage()) {
         return;
@@ -80,8 +102,11 @@ const handleSecondaryNavClick = (e) => {
         return;
     }
 
-    // On admin search, #link* tabs switch in-page Bootstrap panes — do not redirect.
-    if (isAdminSearchPage() && (href.startsWith('#') || isAdminSettingsHash(href))) {
+    // On admin search, #link* tabs switch in-page Bootstrap panes — handle directly.
+    if (isAdminSearchPage() && isInPageAdminSettingsTab(href)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        $(link).tab('show');
         return;
     }
 

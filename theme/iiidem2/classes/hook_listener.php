@@ -38,9 +38,18 @@ class hook_listener {
      * @param \core\hook\after_config $hook
      */
     public static function after_config(\core\hook\after_config $hook): void {
+        global $CFG;
+
         if (!self::is_theme_active()) {
             return;
         }
+
+        // Belt-and-braces: admin must not use theme designer mode (see config.php too).
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (str_starts_with($script, '/admin/')) {
+            $CFG->themedesignermode = false;
+        }
+
         if (self::$courseexporterautoloadregistered) {
             return;
         }
@@ -126,6 +135,33 @@ class hook_listener {
 
         \theme_iiidem2_apply_course_view_page_assets($PAGE);
         \theme_iiidem2_preload_course_layout_context($COURSE);
+    }
+
+    /**
+     * Inject admin navigation scripts into <head> as early as possible.
+     *
+     * @param \core\hook\output\before_standard_head_html_generation $hook
+     */
+    public static function before_standard_head_html_generation(
+        \core\hook\output\before_standard_head_html_generation $hook
+    ): void {
+        global $PAGE, $CFG;
+
+        if (!self::is_theme_active()) {
+            return;
+        }
+
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        if (\theme_iiidem2_is_admin_index_page($PAGE)) {
+            $hook->add_html(\theme_iiidem2_admin_index_head_script());
+            return;
+        }
+
+        if ($PAGE->pagelayout === 'admin'
+                && preg_match('#/admin/search\.php$#', $PAGE->url->get_path(false))) {
+            $hook->add_html(\theme_iiidem2_admin_search_head_script());
+        }
     }
 
     public static function primary_extend(\core\hook\navigation\primary_extend $hook): void {

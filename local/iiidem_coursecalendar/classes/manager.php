@@ -512,7 +512,9 @@ class manager {
             'start' => $start,
             'end' => $end,
             'userid' => $userid,
-            'notify' => true,
+            // Autosync on activity save: Google Calendar only. Skip Moodle email notify
+            // (SMTP often unavailable locally/staging and floods the save page with notices).
+            'notify' => false,
         ]);
     }
 
@@ -574,7 +576,8 @@ class manager {
             'start' => $start,
             'end' => $end,
             'userid' => $userid,
-            'notify' => true,
+            // Autosync on activity save: Google Calendar only (no Moodle email on every save).
+            'notify' => false,
         ]);
     }
 
@@ -628,13 +631,13 @@ class manager {
             $existing->timemodified = $now;
             $DB->update_record(self::EVENT_TABLE, $existing);
             if (!empty($data['notify'])) {
-            try {
-                $course = get_course((int) $data['courseid']);
-                self::notify_live_class_scheduled($course, $existing, $attendees, $userid);
-            } catch (\Throwable $e) {
-                error_log('local_iiidem_coursecalendar notify failed: ' . $e->getMessage());
+                try {
+                    $course = get_course((int) $data['courseid']);
+                    self::notify_live_class_scheduled($course, $existing, $attendees, $userid);
+                } catch (\Throwable $e) {
+                    error_log('local_iiidem_coursecalendar notify failed: ' . $e->getMessage());
+                }
             }
-        }
             return $existing;
         }
 
@@ -774,35 +777,38 @@ class manager {
         $body = get_string('liveclassnotificationbody', 'local_iiidem_coursecalendar', $a);
         $sender = \core_user::get_noreply_user();
 
-        foreach ($users as $user) {
-            if ((int) $user->id === (int) $excludeuserid) {
-                continue;
-            }
-            if (isguestuser($user) || $user->deleted || $user->suspended) {
-                continue;
-            }
-            if (has_capability('local/iiidem_coursecalendar:manage', $context, $user)) {
-                continue;
-            }
+        // Suppress Moodle debugging()/E_USER_NOTICE when email processor fails (no SMTP).
+        global $CFG;
+        $olddebug = $CFG->debug ?? 0;
+        $olddebugdisplay = $CFG->debugdisplay ?? false;
+        $CFG->debug = 0;
+        $CFG->debugdisplay = false;
 
-            $eventdata = new \core\message\message();
-            $eventdata->component = 'local_iiidem_coursecalendar';
-            $eventdata->name = 'schedule';
-            $eventdata->userfrom = $sender;
-            $eventdata->userto = $user;
-            $eventdata->subject = $subject;
-            $eventdata->fullmessage = $body;
-            $eventdata->fullmessageformat = FORMAT_PLAIN;
-            $eventdata->fullmessagehtml = '';
-            $eventdata->smallmessage = $subject;
-            $eventdata->notification = 1;
-            $eventdata->contexturl = $courseurl->out(false);
-            $eventdata->contexturlname = $a->coursename;
-            message_send($eventdata);
+        try {
+            foreach ($users as $user) {
+                if ((int) $user->id === (int) $excludeuserid) {
+                    continue;
+                }
+                if (isguestuser($user) || $user->deleted || $user->suspended) {
+                    continue;
+                }
+                if (has_capability('local/iiidem_coursecalendar:manage', $context, $user)) {
+                    continue;
+                }
 
-            if (!empty($user->email)) {
-                email_to_user($user, $sender, $subject, $body);
+                try {
+                    // Prefer direct email; message_send email-processor failures print Notices
+                    // even when debugdisplay is off (trigger_error path in weblib.php).
+                    if (!empty($user->email)) {
+                        email_to_user($user, $sender, $subject, $body);
+                    }
+                } catch (\Throwable $e) {
+                    error_log('local_iiidem_coursecalendar notify user ' . $user->id . ': ' . $e->getMessage());
+                }
             }
+        } finally {
+            $CFG->debug = $olddebug;
+            $CFG->debugdisplay = $olddebugdisplay;
         }
     }
 }

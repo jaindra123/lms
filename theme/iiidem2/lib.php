@@ -234,6 +234,7 @@ function theme_iiidem2_get_footer_context(): array {
         'navbarlogo' => $navbarlogo,
         'headerlogo' => $navbarlogo,
         'footerlogo' => $theme->setting_file_url('footerlogo', 'footerlogo'),
+        'registerurl' => theme_iiidem2_get_register_url(),
     ]);
 }
 
@@ -2638,7 +2639,8 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
     $usersubject = get_string('registeremailusersubject', 'theme_iiidem2', $userdata);
     $usertext = get_string('registeremailuserbody', 'theme_iiidem2', $userdata);
     $userhtml = get_string('registeremailuserhtml', 'theme_iiidem2', $userdata);
-    email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+    $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+    error_log('IIIDEM register mail to=' . $user->email . ' sent=' . var_export($sent, true));
 
     // Email to each site administrator.
     $adminsubject = get_string('registeremailadminsubject', 'theme_iiidem2', $userdata);
@@ -2798,6 +2800,7 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
     $done = true;
     $page->add_body_class('iiidem-course-hero-layout');
     $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
+    $page->requires->css(new moodle_url('/theme/iiidem2/style/live-class.css'));
 
     $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
     $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
@@ -2819,6 +2822,52 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
  */
 function theme_iiidem2_is_admin_index_page(moodle_page $page): bool {
     return (bool) preg_match('#/admin/index\.php$#', $page->url->get_path(false));
+}
+
+/**
+ * Inline head script: redirect /admin/index.php#link* to /admin/search.php#link*.
+ *
+ * Runs before themed CSS/JS so admin settings tabs open immediately.
+ *
+ * @return string
+ */
+function theme_iiidem2_admin_index_head_script(): string {
+    return <<<'HTML'
+<script>
+(function(){if(!/\/admin\/index\.php$/i.test(location.pathname)){return;}
+function toSearch(href){if(!href){return null;}
+if(href.indexOf('/admin/search.php')!==-1&&href.indexOf('#link')!==-1){
+return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'/')+href);}
+var hash=href.indexOf('#link')===0?href:null;
+if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));
+if(c.indexOf('#link')===0){hash=c;}}
+return hash?(location.origin+'/admin/search.php'+hash):null;}
+function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){
+location.replace(location.origin+'/admin/search.php'+h);}}
+redirectHash();window.addEventListener('hashchange',redirectHash);
+document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');
+if(!link){return;}var target=toSearch(link.getAttribute('href')||'');if(!target){return;}
+e.preventDefault();e.stopImmediatePropagation();location.assign(target);},true);})();
+</script>
+HTML;
+}
+
+/**
+ * Inline head script for /admin/search.php — full-page admin tabs (Payment, Support).
+ *
+ * @return string
+ */
+function theme_iiidem2_admin_search_head_script(): string {
+    return <<<'HTML'
+<script>
+(function(){if(!/\/admin\/search\.php$/i.test(location.pathname)){return;}
+document.addEventListener('click',function(e){
+var link=e.target.closest('.secondary-navigation a[data-toggle="tab"][href],.secondary-navigation a[data-bs-toggle="tab"][href]');
+if(!link){return;}var href=link.getAttribute('href')||'';
+if(!href||href.charAt(0)==='#'||href.indexOf('/admin/search.php')!==-1){return;}
+e.preventDefault();e.stopImmediatePropagation();location.assign(href);},true);})();
+</script>
+HTML;
 }
 
 /**
@@ -3040,7 +3089,24 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
                 return '<iframe width="100%" height="400" src="' . s($embedurl) . '" frameborder="0" allowfullscreen></iframe>';
             }
         }
-        return '<a href="' . s($videourl) . '" target="_blank" rel="noopener">Open external link</a>';
+
+        // Webex / live meeting links: open in theme modal instead of a new tab.
+        if (preg_match('#https?://[^/\s]*webex\.com/#i', $videourl)
+                || preg_match('#\b(webex|live\s*class|online\s*class)\b#i', (string) $url->name)) {
+            return html_writer::tag('button', get_string('liveclassjoin', 'theme_iiidem2'), [
+                'type' => 'button',
+                'class' => 'btn btn-primary btn-sm iiidem-liveclass-open-btn',
+                'data-action' => 'open-liveclass-modal',
+                'data-join-url' => $videourl,
+            ]);
+        }
+
+        return html_writer::tag('button', get_string('liveclassmodalopenexternal', 'theme_iiidem2'), [
+            'type' => 'button',
+            'class' => 'btn btn-outline-primary btn-sm iiidem-liveclass-open-btn',
+            'data-action' => 'open-liveclass-modal',
+            'data-join-url' => $videourl,
+        ]);
     }
 
     if ($cm->modname === 'quiz') {
@@ -4327,7 +4393,11 @@ function theme_iiidem2_page_init($page) {
     $page->requires->js_call_amd('theme_iiidem2/footer-popover', 'init');
 
     if ($page->pagelayout === 'admin' || str_starts_with($page->pagetype ?? '', 'admin-')) {
-        $page->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
+        if (theme_iiidem2_is_admin_index_page($page)) {
+            $page->requires->js_init_code(
+                'if(/^#link/.test(location.hash)){location.replace(location.origin+"/admin/search.php"+location.hash);}'
+            );
+        }
     }
 
     if (isloggedin() && !isguestuser() && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {

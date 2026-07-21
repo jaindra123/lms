@@ -1,44 +1,11 @@
 /**
- * Registration form helpers: occupation exclusivity, required icons, phone country code.
+ * Registration form helpers: required icons, phone country code.
  *
  * @module theme_iiidem2/register_occupation
  */
 define([], function() {
 
-    const CHECKBOXES = [
-        'occupation_working',
-        'occupation_student',
-        'occupation_instructor',
-    ];
-
     let phoneIti = null;
-
-    /**
-     * Keep only one occupation checkbox selected at a time.
-     */
-    function initOccupationCheckboxes() {
-        const elements = CHECKBOXES
-            .map((name) => document.getElementById('id_' + name))
-            .filter(Boolean);
-
-        if (!elements.length) {
-            return;
-        }
-
-        elements.forEach((checkbox) => {
-            checkbox.addEventListener('change', function() {
-                if (!checkbox.checked) {
-                    return;
-                }
-                elements.forEach((other) => {
-                    if (other !== checkbox) {
-                        other.checked = false;
-                        other.dispatchEvent(new Event('change', {bubbles: true}));
-                    }
-                });
-            });
-        });
-    }
 
     /**
      * @param {HTMLElement} field
@@ -51,14 +18,37 @@ define([], function() {
 
         const type = (field.type || '').toLowerCase();
         if (type === 'checkbox' || type === 'radio') {
+            if (type === 'radio' && field.name) {
+                const group = document.querySelectorAll('input[type="radio"][name="' + field.name + '"]');
+                return Array.prototype.some.call(group, (el) => el.checked);
+            }
             return field.checked;
         }
 
-        if (field.tagName === 'SELECT') {
-            return String(field.value || '').trim() !== '';
+        return String(field.value || '').trim() !== '';
+    }
+
+    /**
+     * Find the Moodle required marker inside a field row.
+     *
+     * @param {HTMLElement} fitem
+     * @returns {{wrapper: HTMLElement|null, icon: HTMLElement|null}}
+     */
+    function getRequiredMarker(fitem) {
+        if (!fitem) {
+            return {wrapper: null, icon: null};
         }
 
-        return String(field.value || '').trim() !== '';
+        const addon = fitem.querySelector('.form-label-addon');
+        if (!addon) {
+            return {wrapper: null, icon: null};
+        }
+
+        const wrapper = addon.querySelector('.text-danger, .text-success, [title="Required"], [title="Completed"]')
+            || addon.firstElementChild;
+        const icon = addon.querySelector('.icon, i');
+
+        return {wrapper: wrapper, icon: icon};
     }
 
     /**
@@ -74,8 +64,9 @@ define([], function() {
 
         fitem.classList.toggle('iiidem-field-valid', isValid);
 
-        const wrapper = fitem.querySelector('.form-label-addon .text-danger, .form-label-addon .text-success');
-        const icon = fitem.querySelector('.form-label-addon .icon, .form-label-addon i');
+        const marker = getRequiredMarker(fitem);
+        const wrapper = marker.wrapper;
+        const icon = marker.icon;
 
         if (wrapper) {
             wrapper.classList.toggle('text-danger', !isValid);
@@ -86,6 +77,7 @@ define([], function() {
         if (icon) {
             icon.classList.toggle('text-danger', !isValid);
             icon.classList.toggle('text-success', isValid);
+            // Prefer colour change; keep a recognizable glyph in both states.
             icon.classList.toggle('fa-circle-exclamation', !isValid);
             icon.classList.toggle('fa-exclamation-circle', !isValid);
             icon.classList.toggle('fa-circle-check', isValid);
@@ -142,10 +134,66 @@ define([], function() {
             return false;
         }
         if (phoneIti && typeof phoneIti.isValidNumber === 'function') {
-            return !!phoneIti.isValidNumber();
+            try {
+                return !!phoneIti.isValidNumber();
+            } catch (e) {
+                // Fall through to regex.
+            }
         }
-        // Fallback if utils have not loaded yet.
         return /^\+?[0-9\s\-()]{7,20}$/.test(value);
+    }
+
+    /**
+     * Update required icon for one field.
+     *
+     * @param {HTMLElement} field
+     */
+    function syncField(field) {
+        if (!field) {
+            return;
+        }
+
+        const fitem = field.closest('.fitem');
+        if (!fitem || !fitem.querySelector('.form-label-addon')) {
+            return;
+        }
+
+        if (field.id === 'id_phone1') {
+            const valid = isPhoneValid(field);
+            setRequiredIconState(fitem, valid);
+            if (valid) {
+                setFieldError(field, '');
+            }
+            return;
+        }
+
+        setRequiredIconState(fitem, fieldHasValue(field));
+    }
+
+    /**
+     * Collect required fields (aria-required or required attribute).
+     *
+     * @param {HTMLElement} form
+     * @returns {HTMLElement[]}
+     */
+    function getRequiredFields(form) {
+        const nodes = form.querySelectorAll(
+            'input[aria-required="true"], select[aria-required="true"], textarea[aria-required="true"],' +
+            'input[required], select[required], textarea[required]'
+        );
+        // De-dupe radios by name so one update covers the group.
+        const seenRadioNames = {};
+        const fields = [];
+        nodes.forEach((field) => {
+            if ((field.type || '').toLowerCase() === 'radio') {
+                if (seenRadioNames[field.name]) {
+                    return;
+                }
+                seenRadioNames[field.name] = true;
+            }
+            fields.push(field);
+        });
+        return fields;
     }
 
     /**
@@ -157,33 +205,36 @@ define([], function() {
             return;
         }
 
-        const fields = form.querySelectorAll(
-            'input[aria-required="true"], select[aria-required="true"], textarea[aria-required="true"]'
-        );
-
+        const fields = getRequiredFields(form);
         fields.forEach((field) => {
-            const fitem = field.closest('.fitem');
-            if (!fitem || !fitem.querySelector('.form-label-addon')) {
+            syncField(field);
+        });
+
+        // Event delegation so it keeps working if Moodle rewrites nodes.
+        const refresh = function(event) {
+            const target = event.target;
+            if (!target || !target.closest) {
                 return;
             }
+            if (!target.matches('input, select, textarea')) {
+                return;
+            }
+            if (target.getAttribute('aria-required') === 'true' || target.required) {
+                syncField(target);
+                return;
+            }
+            // Password / other fields that gained required via JS.
+            const fitem = target.closest('.fitem');
+            if (fitem && fitem.querySelector('.form-label-addon .text-danger, .form-label-addon .text-success')) {
+                syncField(target);
+            }
+        };
 
-            const update = function() {
-                if (field.id === 'id_phone1') {
-                    const valid = isPhoneValid(field);
-                    setRequiredIconState(fitem, valid);
-                    if (valid) {
-                        setFieldError(field, '');
-                    }
-                    return;
-                }
-                setRequiredIconState(fitem, fieldHasValue(field));
-            };
-
-            field.addEventListener('input', update);
-            field.addEventListener('change', update);
-            field.addEventListener('blur', update);
-            update();
-        });
+        form.addEventListener('input', refresh, true);
+        form.addEventListener('change', refresh, true);
+        form.addEventListener('keyup', refresh, true);
+        form.addEventListener('blur', refresh, true);
+        form.addEventListener('focusout', refresh, true);
     }
 
     /**
@@ -192,6 +243,10 @@ define([], function() {
     function initPhoneCountryCode() {
         const input = document.getElementById('id_phone1');
         if (!input || typeof window.intlTelInput !== 'function') {
+            return;
+        }
+        // Inline register script may already have initialised the widget.
+        if (input.getAttribute('data-iti-ready') === '1' || input.closest('.iti')) {
             return;
         }
 
@@ -225,6 +280,7 @@ define([], function() {
                 const iso = String(data.iso2).toUpperCase();
                 if ([].some.call(countrySelect.options, (opt) => opt.value === iso)) {
                     countrySelect.value = iso;
+                    syncField(countrySelect);
                 }
             }
         };
@@ -240,6 +296,14 @@ define([], function() {
         if (countrySelect) {
             countrySelect.addEventListener('change', syncPhoneFromCountry);
         }
+
+        // Re-sync phone required icon after utils load / typing.
+        input.addEventListener('input', function() {
+            syncField(input);
+        });
+        input.addEventListener('blur', function() {
+            syncField(input);
+        });
 
         const form = input.closest('form');
         if (!form) {
@@ -265,7 +329,7 @@ define([], function() {
             }
 
             if (phoneIti && typeof phoneIti.getNumber === 'function') {
-                input.value = phoneIti.getNumber(); // E.164 e.g. +9198xxxxxxxx
+                input.value = phoneIti.getNumber();
             }
             setFieldError(input, '');
             return true;
@@ -276,9 +340,24 @@ define([], function() {
      * Initialise registration form behaviours.
      */
     function init() {
-        initOccupationCheckboxes();
-        initPhoneCountryCode();
-        initRequiredIndicators();
+        // Required icons first — must not depend on phone widget succeeding.
+        try {
+            initRequiredIndicators();
+        } catch (e) {
+            window.console && console.error('register_occupation required icons', e);
+        }
+
+        try {
+            initPhoneCountryCode();
+        } catch (e) {
+            window.console && console.error('register_occupation phone', e);
+        }
+
+        // Country defaults to a value — ensure it shows green after phone init.
+        const country = document.getElementById('id_country');
+        if (country) {
+            syncField(country);
+        }
     }
 
     return {

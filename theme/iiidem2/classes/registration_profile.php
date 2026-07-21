@@ -258,6 +258,22 @@ class registration_profile {
      * @return string working|student|instructor|''
      */
     public static function get_occupation_type(\stdClass $data): string {
+        $allowed = ['working', 'student', 'instructor'];
+
+        $value = '';
+        if (isset($_POST['occupation'])) {
+            $raw = $_POST['occupation'];
+            $value = is_array($raw) ? (string) end($raw) : (string) $raw;
+        } else if (isset($data->occupation)) {
+            $value = (string) $data->occupation;
+        }
+
+        $value = strtolower(trim($value));
+        if (in_array($value, $allowed, true)) {
+            return $value;
+        }
+
+        // Legacy checkbox fallback (older form submissions).
         if (self::is_checked($data, 'occupation_working')) {
             return 'working';
         }

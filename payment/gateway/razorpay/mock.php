@@ -44,6 +44,7 @@ if ($action === 'pay') {
 }
 
 if ($action === 'cancel') {
+    razorpay_helper::mark_transaction_failed($txn, get_string('mockcancelbutton', 'paygw_razorpay'));
     redirect($continueurl, get_string('paymentfailed', 'paygw_razorpay'), null, 'error');
 }
 

@@ -84,19 +84,6 @@
         </div>
     {{/hasinstructions}}
 
-    {{#canloginasguest}}
-        <div class="iiidem-loginform__divider" role="separator"></div>
-        <div class="iiidem-loginform__guest">
-            <h2 class="iiidem-loginform__section-title">{{#str}}someallowguest{{/str}}</h2>
-            <form action="{{loginurl}}" method="post" id="guestlogin">
-                <input type="hidden" name="logintoken" value="{{logintoken}}">
-                <input type="hidden" name="username" value="guest" />
-                <input type="hidden" name="password" value="guest" />
-                <button class="btn btn-secondary iiidem-loginform__guest-btn" type="submit" id="loginguestbtn">{{#str}}loginguest{{/str}}</button>
-            </form>
-        </div>
-    {{/canloginasguest}}
-
     <div class="iiidem-loginform__footer">
         {{#languagemenu}}
             <div class="login-languagemenu iiidem-loginform__lang">
@@ -154,8 +141,5 @@
     {{/togglepassword}}
     require(['core_form/submit'], function(Submit) {
         Submit.init("loginbtn");
-        {{#canloginasguest}}
-            Submit.init("loginguestbtn");
-        {{/canloginasguest}}
     });
 {{/js}}

@@ -18,4 +18,12 @@ $functions = [
         'ajax'        => true,
         'loginrequired' => true,
     ],
+    'paygw_razorpay_report_payment_failure' => [
+        'classname'   => 'paygw_razorpay\external\report_payment_failure',
+        'classpath'   => '',
+        'description' => 'Reports a cancelled or failed Razorpay checkout and emails user/admins.',
+        'type'        => 'write',
+        'ajax'        => true,
+        'loginrequired' => true,
+    ],
 ];

@@ -73,14 +73,12 @@ class register_form extends \moodleform {
 
         $mform->addElement('header', 'occupationheader', get_string('registeroccupation', 'theme_iiidem2'));
 
-        $mform->addElement('advcheckbox', 'occupation_working', '', get_string('registeroccupationworking', 'theme_iiidem2'));
-        $mform->setType('occupation_working', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'occupation_student', '', get_string('registeroccupationstudent', 'theme_iiidem2'));
-        $mform->setType('occupation_student', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'occupation_instructor', '', get_string('registeroccupationinstructor', 'theme_iiidem2'));
-        $mform->setType('occupation_instructor', PARAM_INT);
+        // Radios: only one occupation can be selected (no JS required).
+        $mform->addElement('radio', 'occupation', '', get_string('registeroccupationworking', 'theme_iiidem2'), 'working');
+        $mform->addElement('radio', 'occupation', '', get_string('registeroccupationstudent', 'theme_iiidem2'), 'student');
+        $mform->addElement('radio', 'occupation', '', get_string('registeroccupationinstructor', 'theme_iiidem2'), 'instructor');
+        $mform->setType('occupation', PARAM_ALPHA);
+        $mform->addRule('occupation', get_string('registeroccupationrequired', 'theme_iiidem2'), 'required', null, 'client');
 
         $mform->addElement('header', 'workingheader', get_string('registerworkingprofile', 'theme_iiidem2'));
 
@@ -120,25 +118,35 @@ class register_form extends \moodleform {
 
         $workingfields = ['workingheader', 'emb', 'organization', 'jobprofile', 'jobpostingcountry'];
         foreach ($workingfields as $field) {
-            $mform->hideIf($field, 'occupation_working', 'notchecked');
+            $mform->hideIf($field, 'occupation', 'neq', 'working');
         }
 
         $studentfields = ['studentheader', 'university', 'position', 'specialization'];
         foreach ($studentfields as $field) {
-            $mform->hideIf($field, 'occupation_student', 'notchecked');
+            $mform->hideIf($field, 'occupation', 'neq', 'student');
         }
 
         $instructorfields = ['instructorheader', 'instructor_university', 'instructor_course', 'presentcountry'];
         foreach ($instructorfields as $field) {
-            $mform->hideIf($field, 'occupation_instructor', 'notchecked');
+            $mform->hideIf($field, 'occupation', 'neq', 'instructor');
         }
 
+        // Collapsed until the matching occupation option is selected.
         foreach (['workingheader', 'studentheader', 'instructorheader'] as $header) {
-            $mform->setExpanded($header, true);
+            $mform->setExpanded($header, false);
         }
+
+        // Own section so password fields are not nested under Instructor / Student / Working.
+        $mform->addElement('header', 'passwordheader', get_string('registerpasswordheader', 'theme_iiidem2'));
+        $mform->setExpanded('passwordheader', true);
 
         if (!empty($CFG->passwordpolicy)) {
-            $mform->addElement('static', 'passwordpolicyinfo', '', print_password_policy());
+            $mform->addElement(
+                'static',
+                'passwordpolicyinfo',
+                get_string('registerpasswordshouldbe', 'theme_iiidem2'),
+                print_password_policy()
+            );
         }
 
         $mform->addElement('password', 'password', get_string('password'), [
@@ -234,7 +242,7 @@ class register_form extends \moodleform {
         $formdata = (object) $data;
         $occupation = \theme_iiidem2\registration_profile::get_occupation_type($formdata);
         if ($occupation === '') {
-            $errors['occupation_working'] = get_string('registeroccupationrequired', 'theme_iiidem2');
+            $errors['occupation'] = get_string('registeroccupationrequired', 'theme_iiidem2');
         } else if ($occupation === 'working') {
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
                 if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
