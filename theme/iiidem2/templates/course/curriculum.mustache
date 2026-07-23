@@ -90,7 +90,7 @@
                                                 </button>
                                                 {{/canpreviewcurriculum}}
                                                 {{^canpreviewcurriculum}}
-                                                {{#curriculumpreviewneedspayment}}
+                                                {{#curriculumpreviewblocked}}
                                                 <button type="button"
                                                         class="btn btn-sm btn-primary iiidem-curriculum-pay-btn"
                                                         data-bs-toggle="modal"
@@ -98,8 +98,8 @@
                                                         data-scroll-target="#iiidem-course-fee">
                                                     <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
                                                 </button>
-                                                {{/curriculumpreviewneedspayment}}
-                                                {{^curriculumpreviewneedspayment}}
+                                                {{/curriculumpreviewblocked}}
+                                                {{^curriculumpreviewblocked}}
                                                 {{#hasloginmodal}}
                                                 <button type="button" class="btn btn-sm btn-primary"
                                                         data-bs-toggle="modal"
@@ -112,7 +112,7 @@
                                                     <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
                                                 </a>
                                                 {{/hasloginmodal}}
-                                                {{/curriculumpreviewneedspayment}}
+                                                {{/curriculumpreviewblocked}}
                                                 {{/canpreviewcurriculum}}
                                                 {{/preview}}
                                             </div>

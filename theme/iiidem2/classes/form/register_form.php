@@ -244,6 +244,9 @@ class register_form extends \moodleform {
         if ($occupation === '') {
             $errors['occupation'] = get_string('registeroccupationrequired', 'theme_iiidem2');
         } else if ($occupation === 'working') {
+            if (empty($data['emb'])) {
+                $errors['emb'] = get_string('registerembrequired', 'theme_iiidem2');
+            }
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
                 if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
                     $errors[$field] = get_string('required');

@@ -30,8 +30,8 @@ const loadRazorpayScript = () => {
         script.async = true;
         script.onload = () => resolve();
         script.onerror = () => reject(new Error(
-            "Razorpay's payment gateway is currently experiencing a temporary service disruption. "
-            + "This issue is on Razorpay's side and is not related to our side or payment configuration. "
+            'Razorpay payment gateway is currently experiencing a temporary service disruption. '
+            + 'This issue is on Razorpay side and is not related to our side or payment configuration. '
             + 'Please try again in a few minutes.'
         ));
         document.head.appendChild(script);
@@ -111,8 +111,8 @@ const friendlyFailureMessage = (message) => {
             || lower.includes('server error')
             || lower.includes('temporarily unavailable')
             || lower.includes('checkout')) {
-        return "Razorpay's payment gateway is currently experiencing a temporary service disruption. "
-            + "This issue is on Razorpay's side and is not related to our side or payment configuration. "
+        return 'Razorpay payment gateway is currently experiencing a temporary service disruption. '
+            + 'This issue is on Razorpay side and is not related to our side or payment configuration. '
             + 'Please try again in a few minutes.';
     }
 

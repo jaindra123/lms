@@ -96,6 +96,8 @@ $string['loginbrandpanel'] = 'About IIIDEM';
 $string['logintagline'] = 'Learn. Certify. Lead with confidence.';
 $string['loginwelcome'] = 'Welcome back';
 $string['loginsubtitle'] = 'Sign in to access your courses and certifications';
+$string['frontpagectaguest'] = 'Sign in to access your courses, live classes, and certificates.';
+$string['frontpagectaloggedin'] = 'Continue to your courses, live classes, and certificates.';
 $string['loginfeature1'] = 'Structured certification programs for election professionals';
 $string['loginfeature2'] = 'Live sessions and self-paced learning in one portal';
 $string['loginfeature3'] = 'Track progress, assessments, and credentials';
@@ -277,7 +279,7 @@ $string['dashboardteacherlive'] = 'Live class';
 $string['dashboardteachercommunication'] = 'Communication';
 $string['dashboardteachermsgdesc'] = 'Send messages to students';
 $string['dashboardteacherannounce'] = 'Announcements: {$a}';
-$string['dashboardteacherlabel'] = 'Instructor';
+$string['dashboardteacherlabel'] = 'Professors';
 $string['dashboardteacherteachingconsole'] = 'Teaching Console';
 $string['dashboardteacheractivelearners'] = 'Active Learners';
 $string['dashboardteacherpendingreviews'] = 'Pending Reviews';
@@ -301,7 +303,7 @@ $string['dashboardteacherstudentattendancepending'] = 'Session not taken';
 $string['dashboardteacherstudentattendanceawaiting'] = 'Awaiting live attendance mark';
 $string['dashboardteacherstudentattendancecurriculum'] = 'Completed (online curriculum)';
 $string['dashboardteacherstudentattendancelivemarked'] = 'Live attendance marked: {$a->present} / {$a->total} sessions present';
-$string['dashboardteacherstudentattendancehelp'] = 'Weekend completion (above) tracks online activities. Live attendance is marked separately in the Attendance activity by the instructor.';
+$string['dashboardteacherstudentattendancehelp'] = 'Weekend completion (above) tracks online activities. Live attendance is marked separately in the Attendance activity by the professors.';
 $string['dashboardteacherstudentattendanceupcoming'] = '{$a} upcoming sessions scheduled (not shown until their date).';
 $string['dashboardteacherstudentattendancenorecords'] = 'No attendance sessions to show yet.';
 $string['dashboardteachernavgrading'] = 'Grading';
@@ -373,7 +375,7 @@ $string['curriculumintro'] = 'Explore the structured journey of this program. Cl
 $string['curriculumtotalduration'] = 'Total Duration';
 $string['curriculumtotallectures'] = 'Total Lectures';
 $string['curriculumlecturescount'] = '{$a} Lectures';
-$string['courseinstructorsheading'] = 'Meet your instructors';
+$string['courseinstructorsheading'] = 'Meet your Professors';
 $string['coursefaqheading'] = 'Frequently asked questions';
 $string['coursefaqempty'] = 'No questions have been added for this course yet.';
 $string['mycoursespageintro'] = 'Browse and continue your enrolled courses.';
@@ -430,7 +432,7 @@ $string['testimonialheading'] = 'Testimonial {$a}';
 $string['testimonialheading_desc'] = 'Leave name and quote empty to hide this card.';
 $string['testimonialname'] = 'Learner name';
 $string['testimonialsubtitle'] = 'Subtitle';
-$string['testimonialsubtitle_desc'] = 'e.g. Learner since 2024 or University student';
+$string['testimonialsubtitle_desc'] = 'e.g. Learner since 2024 or student';
 $string['testimonialquote'] = 'Quote';
 $string['testimonialstars'] = 'Star rating';
 $string['testimonialstars_desc'] = 'Displayed as filled stars on the testimonial card.';
@@ -513,6 +515,11 @@ $string['curriculumpaymentrequiredalertbody'] = 'Please complete the course fee 
 $string['curriculumpaymentrequiredhint'] = 'Use the Pay Now button in the course fee panel on the right to complete your enrolment securely.';
 $string['curriculumpaymentrequiredunderstood'] = 'OK, take me to payment';
 $string['curriculumpaymentrequiredviewfee'] = 'View course fee';
+$string['curriculumenrolrequiredtitle'] = 'Enrolment required';
+$string['curriculumenrolrequiredalertheading'] = 'You are not enrolled yet';
+$string['curriculumenrolrequiredalertbody'] = 'Please enrol in this course first to unlock lecture previews and full course access.';
+$string['curriculumenrolrequiredhint'] = 'If you do not see an enrolment option on this page, contact the course administrator for access.';
+$string['curriculumenrolrequiredunderstood'] = 'OK';
 
 $string['loginsignup'] = 'Sign up';
 $string['registerpagetitle'] = 'Create your account';
@@ -567,7 +574,7 @@ Email: {$a->email}
 Contact: {$a->phone}
 Country: {$a->country}
 City: {$a->city}
-Occupation: {$a->occupation}
+Role: {$a->occupation}
 
 Profile: {$a->profileurl}
 
@@ -581,7 +588,7 @@ $string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a
 <li><strong>Contact:</strong> {$a->phone}</li>
 <li><strong>Country:</strong> {$a->country}</li>
 <li><strong>City:</strong> {$a->city}</li>
-<li><strong>Occupation:</strong> {$a->occupation}</li>
+<li><strong>Role:</strong> {$a->occupation}</li>
 </ul>
 <p><a href="{$a->profileurl}">View user profile</a></p>
 <p>{$a->admin}</p>';
@@ -631,22 +638,23 @@ $string['msg91whatsapptemplate'] = 'MSG91 WhatsApp template name';
 $string['msg91whatsapptemplate_desc'] = 'Approved template name. Body variables map to firstname, username, resetlink. Leave blank to try plain text (session only).';
 $string['msg91whatsappnamespace'] = 'MSG91 WhatsApp template namespace (optional)';
 $string['msg91whatsappnamespace_desc'] = 'Meta template namespace if your MSG91 setup requires it.';
-$string['registeroccupation'] = 'Occupation';
-$string['registeroccupationworking'] = 'Working profile';
-$string['registeroccupationstudent'] = 'University student 77';
-$string['registeroccupationinstructor'] = 'Instructor';
-$string['registeroccupationrequired'] = 'Please select one occupation option.';
-$string['registerworkingprofile'] = 'Working profile details';
-$string['registerstudentprofile'] = 'University student details';
-$string['registerinstructorprofile'] = 'Instructor details';
+$string['registeroccupation'] = 'Role';
+$string['registeroccupationworking'] = 'Working professional / EMB';
+$string['registeroccupationstudent'] = 'Student';
+$string['registeroccupationinstructor'] = 'Professor';
+$string['registeroccupationrequired'] = 'Please select your role.';
+$string['registerworkingprofile'] = 'Working professional / EMB details';
+$string['registerstudentprofile'] = 'Student details';
+$string['registerinstructorprofile'] = 'Professor details';
 $string['registerpasswordheader'] = 'Password';
-$string['registerpasswordshouldbe'] = 'Password should be';
-$string['registeremb'] = 'EMB';
+$string['registerpasswordshouldbe'] = 'Password requirements';
+$string['registeremb'] = 'I am from an EMB';
+$string['registerembrequired'] = 'Please confirm that you are from an EMB.';
 $string['registerorganization'] = 'Organization';
 $string['registerjobprofile'] = 'Job profile';
 $string['registerjobpostingcountry'] = 'Job posting country';
 $string['registeruniversity'] = 'University';
-$string['registerposition'] = 'Position';
+$string['registerposition'] = 'Higher level of education';
 $string['registerspecialization'] = 'Specialization';
-$string['registercourse'] = 'Course';
+$string['registercourse'] = 'Current position';
 $string['registerpresentcountry'] = 'Present country';

@@ -80,7 +80,12 @@
         <div class="container">
             <div class="iiidem-cta__inner text-center">
                 <h2 class="iiidem-cta__title">Ready to start learning?</h2>
-                <p class="iiidem-cta__text">Sign in to access your courses, live classes, and certificates.</p>
+                {{#isrealuser}}
+                <p class="iiidem-cta__text">{{#str}}frontpagectaloggedin, theme_iiidem2{{/str}}</p>
+                {{/isrealuser}}
+                {{^isrealuser}}
+                <p class="iiidem-cta__text">{{#str}}frontpagectaguest, theme_iiidem2{{/str}}</p>
+                {{/isrealuser}}
                 <div class="iiidem-cta__actions">
                     {{#isrealuser}}
                         <a href="{{coursesurl}}" class="btn btn-light btn-lg iiidem-btn">My courses</a>

@@ -3427,6 +3427,10 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     $totalactivities = 0;
     $canpreview = theme_iiidem2_user_can_preview_curriculum($course);
     $needspaymentforpreview = theme_iiidem2_user_needs_course_fee_for_preview($course);
+    $isloggedinuser = isloggedin() && !isguestuser();
+    // Logged-in users who cannot preview must enrol/pay — never send them to login.
+    $needenrolforpreview = $isloggedinuser && !$canpreview && !$needspaymentforpreview;
+    $showpreviewblockedmodal = $needspaymentforpreview || $needenrolforpreview;
     $completion = $canpreview ? new completion_info($course) : null;
 
     $loginurl = new moodle_url('/login/index.php');
@@ -3474,6 +3478,8 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                     'haspreviewcontent' => $haspreviewcontent,
                     'canpreviewcurriculum' => $canpreview,
                     'curriculumpreviewneedspayment' => $needspaymentforpreview,
+                    'curriculumpreviewneedenrol' => $needenrolforpreview,
+                    'curriculumpreviewblocked' => $showpreviewblockedmodal,
                     'hasloginmodal' => $hasloginmodal,
                     'trackcompletion' => $trackcompletion,
                     'previewlabel' => 'Preview',
@@ -3502,12 +3508,13 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     }
 
     $paymentmodal = ['hascurriculumpaymentmodal' => false];
-    if ($needspaymentforpreview) {
+    if ($showpreviewblockedmodal) {
         $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
-        if ($feeinstance) {
-            $currency = $feeinstance->currency ?: 'INR';
+        if ($feeinstance && $needspaymentforpreview) {
             $paymentmodal = [
                 'hascurriculumpaymentmodal' => true,
+                'curriculumpreviewneedspayment' => true,
+                'curriculumpreviewneedenrol' => false,
                 'coursefeecost' => theme_iiidem2_get_course_fee_cost_display($feeinstance),
                 'coursefeeinstanceid' => (int) $feeinstance->id,
                 'showcoursepayment' => !empty(\core_payment\helper::get_available_gateways(
@@ -3519,7 +3526,9 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         } else {
             $paymentmodal = [
                 'hascurriculumpaymentmodal' => true,
-                'coursefeecost' => '',
+                'curriculumpreviewneedspayment' => $needspaymentforpreview,
+                'curriculumpreviewneedenrol' => $needenrolforpreview,
+                'coursefeecost' => $feeinstance ? theme_iiidem2_get_course_fee_cost_display($feeinstance) : '',
                 'showcoursepayment' => false,
             ];
         }
@@ -3536,9 +3545,11 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         'curriculumduration' => $curriculumduration,
         'canpreviewcurriculum' => $canpreview,
         'curriculumpreviewneedspayment' => $needspaymentforpreview,
+        'curriculumpreviewneedenrol' => $needenrolforpreview,
+        'curriculumpreviewblocked' => $showpreviewblockedmodal,
         'curriculumtrackcompletion' => $canpreview,
         'curriculumcompletionajaxurl' => (new moodle_url('/theme/iiidem2/ajax/mark_activity_viewed.php'))->out(false),
-        'previewredirectlogin' => !$canpreview && !$needspaymentforpreview,
+        'previewredirectlogin' => !$canpreview && !$showpreviewblockedmodal,
         'loginurl' => $loginurl->out(false),
         'previewlabel' => 'Preview',
     ]);

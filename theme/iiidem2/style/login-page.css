@@ -245,6 +245,44 @@ body.iiidem-login-page #page-content {
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.iiidem-loginform__password-wrap {
+    position: relative;
+}
+
+.iiidem-loginform__password-wrap .iiidem-loginform__input {
+    padding-right: 2.75rem;
+}
+
+.iiidem-loginform__password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.55rem;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #8a94a6;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    line-height: 1;
+}
+
+.iiidem-loginform__password-toggle:hover,
+.iiidem-loginform__password-toggle:focus {
+    color: var(--iiidem-login-blue, #0b3d91);
+    outline: none;
+}
+
+.iiidem-loginform__password-toggle .fa {
+    font-size: 1.05rem;
+}
+
 .iiidem-loginform__input:focus {
     border-color: var(--iiidem-login-blue-light);
     box-shadow: 0 0 0 3px rgba(19, 86, 197, 0.15);

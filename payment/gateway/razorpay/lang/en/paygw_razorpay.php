@@ -25,8 +25,9 @@ $string['txnnotfound'] = 'Transaction reference not found.';
 $string['ordercreatefailed'] = 'Could not create Razorpay order. Check your API keys and try again.';
 $string['apiconnectionfailed'] = 'Could not reach Razorpay. Check your internet connection and try again.';
 $string['apiinvalidresponse'] = 'Razorpay returned an unexpected response. Please try again in a few minutes.';
-$string['apiunavailable'] = 'Razorpay\'s payment gateway is currently experiencing a temporary service disruption. This issue is on Razorpay\'s side and is not related to our side or payment configuration. Please try again in a few minutes.';
-$string['apiservererror'] = 'Razorpay\'s payment gateway is currently experiencing a temporary service disruption. This issue is on Razorpay\'s side and is not related to our side or payment configuration. Please try again in a few minutes.';
+$string['apiunavailable'] = 'Razorpay payment gateway is currently experiencing a temporary service disruption. This issue is on Razorpay side and is not related to our side or payment configuration. Please try again in a few minutes.';
+$string['apiservererror'] = 'Razorpay payment gateway is currently experiencing a temporary service disruption. This issue is on Razorpay side and is not related to our side or payment configuration. Please try again in a few minutes.';
+
 $string['apierror'] = '{$a}';
 $string['apierrorprefix'] = 'Razorpay could not start this payment: {$a}';
 $string['paymentnotallowed'] = 'Course fee payment is only available for registered university students.';
