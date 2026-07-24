@@ -60,12 +60,12 @@
 <nav class="navbar navbar-dark navbar-expand top-nav iiidem-site-header fixed-top" aria-label="{{#str}}sitemenubar, admin{{/str}}">
     <div class="container-fluid iiidem-header-bar align-items-center">
         <div class="iiidem-header-bar__start d-flex align-items-center">
-            <button class="navbar-toggler aabtn d-block d-md-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_iiidem2-drawers-primary">
+            <button class="navbar-toggler aabtn d-block d-lg-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_iiidem2-drawers-primary" type="button" aria-expanded="false" aria-controls="theme_iiidem2-drawers-primary">
                 <span class="navbar-toggler-icon"></span>
                 <span class="sr-only">{{#str}}sidepanel, core{{/str}}</span>
             </button>
 
-            <a href="{{{ config.homeurl }}}" class="navbar-brand d-none d-md-flex align-items-center m-0 p-0 aabtn">
+            <a href="{{{ config.homeurl }}}" class="navbar-brand d-flex align-items-center m-0 p-0 aabtn">
                 {{#hasnavbarlogo}}
                     <img src="{{{navbarlogo}}}" class="logo me-1" alt="{{sitename}}">
                 {{/hasnavbarlogo}}
@@ -76,14 +76,14 @@
         </div>
 
         {{#primarymoremenu}}
-            <div class="iiidem-header-bar__center primary-navigation d-none d-md-flex align-items-center justify-content-center">
+            <div class="iiidem-header-bar__center primary-navigation d-none d-lg-flex align-items-center justify-content-center">
                 {{> core/moremenu}}
             </div>
         {{/primarymoremenu}}
 
-        <div class="iiidem-header-bar__end d-flex align-items-center ms-auto ms-md-0">
+        <div class="iiidem-header-bar__end d-flex align-items-center ms-auto ms-lg-0">
             {{# output.page_heading_menu}}
-                <ul class="navbar-nav d-none d-md-flex my-1 px-1">
+                <ul class="navbar-nav d-none d-lg-flex my-1 px-1">
                     {{{ output.page_heading_menu }}}
                 </ul>
             {{/output.page_heading_menu}}

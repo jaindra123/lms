@@ -13,6 +13,7 @@
   --iiidem-brand-blue: #0b3d91;
   --iiidem-brand-blue-dark: #0a3580;
   /* Home hero — match slide artwork (1600×900 → 16:9), avoid crop. */
+  --iiidem-hero-aspect: 16 / 9;
 
   /* Site-wide typography (home, course, marketing, and Moodle pages). */
   --iiidem-font-family:
@@ -30,6 +31,18 @@
   --iiidem-card-title-size: 1.0625rem;
   --iiidem-ui-size: 0.875rem;
   --iiidem-eyebrow-size: 0.75rem;
+
+  /*
+   * Breakpoint scale (see style/responsive.css + scss/iiidem/_breakpoints.scss):
+   * $x5l 1801–1850 | $x4l 1701–1800 | $x3l 1600–1700 | $xxl 1400–1599
+   * $xl 1200–1399 | $lg 992–1199 | $md 768–991 | $sm 576–767 | $xs ≤767
+   */
+  --iiidem-bp-xs-max: 767px;
+  --iiidem-bp-sm-min: 576px;
+  --iiidem-bp-md-min: 768px;
+  --iiidem-bp-lg-min: 992px;
+  --iiidem-bp-xl-min: 1200px;
+  --iiidem-bp-xxl-min: 1400px;
 }
 
 body {
@@ -48,12 +61,13 @@ label.me-2.mb-0 {
 .iiidem-site-header.navbar.fixed-top {
   z-index: 1030;
   width: 100%;
-  padding: 0;
+  max-width: 100vw;
+  padding: 0 25px;
   min-height: var(--navbar-height);
   background-color: var(--iiidem-brand-blue) !important;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
   align-items: center;
-  padding: 0 25px 0 25px;
+  overflow: visible;
 }
 
 /* Vertically center logo, primary menu, and user area in the header bar. */
@@ -64,12 +78,16 @@ label.me-2.mb-0 {
   align-items: center;
   min-height: var(--navbar-height);
   column-gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .iiidem-header-bar__start {
   grid-column: 1;
   justify-self: start;
   min-width: 0;
+  max-width: 100%;
 }
 
 .iiidem-header-bar__center {
@@ -82,6 +100,7 @@ label.me-2.mb-0 {
   grid-column: 3;
   justify-self: end;
   min-width: 0;
+  max-width: 100%;
 }
 
 .iiidem-site-header .navbar-brand,
@@ -89,14 +108,16 @@ label.me-2.mb-0 {
 .iiidem-site-header #usernavigation {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .iiidem-site-header .navbar-brand {
-  flex-shrink: 0;
+  flex-shrink: 1;
   border-radius: 6px;
   padding: 5px 12px;
   margin-right: 1rem;
   line-height: 0;
+  overflow: hidden;
 }
 
 .iiidem-site-header .navbar-brand .logo,
@@ -124,14 +145,62 @@ label.me-2.mb-0 {
   justify-content: center;
 }
 
-@media (max-width: 767.98px) {
+.iiidem-site-header #usernavigation {
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+.iiidem-site-header #usernavigation .usermenu .login {
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
+.iiidem-site-header #usernavigation .iiidem-nav-login,
+.iiidem-site-header #usernavigation .iiidem-nav-signup,
+.iiidem-site-header .usermenu .login .iiidem-nav-login,
+.iiidem-site-header .usermenu .login .iiidem-nav-signup {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/*
+ * Header breakpoints (theme scale):
+ * $x5l 1801–1850 | $x4l 1701–1800 | $x3l 1600–1700 | $xxl 1400–1599
+ * $xl 1200–1399 | $lg 992–1199 | $md 768–991 | $sm 576–767 | $xs ≤767
+ */
+
+/* $lg: 992–1199 — slightly tighter desktop header */
+@media only screen and (min-width: 992px) and (max-width: 1199px) {
   .iiidem-site-header.navbar.fixed-top {
-    padding: 0 12px;
+    padding: 0 16px;
+  }
+
+  .iiidem-site-header .iiidem-header-bar {
+    column-gap: 0.75rem;
+  }
+
+  .iiidem-site-header .navbar-brand .logo,
+  .iiidem-site-header .navbar-brand .logo img,
+  .iiidem-site-header .navbar-brand img.logo {
+    height: 44px;
+    max-height: 44px !important;
+    max-width: min(240px, 28vw);
+  }
+}
+
+/* $md: 768–991 — tablet / iPad: hamburger + logo + auth */
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+  .iiidem-site-header.navbar.fixed-top {
+    padding: 0 14px;
   }
 
   .iiidem-site-header .iiidem-header-bar {
     grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 0.5rem;
+    column-gap: 0.75rem;
+  }
+
+  .iiidem-header-bar__start {
+    gap: 0.35rem;
   }
 
   .iiidem-header-bar__end {
@@ -139,8 +208,9 @@ label.me-2.mb-0 {
   }
 
   .iiidem-site-header .navbar-brand {
-    margin-right: 0.35rem;
-    padding: 4px 6px;
+    margin-right: 0;
+    padding: 2px 4px;
+    max-width: min(46vw, 220px);
   }
 
   .iiidem-site-header .navbar-brand .logo,
@@ -148,7 +218,215 @@ label.me-2.mb-0 {
   .iiidem-site-header .navbar-brand img.logo {
     height: 40px;
     max-height: 40px !important;
-    max-width: min(220px, 52vw);
+    max-width: 100%;
+  }
+
+  .iiidem-site-header .navbar-toggler {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.35rem;
+    margin: 0;
+  }
+
+  .top-nav #usernavigation .iiidem-nav-login,
+  .top-nav #usernavigation .iiidem-nav-signup,
+  .top-nav .usermenu .login a.iiidem-nav-login,
+  .top-nav .usermenu .login a.iiidem-nav-signup {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+  }
+
+  .top-nav .usermenu .login {
+    gap: 0.45rem !important;
+  }
+}
+
+/* $xs: ≤767 — phones (base mobile header) */
+@media (max-width: 767px) {
+  :root {
+    --navbar-height: 56px;
+  }
+
+  .iiidem-site-header.navbar.fixed-top {
+    padding: 0 10px;
+  }
+
+  .iiidem-site-header .iiidem-header-bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 0.4rem;
+  }
+
+  .iiidem-header-bar__start {
+    gap: 0.2rem;
+    /* Logo is wide (wordmark); keep hamburger only — logo is in the drawer. */
+    flex: 0 0 auto;
+  }
+
+  .iiidem-header-bar__end {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .iiidem-site-header .navbar-brand {
+    display: none !important;
+  }
+
+  .iiidem-site-header .navbar-toggler {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0.3rem;
+    margin: 0;
+    z-index: 1040;
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .iiidem-site-header .navbar-toggler:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.65);
+    outline-offset: 2px;
+  }
+
+  .iiidem-site-header #usernavigation,
+  .iiidem-site-header #usernavigation .usermenu,
+  .iiidem-site-header #usernavigation .usermenu .login {
+    display: flex !important;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .top-nav .usermenu .login {
+    gap: 0.35rem !important;
+  }
+
+  .top-nav #usernavigation .iiidem-nav-login,
+  .top-nav #usernavigation .iiidem-nav-signup,
+  .top-nav .usermenu .login a.iiidem-nav-login,
+  .top-nav .usermenu .login a.iiidem-nav-signup {
+    padding: 0.32rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.15;
+    margin: 0 !important;
+  }
+}
+
+/* $sm: 576–767 — larger phones: compact auth, still no wordmark */
+@media only screen and (min-width: 576px) and (max-width: 767px) {
+  .iiidem-site-header.navbar.fixed-top {
+    padding: 0 12px;
+  }
+
+  .top-nav #usernavigation .iiidem-nav-login,
+  .top-nav #usernavigation .iiidem-nav-signup,
+  .top-nav .usermenu .login a.iiidem-nav-login,
+  .top-nav .usermenu .login a.iiidem-nav-signup {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Extra-narrow phones (≤400) — ensure Sign up / Log in never clip */
+@media (max-width: 400px) {
+  .iiidem-site-header.navbar.fixed-top {
+    padding: 0 8px;
+  }
+
+  .top-nav #usernavigation .iiidem-nav-login,
+  .top-nav #usernavigation .iiidem-nav-signup,
+  .top-nav .usermenu .login a.iiidem-nav-login,
+  .top-nav .usermenu .login a.iiidem-nav-signup {
+    padding: 0.28rem 0.45rem;
+    font-size: 0.6875rem;
+  }
+
+  .top-nav .usermenu .login {
+    gap: 0.25rem !important;
+  }
+}
+
+/* $xl / $xxl / large desktops — keep logo roomy */
+@media only screen and (min-width: 1200px) and (max-width: 1399px) {
+  .iiidem-site-header .navbar-brand .logo,
+  .iiidem-site-header .navbar-brand .logo img,
+  .iiidem-site-header .navbar-brand img.logo {
+    max-width: min(280px, 32vw);
+  }
+}
+
+@media only screen and (min-width: 1400px) {
+  .iiidem-site-header .navbar-brand .logo,
+  .iiidem-site-header .navbar-brand .logo img,
+  .iiidem-site-header .navbar-brand img.logo {
+    max-width: min(320px, 28vw);
+  }
+}
+
+/* Mobile primary drawer — brand-blue header so navbar logo stays readable. */
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader {
+  background-color: var(--iiidem-brand-blue, #0b3d91);
+  color: #fff;
+  padding: 0 0.75rem 0 0.35rem;
+  min-height: var(--navbar-height, 56px);
+  height: auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader .drawertoggle {
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 0.35rem;
+  background: transparent;
+  margin-right: 0.5rem;
+}
+
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader .drawertoggle .icon,
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader .drawertoggle i {
+  color: #fff !important;
+}
+
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader [data-region="site-home-link"] {
+  color: #fff;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0.35rem 0;
+}
+
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader .logo,
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader img.logo {
+  display: block;
+  height: 40px;
+  max-height: 40px;
+  width: auto;
+  max-width: min(220px, 58vw);
+  object-fit: contain;
+  padding: 0;
+  background: transparent;
+}
+
+#theme_iiidem2-drawers-primary.drawer-primary .drawerheader .sitename {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 575px) {
+  #theme_iiidem2-drawers-primary.drawer-primary .drawerheader .logo,
+  #theme_iiidem2-drawers-primary.drawer-primary .drawerheader img.logo {
+    height: 34px;
+    max-height: 34px;
+    max-width: min(180px, 55vw);
   }
 }
 
@@ -210,6 +488,36 @@ label.me-2.mb-0 {
   padding-top: var(--navbar-height, 60px);
 }
 
+/*
+ * Boost sets .navbar.fixed-top { position: relative } when viewport is short
+ * (max-width: 576px and max-height: 320px). Header then sits in normal flow
+ * AND we still pad the main area → large white gap above the banner.
+ * Keep the IIIDEM header fixed and drop the extra offset in that case.
+ */
+@media (max-width: 576px) and (max-height: 320px) {
+  .navbar.fixed-top.iiidem-site-header,
+  .navbar.iiidem-site-header.fixed-top {
+    position: fixed !important;
+    z-index: 1030 !important;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .iiidem-site-header.fixed-top ~ main,
+  .iiidem-site-header.fixed-top ~ .iiidem-frontpage,
+  .iiidem-site-header.fixed-top ~ .iiidem-marketing-page {
+    padding-top: var(--navbar-height, 56px) !important;
+  }
+}
+
+/* Keep header height in sync with the content offset (override Boost's fixed 61px). */
+.navbar.fixed-top.iiidem-site-header,
+.navbar.iiidem-site-header.fixed-top {
+  height: auto !important;
+  min-height: var(--navbar-height, 60px);
+}
+
 /* Keep site footer at the bottom on short pages. */
 #page-wrapper {
   min-height: 100vh;
@@ -237,6 +545,13 @@ label.me-2.mb-0 {
   gap: 0.75rem;
   background-color: var(--iiidem-brand-blue-dark) !important;
   color: rgba(255, 255, 255, 0.9);
+}
+
+/* Hide Moodle system footer (login info, mobile app, powered by, etc.). */
+#page-footer.footer-popover,
+#page-footer .footer-content-popover,
+.btn-footer-popover {
+  display: none !important;
 }
 
 /* Primary navbar (dark blue top bar #004274). */
@@ -1300,7 +1615,7 @@ label.me-2.mb-0 {
   }
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 767px) {
   .iiidem-footer .footer-col--links,
   .iiidem-footer .footer-col--contact {
     margin-top: 1.5rem;
@@ -1494,7 +1809,7 @@ label.me-2.mb-0 {
   min-height: 120px;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 767px) {
   .page-mycourses #region-main {
     padding: 1rem 0.75rem 1.5rem;
   }
@@ -1748,27 +2063,29 @@ body.pagelayout-frontpage #page {
   max-width: 640px;
 }
 
-/* Hero slider: one slide visible, auto-advance (Bootstrap 4 carousel). */
+/* Hero slider: one slide visible, auto-advance (Bootstrap 4 carousel).
+ * Size to the slide image (no forced crop/stretch) so banner artwork stays intact. */
 .iiidem-hero-carousel {
   width: 100%;
   height: auto;
   min-height: 0;
-  aspect-ratio: var(--iiidem-hero-aspect);
+  aspect-ratio: auto;
   margin-top: 0;
   background: #0b3d91;
+  overflow: hidden;
 }
 
 .iiidem-hero-carousel .carousel-inner {
   overflow: hidden;
   position: relative;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 
 /* Let Bootstrap carousel control slide visibility; only hide inactive when JS has not run yet. */
 .iiidem-hero-carousel .carousel-item {
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 
@@ -1779,8 +2096,13 @@ body.pagelayout-frontpage #page {
   display: none;
 }
 
+.iiidem-hero-carousel .carousel-item.active {
+  display: block;
+}
+
 .iiidem-hero-carousel .carousel-indicators {
   z-index: 3;
+  margin-bottom: 0.75rem;
 }
 
 .iiidem-hero-carousel .carousel-indicators li {
@@ -1805,11 +2127,13 @@ body.pagelayout-frontpage #page {
 .iiidem-hero-carousel__image {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-width: 100%;
   min-height: 0;
-  /* Slides are 1600×900; container is 16:9 — no crop. */
-  object-fit: cover;
+  /* Show full banner graphic — do not crop or stretch. */
+  object-fit: contain;
   object-position: center center;
+  vertical-align: top;
 }
 
 .iiidem-hero-carousel__caption {
@@ -1955,6 +2279,7 @@ body.pagelayout-frontpage #page {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(11, 61, 145, 0.35) transparent;
   padding-bottom: 0.35rem;
@@ -1962,6 +2287,15 @@ body.pagelayout-frontpage #page {
   margin-right: -0.15rem;
   padding-left: 0.15rem;
   padding-right: 0.15rem;
+}
+
+.iiidem-programme-overview__tabbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.iiidem-programme-overview__tabbar::-webkit-scrollbar-thumb {
+  background: rgba(11, 61, 145, 0.35);
+  border-radius: 999px;
 }
 
 .iiidem-programme-tabs {
@@ -1989,7 +2323,7 @@ body.pagelayout-frontpage #page {
   color: #334155;
   background: #fff;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 0.7rem 1.1rem;
   transition:
     color 0.2s ease,
@@ -2403,18 +2737,25 @@ body.pagelayout-frontpage #page {
   .iiidem-course-card--horizontal
   .iiidem-course-card__split {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  height: 280px;
-  max-height: 280px;
+  /* Wider media column so banner-style course images are not cropped. */
+  grid-template-columns: minmax(300px, 46%) minmax(0, 1fr);
+  height: auto;
+  min-height: 260px;
+  max-height: none;
+  align-items: stretch;
 }
 
 .iiidem-courses-section
   .iiidem-course-card--horizontal
   .iiidem-course-card__split-media {
   position: relative;
-  height: 100%;
+  height: auto;
+  min-height: 240px;
   overflow: hidden;
   background: #0a1f3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .iiidem-courses-section
@@ -2422,8 +2763,9 @@ body.pagelayout-frontpage #page {
   .iiidem-course-card__split-image {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
   object-position: center center;
 }
 
@@ -2432,11 +2774,11 @@ body.pagelayout-frontpage #page {
   .iiidem-course-card__split-body {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 1.5rem 2rem;
-  height: 100%;
+  justify-content: flex-start;
+  padding: 1.5rem 2rem 1.75rem;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .iiidem-courses-section
@@ -2445,23 +2787,22 @@ body.pagelayout-frontpage #page {
   line-height: 1.4;
   margin-bottom: 0.65rem;
   color: #1f2a56;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
 }
 
 .iiidem-courses-section
   .iiidem-course-card--horizontal
   .iiidem-course-card__summary--featured {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   text-align: justify;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-height: 1.65;
 }
 
 .iiidem-courses-section
@@ -2470,7 +2811,7 @@ body.pagelayout-frontpage #page {
   .iiidem-course-card__btn {
   align-self: flex-start;
   flex-shrink: 0;
-  margin-top: auto;
+  margin-top: 0.25rem;
 }
 
 .iiidem-courses-section
@@ -2521,7 +2862,7 @@ body.pagelayout-frontpage #page {
 }
 
 /* Tablet and below: stack course card so text is never clipped by fixed height. */
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
   .iiidem-courses-section
     .iiidem-course-card--horizontal
     .iiidem-course-card__split {
@@ -2533,13 +2874,16 @@ body.pagelayout-frontpage #page {
   .iiidem-courses-section
     .iiidem-course-card--horizontal
     .iiidem-course-card__split-media {
-    height: 220px;
+    height: auto;
+    min-height: 180px;
   }
 
   .iiidem-courses-section
     .iiidem-course-card--horizontal
     .iiidem-course-card__split-image {
-    height: 220px;
+    height: auto;
+    max-height: 260px;
+    object-fit: contain;
   }
 
   .iiidem-courses-section
@@ -2562,14 +2906,19 @@ body.pagelayout-frontpage #page {
   }
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 575px) {
   .iiidem-courses-section
     .iiidem-course-card--horizontal
-    .iiidem-course-card__split-media,
+    .iiidem-course-card__split-media {
+    min-height: 140px;
+  }
+
   .iiidem-courses-section
     .iiidem-course-card--horizontal
     .iiidem-course-card__split-image {
-    height: 180px;
+    height: auto;
+    max-height: 200px;
+    object-fit: contain;
   }
 
   .iiidem-courses-section
@@ -2736,15 +3085,51 @@ body.pagelayout-frontpage #page {
   margin-right: 0.5rem;
 }
 
-/* Homepage — tablet */
-@media (max-width: 991.98px) {
+/* Homepage — tablet / iPad */
+@media (max-width: 991px) {
+  :root {
+    --iiidem-lead-size: 1.0625rem;
+    --iiidem-body-size: 1rem;
+    --iiidem-card-title-size: 1.0625rem;
+  }
+
   .iiidem-programme-audience__grid,
   .iiidem-programme-tenets__grid {
     grid-template-columns: 1fr;
   }
 
+  .iiidem-programme-overview__intro,
+  .iiidem-programme-audience__intro,
+  .iiidem-programme-panel p,
+  .iiidem-programme-panel__list li {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    line-height: 1.75;
+  }
+
+  .iiidem-frontpage .iiidem-programme-overview__intro,
+  .iiidem-frontpage .iiidem-programme-audience__intro {
+    font-size: 1.0625rem;
+  }
+
+  .iiidem-frontpage .iiidem-programme-panel p,
+  .iiidem-frontpage .iiidem-programme-panel__list li {
+    font-size: 1rem;
+  }
+
+  .iiidem-programme-overview__tabbar {
+    margin-bottom: 1.25rem;
+  }
+
+  .iiidem-programme-tabs .nav-link {
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+  }
+
   .iiidem-programme-panel {
-    padding: 1.75rem 1.5rem;
+    padding: 1.5rem 1.25rem;
   }
 
   .iiidem-hero-carousel .carousel-control-prev,
@@ -2754,11 +3139,11 @@ body.pagelayout-frontpage #page {
 }
 
 /* Homepage — phone / small tablet */
-@media (max-width: 767.98px) {
+@media (max-width: 767px) {
   :root {
-    --iiidem-lead-size: 1rem;
-    --iiidem-body-size: 0.9375rem;
-    --iiidem-card-title-size: 1rem;
+    --iiidem-lead-size: 1.0625rem;
+    --iiidem-body-size: 1rem;
+    --iiidem-card-title-size: 1.0625rem;
   }
 
   .iiidem-hero-carousel,
@@ -2770,12 +3155,31 @@ body.pagelayout-frontpage #page {
   }
 
   .iiidem-hero-carousel {
-    aspect-ratio: var(--iiidem-hero-aspect);
+    /* Size to the slide image — do not force a taller 16:9 box (blue gap). */
+    aspect-ratio: auto;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  .iiidem-hero-carousel .carousel-item.active {
+    display: block;
+  }
+
+  .iiidem-hero-carousel .carousel-item:not(.active) {
+    display: none;
   }
 
   .iiidem-hero-carousel__image {
-    height: 100%;
-    object-fit: cover;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    object-position: center top;
+    vertical-align: top;
+  }
+
+  .iiidem-hero-carousel .carousel-indicators {
+    bottom: 0.5rem;
   }
 
   .iiidem-page-section,
@@ -2796,12 +3200,31 @@ body.pagelayout-frontpage #page {
 
   .iiidem-programme-overview__intro,
   .iiidem-programme-audience__intro,
-  .iiidem-programme-panel p {
-    text-align: left;
+  .iiidem-programme-panel p,
+  .iiidem-programme-panel__list li {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    line-height: 1.75;
+  }
+
+  .iiidem-frontpage .iiidem-programme-overview__intro,
+  .iiidem-frontpage .iiidem-programme-audience__intro {
+    font-size: 1.0625rem;
+  }
+
+  .iiidem-frontpage .iiidem-programme-panel p,
+  .iiidem-frontpage .iiidem-programme-panel__list li {
+    font-size: 1rem;
   }
 
   .iiidem-programme-overview__tabbar {
     margin-bottom: 1.15rem;
+  }
+
+  .iiidem-programme-tabs {
+    gap: 0.5rem;
   }
 
   .iiidem-programme-tabs .nav-link {
@@ -2873,7 +3296,7 @@ body.pagelayout-frontpage #page {
 }
 
 /* Homepage — narrow phones */
-@media (max-width: 575.98px) {
+@media (max-width: 575px) {
   .iiidem-hero-carousel,
   .iiidem-hero-carousel .carousel-inner,
   .iiidem-hero-carousel .carousel-item {
@@ -2882,13 +3305,15 @@ body.pagelayout-frontpage #page {
   }
 
   .iiidem-hero-carousel {
-    aspect-ratio: var(--iiidem-hero-aspect);
+    aspect-ratio: auto;
+    background: transparent;
   }
 
   .iiidem-hero-carousel__image {
-    height: 100%;
+    width: 100%;
+    height: auto;
     min-height: 0;
-    object-fit: cover;
+    object-fit: contain;
   }
 
   .iiidem-page-section,
@@ -3551,13 +3976,13 @@ body.iiidem-payment-error-open {
   width: 100%;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
   .advisors-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 767px) {
   .advisors-grid {
     grid-template-columns: 1fr;
   }
@@ -3921,13 +4346,29 @@ body#page-course-index-category #action_bar {
   box-shadow: 0 4px 16px rgba(11, 61, 145, 0.04);
 }
 
-/* Category tree */
+/* Category tree — hide Expand all + subcategory card row (Training Programs, etc.). */
+body.pagelayout-coursecategory .course_category_tree .collapsible-actions,
+body#page-course-index .course_category_tree .collapsible-actions,
+body#page-course-index-category .course_category_tree .collapsible-actions,
+body.pagelayout-coursecategory .course_category_tree .subcategories,
+body#page-course-index .course_category_tree .subcategories,
+body#page-course-index-category .course_category_tree .subcategories {
+  display: none !important;
+}
+
 body.pagelayout-coursecategory .course_category_tree,
 body#page-course-index .course_category_tree,
 body#page-course-index-category .course_category_tree {
   margin-top: 0.5rem;
 }
 
+body.pagelayout-coursecategory .course_category_tree .collapseexpand,
+body#page-course-index .course_category_tree .collapseexpand,
+body#page-course-index-category .course_category_tree .collapseexpand {
+  display: none !important;
+}
+
+/* Kept for reference if subcategory cards are re-enabled later.
 body.pagelayout-coursecategory .course_category_tree .collapsible-actions,
 body#page-course-index .course_category_tree .collapsible-actions,
 body#page-course-index-category .course_category_tree .collapsible-actions {
@@ -3954,6 +4395,7 @@ body#page-course-index-category .course_category_tree .subcategories {
   gap: 0.875rem;
   margin: 0 0 1.75rem;
 }
+*/
 
 body.pagelayout-coursecategory .course_category_tree .category,
 body#page-course-index .course_category_tree .category,
@@ -4161,7 +4603,7 @@ body#page-course-index-category .coursebox .content .summary h3 {
   margin: 0 0 0.5rem;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 767px) {
   body.pagelayout-coursecategory.limitedwidth #page.drawers .main-inner,
   body#page-course-index.limitedwidth #page.drawers .main-inner,
   body#page-course-index-category.limitedwidth #page.drawers .main-inner {

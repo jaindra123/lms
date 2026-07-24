@@ -405,7 +405,8 @@ body.iiidem-login-page #page-content {
     max-width: none;
 }
 
-@media (max-width: 900px) {
+/* $md and below — stack login brand + form */
+@media only screen and (max-width: 991px) {
     .iiidem-login-layout {
         grid-template-columns: 1fr;
         grid-template-rows: auto 1fr;
@@ -435,5 +436,24 @@ body.iiidem-login-page #page-content {
     .iiidem-login-card {
         padding: 1.75rem 1.25rem 1.5rem;
         box-shadow: 0 8px 24px rgba(11, 61, 145, 0.08);
+    }
+}
+
+/* $xs — phones */
+@media (max-width: 767px) {
+    .iiidem-login-layout__brand {
+        padding: 1.35rem 1rem;
+    }
+
+    .iiidem-login-layout__panel {
+        padding: 1rem 0.85rem 1.75rem;
+    }
+
+    .iiidem-login-card {
+        padding: 1.35rem 1rem 1.25rem;
+    }
+
+    .iiidem-login-layout__title {
+        font-size: 1.2rem;
     }
 }

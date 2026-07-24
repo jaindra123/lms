@@ -85,6 +85,18 @@ class register_form extends \moodleform {
         $mform->addElement('advcheckbox', 'emb', '', get_string('registeremb', 'theme_iiidem2'));
         $mform->setType('emb', PARAM_INT);
 
+        $mform->addElement('advcheckbox', 'policymaker', '', get_string('registerpolicymaker', 'theme_iiidem2'));
+        $mform->setType('policymaker', PARAM_INT);
+
+        $mform->addElement('advcheckbox', 'journalist', '', get_string('registerjournalist', 'theme_iiidem2'));
+        $mform->setType('journalist', PARAM_INT);
+
+        $mform->addElement('advcheckbox', 'electoralpractitioner', '', get_string('registerelectoralpractitioner', 'theme_iiidem2'));
+        $mform->setType('electoralpractitioner', PARAM_INT);
+
+        $mform->addElement('advcheckbox', 'researcher', '', get_string('registerresearcher', 'theme_iiidem2'));
+        $mform->setType('researcher', PARAM_INT);
+
         $mform->addElement('text', 'organization', get_string('registerorganization', 'theme_iiidem2'));
         $mform->setType('organization', PARAM_TEXT);
 
@@ -116,7 +128,17 @@ class register_form extends \moodleform {
         $mform->addElement('text', 'presentcountry', get_string('registerpresentcountry', 'theme_iiidem2'));
         $mform->setType('presentcountry', PARAM_TEXT);
 
-        $workingfields = ['workingheader', 'emb', 'organization', 'jobprofile', 'jobpostingcountry'];
+        $workingfields = [
+            'workingheader',
+            'emb',
+            'policymaker',
+            'journalist',
+            'electoralpractitioner',
+            'researcher',
+            'organization',
+            'jobprofile',
+            'jobpostingcountry',
+        ];
         foreach ($workingfields as $field) {
             $mform->hideIf($field, 'occupation', 'neq', 'working');
         }
@@ -244,8 +266,8 @@ class register_form extends \moodleform {
         if ($occupation === '') {
             $errors['occupation'] = get_string('registeroccupationrequired', 'theme_iiidem2');
         } else if ($occupation === 'working') {
-            if (empty($data['emb'])) {
-                $errors['emb'] = get_string('registerembrequired', 'theme_iiidem2');
+            if (!\theme_iiidem2\registration_profile::has_working_category((object) $data)) {
+                $errors['emb'] = get_string('registerworkingcategoryrequired', 'theme_iiidem2');
             }
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
                 if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {

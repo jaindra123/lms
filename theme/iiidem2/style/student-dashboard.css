@@ -627,7 +627,7 @@ body.iiidem-student-dashboard-page #page-navbar {
     padding: 1rem 0.75rem;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
     .iiidem-student-dashboard-v2 {
         flex-direction: column;
     }
@@ -947,7 +947,7 @@ body.iiidem-student-dashboard-page #page-navbar {
     color: #fff;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
     .iiidem-dashboard-tabs__btn span:not(.fa) {
         display: none;
     }

@@ -33,6 +33,22 @@ class registration_profile {
             'datatype' => 'checkbox',
             'name' => 'EMB',
         ],
+        'iiidem_policymaker' => [
+            'datatype' => 'checkbox',
+            'name' => 'Policymaker',
+        ],
+        'iiidem_journalist' => [
+            'datatype' => 'checkbox',
+            'name' => 'Journalist',
+        ],
+        'iiidem_electoral_practitioner' => [
+            'datatype' => 'checkbox',
+            'name' => 'Electoral practitioner',
+        ],
+        'iiidem_researcher' => [
+            'datatype' => 'checkbox',
+            'name' => 'Researcher',
+        ],
         'iiidem_organization' => [
             'datatype' => 'text',
             'name' => 'Organization',
@@ -132,6 +148,36 @@ class registration_profile {
     }
 
     /**
+     * Working professional category checkboxes (form field => profile shortname).
+     *
+     * @return array<string, string>
+     */
+    public static function working_category_fields(): array {
+        return [
+            'emb' => 'iiidem_emb',
+            'policymaker' => 'iiidem_policymaker',
+            'journalist' => 'iiidem_journalist',
+            'electoralpractitioner' => 'iiidem_electoral_practitioner',
+            'researcher' => 'iiidem_researcher',
+        ];
+    }
+
+    /**
+     * Whether the submitted working profile selected at least one category.
+     *
+     * @param \stdClass $data
+     * @return bool
+     */
+    public static function has_working_category(\stdClass $data): bool {
+        foreach (array_keys(self::working_category_fields()) as $field) {
+            if (self::is_checked($data, $field)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * User registered as Election Management Body (EMB) official.
      *
      * @param int $userid
@@ -194,6 +240,10 @@ class registration_profile {
                 'description' => '',
                 'descriptionformat' => FORMAT_HTML,
                 'categoryid' => $category->id,
+                'sortorder' => ((int) $DB->get_field_sql(
+                    'SELECT MAX(sortorder) FROM {user_info_field} WHERE categoryid = ?',
+                    [$category->id]
+                )) + 1,
                 'required' => 0,
                 'locked' => 0,
                 'forceunique' => 0,
@@ -204,6 +254,56 @@ class registration_profile {
             ], $config);
 
             (new $defineclass())->define_save($data);
+        }
+
+        // Keep working-category checkboxes grouped after Occupation / EMB.
+        self::reorder_fields((int) $category->id);
+    }
+
+    /**
+     * Keep IIIDEM registration fields in a stable display order.
+     *
+     * @param int $categoryid
+     */
+    public static function reorder_fields(int $categoryid = 0): void {
+        global $DB;
+
+        $desired = [
+            'iiidem_occupation',
+            'iiidem_emb',
+            'iiidem_policymaker',
+            'iiidem_journalist',
+            'iiidem_electoral_practitioner',
+            'iiidem_researcher',
+            'iiidem_organization',
+            'iiidem_jobprofile',
+            'iiidem_jobpostingcountry',
+            'iiidem_university',
+            'iiidem_position',
+            'iiidem_specialization',
+            'iiidem_instructor_university',
+            'iiidem_instructor_course',
+            'iiidem_presentcountry',
+        ];
+
+        if ($categoryid <= 0) {
+            $categoryid = (int) $DB->get_field('user_info_category', 'id', ['name' => self::CATEGORY]);
+        }
+        if ($categoryid <= 0) {
+            return;
+        }
+
+        $sort = 1;
+        foreach ($desired as $shortname) {
+            $field = $DB->get_record('user_info_field', [
+                'shortname' => $shortname,
+                'categoryid' => $categoryid,
+            ], 'id');
+            if (!$field) {
+                continue;
+            }
+            $DB->set_field('user_info_field', 'sortorder', $sort, ['id' => $field->id]);
+            $sort++;
         }
     }
 
@@ -304,6 +404,10 @@ class registration_profile {
             'id' => $userid,
             'profile_field_iiidem_occupation' => $occupation,
             'profile_field_iiidem_emb' => self::is_checked($data, 'emb') ? '1' : '0',
+            'profile_field_iiidem_policymaker' => self::is_checked($data, 'policymaker') ? '1' : '0',
+            'profile_field_iiidem_journalist' => self::is_checked($data, 'journalist') ? '1' : '0',
+            'profile_field_iiidem_electoral_practitioner' => self::is_checked($data, 'electoralpractitioner') ? '1' : '0',
+            'profile_field_iiidem_researcher' => self::is_checked($data, 'researcher') ? '1' : '0',
             'profile_field_iiidem_organization' => self::get_submitted_value($data, 'organization'),
             'profile_field_iiidem_jobprofile' => self::get_submitted_value($data, 'jobprofile'),
             'profile_field_iiidem_jobpostingcountry' => self::get_submitted_value($data, 'jobpostingcountry'),

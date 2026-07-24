@@ -134,7 +134,14 @@ function theme_iiidem2_get_precompiled_css() {
  * @return string
  */
 function theme_iiidem2_get_pre_scss($theme) {
+    global $CFG;
+
     $scss = '';
+    $breakpoints = $CFG->dirroot . '/theme/iiidem2/scss/iiidem/_breakpoints.scss';
+    if (is_readable($breakpoints)) {
+        $scss .= file_get_contents($breakpoints) . "\n";
+    }
+
     $configurable = [
         'brandcolor' => ['primary'],
     ];

@@ -71,5 +71,10 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100754, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024100846) {
+        \theme_iiidem2\registration_profile::ensure_fields();
+        upgrade_plugin_savepoint(true, 2024100846, 'theme', 'iiidem2');
+    }
+
     return true;
 }

@@ -2,7 +2,7 @@
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 3 of the License, o
 // (at your option) any later version.
 //
 // Moodle is distributed in the hope that it will be useful,
@@ -18,7 +18,7 @@
  *
  * @module     theme_iiidem2/drawers
  * @copyright  2021 Bas Brands
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or late
  */
 import ModalBackdrop from 'core/modal_backdrop';
 import Templates from 'core/templates';
@@ -414,7 +414,7 @@ export default class Drawers {
      * focusOnCloseButton parameter can be set to false to prevent this behaviour.
      *
      * @param {object} args
-     * @param {boolean} [args.focusOnCloseButton=true] Whether to alter page focus when opening the drawer
+     * @param {boolean} [args.focusOnCloseButton=true] Whether to alter page focus when opening the drawe
      * @param {boolean} [args.setUserPref=true] Whether to store the opened drawer state as a user preference
      */
     openDrawer({focusOnCloseButton = true, setUserPref = true} = {}) {
@@ -447,8 +447,8 @@ export default class Drawers {
 
         const state = this.drawerNode.dataset.state;
         if (state) {
-            const page = document.getElementById('page');
-            page.classList.add(state);
+            // Marketing/frontpage layouts may not render #page.
+            document.getElementById('page')?.classList.add(state);
         }
 
         this.boundingRect = this.drawerNode.getBoundingClientRect();
@@ -458,7 +458,11 @@ export default class Drawers {
                 backdrop.show();
 
                 const pageWrapper = document.getElementById('page');
-                pageWrapper.style.overflow = 'hidden';
+                if (pageWrapper) {
+                    pageWrapper.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = 'hidden';
+                }
                 return backdrop;
             })
             .catch(() => {
@@ -473,9 +477,9 @@ export default class Drawers {
             disableButtonTooltip(closeButton, true);
         }
         setTimeout(() => {
-            closeButton.classList.toggle('hidden', false);
-            headerContent.classList.toggle('hidden', false);
-            if (focusOnCloseButton) {
+            closeButton?.classList.toggle('hidden', false);
+            headerContent?.classList.toggle('hidden', false);
+            if (focusOnCloseButton && closeButton) {
                 closeButton.focus();
             }
             // On small devices, the drawer must have a trap focus once the focus is inside
@@ -493,7 +497,7 @@ export default class Drawers {
      * Close the drawer.
      *
      * @param {object} args
-     * @param {boolean} [args.focusOnOpenButton=true] Whether to alter page focus when opening the drawer
+     * @param {boolean} [args.focusOnOpenButton=true] Whether to alter page focus when opening the drawe
      * @param {boolean} [args.updatePreferences=true] Whether to update the user prewference
      */
         closeDrawer({focusOnOpenButton = true, updatePreferences = true} = {}) {
@@ -511,7 +515,7 @@ export default class Drawers {
         const headerContent = this.drawerNode.querySelector(SELECTORS.HEADERCONTENT);
         headerContent?.classList.toggle('hidden', true);
         // Remove the close button tooltip if visible.
-        if (closeButton.hasAttribute('data-original-title')) {
+        if (closeButton?.hasAttribute('data-original-title')) {
             // The jQuery is still used in iiidem2rap 4. It can we removed when MDL-71979 is integrated.
             jQuery(closeButton)?.tooltip('hide');
         }
@@ -523,8 +527,8 @@ export default class Drawers {
 
         const state = this.drawerNode.dataset.state;
         if (state) {
-            const page = document.getElementById('page');
-            page.classList.remove(state);
+            // Marketing/frontpage layouts may not render #page.
+            document.getElementById('page')?.classList.remove(state);
         }
 
         Aria.hide(this.drawerNode);
@@ -535,7 +539,11 @@ export default class Drawers {
 
             if (isSmall()) {
                 const pageWrapper = document.getElementById('page');
-                pageWrapper.style.overflow = 'visible';
+                if (pageWrapper) {
+                    pageWrapper.style.overflow = 'visible';
+                } else {
+                    document.body.style.overflow = '';
+                }
             }
             return backdrop;
         })
@@ -622,7 +630,7 @@ export default class Drawers {
 
         // The this.boundingRect is calculated only once and it is reliable
         // for horizontal overlapping (which is the most common). However,
-        // it is not reliable for vertical overlapping because the drawer
+        // it is not reliable for vertical overlapping because the drawe
         // height can be changed by other elements like sticky footer.
         // To prevent recalculating the boundingRect on every
         // focusin event, we use horizontal overlapping as first fast check.
