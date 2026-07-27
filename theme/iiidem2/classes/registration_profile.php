@@ -148,7 +148,8 @@ class registration_profile {
     }
 
     /**
-     * Working professional category checkboxes (form field => profile shortname).
+     * Working professional category options (form field => profile shortname).
+     * Form uses a single radio group `workingcategory` with these values.
      *
      * @return array<string, string>
      */
@@ -163,18 +164,36 @@ class registration_profile {
     }
 
     /**
-     * Whether the submitted working profile selected at least one category.
+     * Selected working category from radio (or legacy checkboxes).
+     *
+     * @param \stdClass $data
+     * @return string emb|policymaker|journalist|electoralpractitioner|researcher|''
+     */
+    public static function get_working_category(\stdClass $data): string {
+        $allowed = array_keys(self::working_category_fields());
+
+        $value = strtolower(trim(self::get_submitted_value($data, 'workingcategory')));
+        if (in_array($value, $allowed, true)) {
+            return $value;
+        }
+
+        // Legacy checkbox fallback (older form submissions).
+        foreach ($allowed as $field) {
+            if (self::is_checked_raw($data, $field)) {
+                return $field;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Whether the submitted working profile selected a category.
      *
      * @param \stdClass $data
      * @return bool
      */
     public static function has_working_category(\stdClass $data): bool {
-        foreach (array_keys(self::working_category_fields()) as $field) {
-            if (self::is_checked($data, $field)) {
-                return true;
-            }
-        }
-        return false;
+        return self::get_working_category($data) !== '';
     }
 
     /**
@@ -329,13 +348,34 @@ class registration_profile {
     }
 
     /**
-     * Whether a checkbox field was ticked.
+     * Whether a checkbox/category field was selected.
+     *
+     * Working categories use a radio group (`workingcategory`); legacy per-field
+     * checkboxes are still accepted.
      *
      * @param \stdClass $data
      * @param string $field
      * @return bool
      */
     public static function is_checked(\stdClass $data, string $field): bool {
+        $categories = array_keys(self::working_category_fields());
+        if (in_array($field, $categories, true)) {
+            $selected = self::get_working_category($data);
+            if ($selected !== '') {
+                return $selected === $field;
+            }
+        }
+        return self::is_checked_raw($data, $field);
+    }
+
+    /**
+     * Whether a checkbox field was ticked in POST/form data (no radio mapping).
+     *
+     * @param \stdClass $data
+     * @param string $field
+     * @return bool
+     */
+    private static function is_checked_raw(\stdClass $data, string $field): bool {
         if (isset($_POST[$field])) {
             $value = $_POST[$field];
             if (is_array($value)) {

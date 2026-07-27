@@ -124,7 +124,9 @@ class store implements \tool_log\log\writer, \core\log\sql_internal_table_reader
         $data = (array)$data;
         $id = $data['id'];
         $data['other'] = self::decode_other($data['other']);
-        if ($data['other'] === false) {
+        // decode_other() may return false, null, or a scalar (e.g. int 0 from
+        // json_decode('0')) when the stored value is corrupt — keep an array.
+        if (!is_array($data['other'])) {
             $data['other'] = array();
         }
         unset($data['origin']);

@@ -82,20 +82,13 @@ class register_form extends \moodleform {
 
         $mform->addElement('header', 'workingheader', get_string('registerworkingprofile', 'theme_iiidem2'));
 
-        $mform->addElement('advcheckbox', 'emb', '', get_string('registeremb', 'theme_iiidem2'));
-        $mform->setType('emb', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'policymaker', '', get_string('registerpolicymaker', 'theme_iiidem2'));
-        $mform->setType('policymaker', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'journalist', '', get_string('registerjournalist', 'theme_iiidem2'));
-        $mform->setType('journalist', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'electoralpractitioner', '', get_string('registerelectoralpractitioner', 'theme_iiidem2'));
-        $mform->setType('electoralpractitioner', PARAM_INT);
-
-        $mform->addElement('advcheckbox', 'researcher', '', get_string('registerresearcher', 'theme_iiidem2'));
-        $mform->setType('researcher', PARAM_INT);
+        // Radios: only one working category can be selected.
+        $mform->addElement('radio', 'workingcategory', '', get_string('registeremb', 'theme_iiidem2'), 'emb');
+        $mform->addElement('radio', 'workingcategory', '', get_string('registerpolicymaker', 'theme_iiidem2'), 'policymaker');
+        $mform->addElement('radio', 'workingcategory', '', get_string('registerjournalist', 'theme_iiidem2'), 'journalist');
+        $mform->addElement('radio', 'workingcategory', '', get_string('registerelectoralpractitioner', 'theme_iiidem2'), 'electoralpractitioner');
+        $mform->addElement('radio', 'workingcategory', '', get_string('registerresearcher', 'theme_iiidem2'), 'researcher');
+        $mform->setType('workingcategory', PARAM_ALPHA);
 
         $mform->addElement('text', 'organization', get_string('registerorganization', 'theme_iiidem2'));
         $mform->setType('organization', PARAM_TEXT);
@@ -130,11 +123,7 @@ class register_form extends \moodleform {
 
         $workingfields = [
             'workingheader',
-            'emb',
-            'policymaker',
-            'journalist',
-            'electoralpractitioner',
-            'researcher',
+            'workingcategory',
             'organization',
             'jobprofile',
             'jobpostingcountry',
@@ -267,7 +256,7 @@ class register_form extends \moodleform {
             $errors['occupation'] = get_string('registeroccupationrequired', 'theme_iiidem2');
         } else if ($occupation === 'working') {
             if (!\theme_iiidem2\registration_profile::has_working_category((object) $data)) {
-                $errors['emb'] = get_string('registerworkingcategoryrequired', 'theme_iiidem2');
+                $errors['workingcategory'] = get_string('registerworkingcategoryrequired', 'theme_iiidem2');
             }
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
                 if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {

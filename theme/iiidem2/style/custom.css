@@ -4170,12 +4170,15 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   font-weight: 600;
 }
 
-.iiidem-register-form .fitem:has(input[name="occupation"]) {
+.iiidem-register-form .fitem:has(input[name="occupation"]),
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) {
   margin-bottom: 0.35rem;
 }
 
 .iiidem-register-form .fitem:has(input[name="occupation"]) .form-check-input,
-.iiidem-register-form input[name="occupation"] {
+.iiidem-register-form input[name="occupation"],
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check-input,
+.iiidem-register-form input[name="workingcategory"] {
   margin-top: 0.35rem;
 }
 

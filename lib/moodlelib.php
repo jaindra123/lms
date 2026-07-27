@@ -5976,14 +5976,17 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
         return true;
     } else {
         // Trigger event for failing to send email.
+        // Keep 'other' JSON/serialize-safe: coerce error text and truncate the body
+        // so a large/binary message cannot corrupt the logstore 'other' field.
+        $errorinfo = is_string($mail->ErrorInfo) ? $mail->ErrorInfo : (string) $mail->ErrorInfo;
         $event = \core\event\email_failed::create(array(
             'context' => context_system::instance(),
             'userid' => $from->id,
             'relateduserid' => $user->id,
             'other' => array(
-                'subject' => $subject,
-                'message' => $messagetext,
-                'errorinfo' => $mail->ErrorInfo
+                'subject' => (string) $subject,
+                'message' => core_text::substr((string) $messagetext, 0, 1000),
+                'errorinfo' => $errorinfo
             )
         ));
         $event->trigger();
