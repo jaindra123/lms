@@ -856,6 +856,78 @@ label.me-2.mb-0 {
   margin: 0;
 }
 
+/* PDF preview: fill the curriculum panel (avoid Moodle 500px maximised-embed fallback). */
+.iiidem-curriculum .iiidem-curriculum-pdf-wrap,
+.iiidem-curriculum .resourcepdf {
+  width: 100%;
+  max-width: 100%;
+}
+
+.iiidem-curriculum .iiidem-curriculum-pdf,
+.iiidem-curriculum .resourcepdf iframe,
+.iiidem-curriculum iframe.iiidem-curriculum-pdf {
+  display: block;
+  width: 100% !important;
+  max-width: 100%;
+  min-height: 75vh;
+  height: 75vh !important;
+  border: 0;
+  border-radius: 6px;
+  background: #525659;
+}
+
+/* Assignment curriculum preview */
+.iiidem-curriculum .iiidem-assign-preview__meta li {
+  font-size: 0.9rem;
+  color: #5d6785;
+  margin-bottom: 0.25rem;
+}
+
+.iiidem-curriculum .iiidem-assign-preview__intro {
+  font-size: 0.95rem;
+  color: #1f2a56;
+}
+
+/* Teacher assignment Submissions / grading table */
+body.iiidem-assign-grading .iiidem-assign-grading-tip {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.95rem;
+}
+
+body.iiidem-assign-grading .gradingtable {
+  margin-top: 0.5rem;
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+
+/* Guard against Bootstrap 5 `.row > * { width:100% }` breaking Moodle filters. */
+body.path-mod-assign .tertiary-navigation > .row,
+body.iiidem-assign-grading .tertiary-navigation > .row {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+
+body.path-mod-assign .tertiary-navigation > .row > *,
+body.iiidem-assign-grading .tertiary-navigation > .row > * {
+  width: auto !important;
+  max-width: none !important;
+  flex-shrink: 1;
+}
+
+body.iiidem-assign-grading select[name="status"],
+body.iiidem-assign-grading .urlselect select {
+  min-width: 12rem;
+  font-weight: 600;
+}
+
+body.iiidem-assign-grading .gradingtable tr.submissionstatussubmitted,
+body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
+  background-color: rgba(25, 135, 84, 0.06);
+}
+
 /* Login modal (guest course preview). */
 .iiidem-login-modal-body .form-label {
   font-weight: 600;

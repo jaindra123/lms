@@ -314,8 +314,27 @@ function theme_iiidem2_get_resource_preview_html(cm_info $cm): string {
     if (file_mimetype_in_typegroup($mimetype, 'web_image')) {
         $code = resourcelib_embed_image($fileurl->out(false), $title);
     } else if ($mimetype === 'application/pdf') {
+        // Full-width embed for curriculum preview. Avoid resourcelib_embed_pdf():
+        // M.util.init_maximised_embed looks for #maincontent (missing in this theme)
+        // and falls back to a fixed 500px width.
         $clicktoopen = resource_get_clicktoopen($file, $resource->revision);
-        $code = resourcelib_embed_pdf($fileurl->out(false), $title, $clicktoopen);
+        $iframeid = 'iiidem-resource-pdf-' . (int) $cm->id;
+        $code = html_writer::div(
+            html_writer::tag(
+                'iframe',
+                $clicktoopen,
+                [
+                    'id' => $iframeid,
+                    'class' => 'iiidem-curriculum-pdf',
+                    'src' => $fileurl->out(false),
+                    'title' => $title,
+                    'width' => '100%',
+                    'height' => '800',
+                    'allowfullscreen' => 'allowfullscreen',
+                ]
+            ),
+            'resourcecontent resourcepdf iiidem-curriculum-pdf-wrap'
+        );
     } else if ($mediamanager->can_embed_url($fileurl, $embedoptions)) {
         $code = $mediamanager->embed_url($fileurl, $title, 0, 400, $embedoptions);
     } else if (file_mimetype_in_typegroup($mimetype, 'web_video') || file_mimetype_in_typegroup($mimetype, 'web_audio')) {
@@ -3134,10 +3153,153 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
     }
 
     if ($cm->modname === 'assign') {
-        return '<div class="assignment-preview">Assignment activity</div>';
+        return theme_iiidem2_get_assign_preview_html($cm);
     }
 
     return '';
+}
+
+/**
+ * Curriculum accordion preview HTML for an Assignment activity.
+ *
+ * Embeds a short summary and a button that opens the real assignment page
+ * (upload / submit / view status). The full Moodle assign UI is not inlined.
+ *
+ * @param cm_info $cm Course module (modname must be assign).
+ * @return string Safe HTML.
+ */
+function theme_iiidem2_get_assign_preview_html(cm_info $cm): string {
+    global $CFG, $DB, $USER;
+
+    if ($cm->modname !== 'assign') {
+        return '';
+    }
+
+    $assign = $DB->get_record('assign', ['id' => $cm->instance], '*', IGNORE_MISSING);
+    if (!$assign) {
+        return '';
+    }
+
+    $context = context_module::instance($cm->id);
+    $viewurl = (new moodle_url('/mod/assign/view.php', ['id' => $cm->id]))->out(false);
+
+    $parts = [];
+
+    if (!empty($assign->intro)) {
+        $parts[] = html_writer::div(
+            format_text($assign->intro, $assign->introformat, ['context' => $context, 'overflowdiv' => true]),
+            'iiidem-assign-preview__intro mb-2'
+        );
+    }
+
+    $meta = [];
+    if (!empty($assign->allowsubmissionsfromdate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('allowsubmissionsfromdate', 'assign') . ': ' .
+                userdate($assign->allowsubmissionsfromdate)
+        );
+    }
+    if (!empty($assign->duedate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('duedate', 'assign') . ': ' . userdate($assign->duedate)
+        );
+    }
+    if (!empty($assign->cutoffdate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('cutoffdate', 'assign') . ': ' . userdate($assign->cutoffdate)
+        );
+    }
+
+    $filetypes = $DB->get_field('assign_plugin_config', 'value', [
+        'assignment' => $assign->id,
+        'plugin' => 'file',
+        'subtype' => 'assignsubmission',
+        'name' => 'filetypeslist',
+    ]);
+    if (is_string($filetypes) && trim($filetypes) !== '') {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('curriculumassignfiletypes', 'theme_iiidem2', s($filetypes))
+        );
+    }
+
+    if ($meta) {
+        $parts[] = html_writer::tag('ul', implode('', $meta), ['class' => 'iiidem-assign-preview__meta list-unstyled mb-3']);
+    }
+
+    // Submission status for the current user (when enrolled / logged in).
+    if (isloggedin() && !isguestuser()) {
+        $submission = $DB->get_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $USER->id,
+            'latest' => 1,
+        ], 'id, status, attemptnumber', IGNORE_MISSING);
+
+        $maxattempts = (int) ($assign->maxattempts ?? 1);
+        $usedattempts = $submission ? ((int) $submission->attemptnumber + 1) : 0;
+        if ($maxattempts < 0) {
+            // Unlimited attempts (-1 in Moodle).
+            $parts[] = html_writer::div(
+                get_string('curriculumassignattemptsunlimited', 'theme_iiidem2', $usedattempts),
+                'iiidem-assign-preview__attempts text-muted mb-1'
+            );
+        } else if ($maxattempts > 1) {
+            $parts[] = html_writer::div(
+                get_string('curriculumassignattempts', 'theme_iiidem2', (object) [
+                    'used' => $usedattempts,
+                    'max' => $maxattempts,
+                ]),
+                'iiidem-assign-preview__attempts text-muted mb-1'
+            );
+        }
+
+        $canedit = false;
+        try {
+            require_once($CFG->dirroot . '/mod/assign/locallib.php');
+            $assignment = new assign($context, $cm, $cm->get_course());
+            $canedit = $assignment->can_edit_submission($USER->id, $USER->id);
+        } catch (Throwable $e) {
+            $canedit = false;
+        }
+
+        if ($submission && $submission->status === 'submitted') {
+            if ($canedit) {
+                $btnlabel = get_string('curriculumassigncontinuesubmit', 'theme_iiidem2');
+                $status = get_string('curriculumassigncanretry', 'theme_iiidem2');
+            } else {
+                $btnlabel = get_string('curriculumassignviewsubmission', 'theme_iiidem2');
+                $status = get_string('submissionstatus_submitted', 'assign');
+                // Explain why attempt 2 is not open yet (common with "until pass").
+                if ($maxattempts > 1 || $maxattempts < 0) {
+                    $parts[] = html_writer::div(
+                        get_string('curriculumassignawaitingreopen', 'theme_iiidem2'),
+                        'iiidem-assign-preview__hint alert alert-secondary py-2 px-3 mb-2'
+                    );
+                }
+            }
+        } else if ($submission && $submission->status === 'draft') {
+            $btnlabel = get_string('curriculumassigncontinuesubmit', 'theme_iiidem2');
+            $status = get_string('submissionstatus_draft', 'assign');
+        } else {
+            $btnlabel = get_string('curriculumassignsubmit', 'theme_iiidem2');
+            $status = get_string('submissionstatus_', 'assign');
+        }
+        $parts[] = html_writer::div(
+            get_string('curriculumassignstatus', 'theme_iiidem2', $status),
+            'iiidem-assign-preview__status text-muted mb-2'
+        );
+    } else {
+        $btnlabel = get_string('curriculumassignopen', 'theme_iiidem2');
+    }
+
+    $parts[] = html_writer::link($viewurl, $btnlabel, [
+        'class' => 'btn btn-primary btn-sm',
+    ]);
+
+    return html_writer::div(implode('', $parts), 'iiidem-assign-preview assignment-preview');
 }
 
 /**
@@ -4410,6 +4572,11 @@ function theme_iiidem2_page_init($page) {
 
     $page->requires->js_call_amd('theme_iiidem2/footer-popover', 'init');
 
+    // Teacher Submissions page: default Status filter to "Submitted"
+    // so the list is not cluttered with non-submitters (Status → All still available).
+    theme_iiidem2_maybe_default_assign_submitted_filter($page);
+    theme_iiidem2_enhance_assign_grading_ui($page);
+
     if ($page->pagelayout === 'admin' || str_starts_with($page->pagetype ?? '', 'admin-')) {
         if (theme_iiidem2_is_admin_index_page($page)) {
             $page->requires->js_init_code(
@@ -4441,10 +4608,14 @@ function theme_iiidem2_page_init($page) {
         $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
     }
 
-    // BS5 accordions/tabs only where templates use data-bs-* (not site home — avoids slow CDN on every visit).
-    if (in_array($page->pagelayout, ['marketing', 'incourse'], true)
+    // BS5 only on marketing / custom course templates that use data-bs-*.
+    // Do NOT load on pagelayout=incourse (mod/assign, forum, etc.): Bootstrap 5
+    // sets `.row > * { width: 100% }`, which stacks Moodle tertiary-nav filters
+    // and breaks the Submissions grading layout.
+    if (in_array($page->pagelayout, ['marketing'], true)
         || strpos($page->bodyclasses, 'iiidem-course-detail') !== false
-        || strpos($page->bodyclasses, 'iiidem-enrol-preview') !== false) {
+        || strpos($page->bodyclasses, 'iiidem-enrol-preview') !== false
+        || strpos($page->bodyclasses, 'iiidem-course-hero-layout') !== false) {
         $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
         $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
         if (is_readable($bs5css)) {
@@ -4454,4 +4625,99 @@ function theme_iiidem2_page_init($page) {
             $page->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
         }
     }
+}
+
+/**
+ * On assignment grading/submissions page, default the Status filter to "Submitted".
+ *
+ * Moodle core defaults to "All" (every enrolled student). Teachers can still
+ * choose Status → All / Not submitted / etc. When they leave the filter on All,
+ * the next visit without an explicit status param returns to Submitted.
+ *
+ * @param moodle_page $page
+ */
+function theme_iiidem2_maybe_default_assign_submitted_filter(moodle_page $page): void {
+    if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER || !isloggedin() || isguestuser()) {
+        return;
+    }
+    if (($page->pagetype ?? '') !== 'mod-assign-view') {
+        return;
+    }
+    if (optional_param('action', '', PARAM_ALPHA) !== 'grading') {
+        return;
+    }
+    // Respect an explicit Status choice in the URL (including All as status=).
+    if (array_key_exists('status', $_GET)) {
+        return;
+    }
+    // Only override the Moodle default ("All" / empty preference).
+    if (get_user_preferences('assign_filter', '') !== '') {
+        return;
+    }
+
+    $cmid = optional_param('id', 0, PARAM_INT);
+    if ($cmid <= 0) {
+        return;
+    }
+
+    set_user_preference('assign_filter', 'submitted');
+    redirect(new moodle_url('/mod/assign/view.php', [
+        'id' => $cmid,
+        'action' => 'grading',
+        'status' => 'submitted',
+    ]));
+}
+
+/**
+ * Add a short tip above the assignment grading table (Status filter).
+ *
+ * @param moodle_page $page
+ */
+function theme_iiidem2_enhance_assign_grading_ui(moodle_page $page): void {
+    if (($page->pagetype ?? '') !== 'mod-assign-view') {
+        return;
+    }
+    if (optional_param('action', '', PARAM_ALPHA) !== 'grading') {
+        return;
+    }
+
+    $page->add_body_class('iiidem-assign-grading');
+    $tip = json_encode(get_string('assigngradingfiltertip', 'theme_iiidem2'), JSON_UNESCAPED_UNICODE);
+    $page->requires->js_init_code(<<<JS
+(function() {
+    var tip = {$tip};
+    if (!tip) {
+        return;
+    }
+    var insertTip = function() {
+        if (document.querySelector('.iiidem-assign-grading-tip')) {
+            return true;
+        }
+        var heading = document.querySelector('#region-main h2, #region-main h3, .tertiary-navigation');
+        var table = document.querySelector('.gradingtable, #region-main .generaltable');
+        var anchor = document.querySelector('[data-region="grading-actions"], .tertiary-navigation, #region-main .mb-3')
+            || heading
+            || table;
+        if (!anchor) {
+            return false;
+        }
+        var note = document.createElement('div');
+        note.className = 'alert alert-info iiidem-assign-grading-tip';
+        note.setAttribute('role', 'status');
+        note.textContent = tip;
+        if (table && table.parentNode) {
+            table.parentNode.insertBefore(note, table);
+        } else if (anchor.parentNode) {
+            anchor.parentNode.insertBefore(note, anchor.nextSibling);
+        } else {
+            return false;
+        }
+        return true;
+    };
+    if (!insertTip()) {
+        document.addEventListener('DOMContentLoaded', insertTip);
+    }
+})();
+JS
+    );
 }
