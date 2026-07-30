@@ -28,7 +28,19 @@ $PAGE->set_heading(format_string($course->fullname));
 $livepages = manager::get_live_class_pages($courseid);
 if (empty($livepages)) {
     echo $OUTPUT->header();
-    echo $OUTPUT->notification(get_string('liveclassnojoin', 'theme_iiidem2'), 'notifyproblem');
+    echo $OUTPUT->heading(get_string('nolivectitle', 'local_iiidem_livequiz'), 2);
+    echo $OUTPUT->notification(
+        get_string('nolivemessage', 'local_iiidem_livequiz'),
+        \core\output\notification::NOTIFY_WARNING
+    );
+    echo html_writer::div(
+        html_writer::link(
+            new moodle_url('/course/view.php', ['id' => $courseid]),
+            get_string('returntocourse', 'local_iiidem_livequiz'),
+            ['class' => 'btn btn-primary']
+        ),
+        'mt-3'
+    );
     echo $OUTPUT->footer();
     exit;
 }

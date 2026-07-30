@@ -168,6 +168,9 @@ $string['dashboarddueon'] = 'Due {$a}';
 $string['dashboardsessiontoday'] = 'Today';
 $string['dashboardsessionsoon'] = 'Soon';
 $string['dashboardwelcome'] = 'Welcome, {$a}';
+$string['dashboardloaderrortitle'] = 'Dashboard temporarily unavailable';
+$string['dashboardloaderrormessage'] = 'We could not load your dashboard right now. Please try again. If the problem continues, contact the site administrator.';
+$string['dashboardretry'] = 'Try again';
 $string['dashboardroleadmin'] = 'You are viewing the administrator dashboard.';
 $string['dashboardroleteacher'] = 'You are viewing the teacher dashboard.';
 $string['dashboardrolestudent'] = 'You are viewing the student dashboard.';
@@ -181,6 +184,9 @@ $string['dashboardviewbadges'] = 'View my badges';
 $string['dashboardupcoming'] = 'Upcoming activities';
 $string['dashboardnoupcoming'] = 'No assignments or quizzes due in the next 30 days.';
 $string['dashboardliveclasses'] = 'Live classes / meetings';
+$string['dashboardliveclassestoday'] = 'Today';
+$string['dashboardliveclassesupcoming'] = 'Upcoming';
+$string['dashboardteacherupcominglive'] = 'Upcoming live classes';
 $string['dashboardjoin'] = 'Join';
 $string['dashboardnolive'] = 'No upcoming live sessions in the next two weeks.';
 $string['dashboardnotifications'] = 'Notifications';
@@ -554,14 +560,15 @@ Your account on {$a->sitename} has been created successfully.
 
 Username: {$a->username}
 Email: {$a->email}
+Password: {$a->password}
 
-If you need to set or reset your password, use this secure link:
+You can sign in here:
+{$a->loginurl}
+
+If you need to reset your password later, use this secure link:
 {$a->resetlink}
 
 This link is valid for about {$a->resetminutes} minutes.
-
-You can also sign in here:
-{$a->loginurl}
 
 {$a->admin}
 ';
@@ -570,11 +577,12 @@ $string['registeremailuserhtml'] = '<p>Hi {$a->firstname},</p>
 <ul>
 <li><strong>Username:</strong> {$a->username}</li>
 <li><strong>Email:</strong> {$a->email}</li>
+<li><strong>Password:</strong> {$a->password}</li>
 </ul>
-<p>If you need to set or reset your password, use this secure link:</p>
+<p>You can <a href="{$a->loginurl}">sign in here</a>.</p>
+<p>If you need to reset your password later, use this secure link:</p>
 <p><a href="{$a->resetlink}">{$a->resetlink}</a></p>
 <p>This link is valid for about {$a->resetminutes} minutes.</p>
-<p>You can also <a href="{$a->loginurl}">sign in here</a>.</p>
 <p>{$a->admin}</p>';
 $string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
 $string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
@@ -650,13 +658,17 @@ $string['msg91whatsapptemplate_desc'] = 'Approved template name. Body variables 
 $string['msg91whatsappnamespace'] = 'MSG91 WhatsApp template namespace (optional)';
 $string['msg91whatsappnamespace_desc'] = 'Meta template namespace if your MSG91 setup requires it.';
 $string['registeroccupation'] = 'Role';
-$string['registeroccupationworking'] = 'Working professional / EMB';
+$string['registrationcourseids'] = 'Registration course IDs';
+$string['registrationcourseids_desc'] = 'Comma-separated course IDs that receive newly registered users (for example: 4,5). Students and NON-EMB professionals are enrolled as suspended until fee payment succeeds; EMB professionals and instructors are enrolled as active participants. Each paid course must have an enabled Enrolment on payment method, and exempt users require an enabled Manual enrolment method.';
+$string['registeroccupationworking'] = 'Working professional / NON-EMB';
+$string['registeroccupationworkingemb'] = 'Working professional / EMB';
 $string['registeroccupationstudent'] = 'Student';
-$string['registeroccupationinstructor'] = 'Professor';
+$string['registeroccupationinstructor'] = 'Professor / Instructor';
 $string['registeroccupationrequired'] = 'Please select your role.';
-$string['registerworkingprofile'] = 'Working professional / EMB details';
+$string['registerworkingprofile'] = 'Working professional / NON-EMB details';
+$string['registerworkingembprofile'] = 'Working professional / EMB details';
 $string['registerstudentprofile'] = 'Student details';
-$string['registerinstructorprofile'] = 'Professor details';
+$string['registerinstructorprofile'] = 'Professor / Instructor details';
 $string['registerpasswordheader'] = 'Password';
 $string['registerpasswordshouldbe'] = 'Password requirements';
 $string['registeremb'] = 'I am from an EMB';
@@ -664,13 +676,120 @@ $string['registerembrequired'] = 'Please confirm that you are from an EMB.';
 $string['registerpolicymaker'] = 'Policymaker';
 $string['registerjournalist'] = 'Journalist';
 $string['registerelectoralpractitioner'] = 'Electoral practitioner';
-$string['registerresearcher'] = 'Researcher';
-$string['registerworkingcategoryrequired'] = 'Please select one option (EMB, Policymaker, Journalist, Electoral practitioner, or Researcher).';
+$string['registerresearcher'] = 'Researcher / Academician';
+$string['registerworkingcategoryrequired'] = 'Please select one option (Policymaker, Journalist, or Researcher).';
 $string['registerorganization'] = 'Organization';
+$string['registerorganisation'] = 'Organisation';
 $string['registerjobprofile'] = 'Job profile';
+$string['registerdesignation'] = 'Designation';
 $string['registerjobpostingcountry'] = 'Job posting country';
+$string['registerembcountry'] = 'Country';
 $string['registeruniversity'] = 'University';
 $string['registerposition'] = 'Higher level of education';
 $string['registerspecialization'] = 'Specialization';
 $string['registercourse'] = 'Current position';
 $string['registerpresentcountry'] = 'Present country';
+
+// Live class / Webex create-update email notifications.
+$string['liveclassnotify_na'] = 'Not provided';
+$string['liveclassnotify_tbat'] = 'To be announced';
+$string['liveclassnotify_createdsubject'] = 'New live class: {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_updatedsubject'] = 'Live class updated: {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_createdbody'] = 'Dear {$a->firstname},
+
+A new live class has been scheduled in {$a->coursename} on {$a->sitename}.
+
+Session: {$a->sessionname}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['liveclassnotify_updatedbody'] = 'Dear {$a->firstname},
+
+Live class details have been updated in {$a->coursename} on {$a->sitename}.
+
+Session: {$a->sessionname}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['liveclassnotify_remindersubject'] = 'Reminder: live class in 1 hour — {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_reminderbody'] = 'Dear {$a->firstname},
+
+This is a reminder that your live class starts in about 1 hour.
+
+Session: {$a->sessionname}
+Course: {$a->coursename}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['tasksendliveclassreminders'] = 'Send live class reminder emails (1 hour before)';
+$string['assignnotify_opennow'] = 'Already open';
+$string['assignnotify_createdsubject'] = 'New assignment: {$a->assignmentname} (due {$a->duedate})';
+$string['assignnotify_updatedsubject'] = 'Assignment updated: {$a->assignmentname} (due {$a->duedate})';
+$string['assignnotify_remindersubject'] = 'Reminder: {$a->assignmentname} is due soon ({$a->duedate})';
+$string['assignnotify_createdbody'] = 'Dear {$a->firstname},
+
+A new assignment has been posted in {$a->coursename} on {$a->sitename}.
+
+Assignment: {$a->assignmentname}
+Available from: {$a->allowfrom}
+Due date: {$a->duedate}
+
+Please complete and submit the assignment before the due date.
+
+Open the assignment: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['assignnotify_updatedbody'] = 'Dear {$a->firstname},
+
+An assignment has been updated in {$a->coursename} on {$a->sitename}.
+
+Assignment: {$a->assignmentname}
+Available from: {$a->allowfrom}
+Due date: {$a->duedate}
+
+Please complete and submit the assignment before the due date.
+
+Open the assignment: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['assignnotify_reminderbody'] = 'Dear {$a->firstname},
+
+This is a reminder that your assignment is due within 24 hours.
+
+Assignment: {$a->assignmentname}
+Course: {$a->coursename}
+Due date: {$a->duedate}
+
+Please complete and submit it before the deadline.
+
+Open the assignment: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['tasksendassignreminders'] = 'Send assignment due-date reminder emails (24 hours before)';

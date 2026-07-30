@@ -42,6 +42,7 @@ $table->head = [
     get_string('course'),
     get_string('cost', 'core'),
     get_string('status'),
+    get_string('invoicecolumn', 'paygw_razorpay'),
     get_string('paymenttxnreflabel', 'paygw_razorpay'),
     get_string('orderreference', 'paygw_razorpay'),
     get_string('paymentreference', 'paygw_razorpay'),
@@ -68,6 +69,36 @@ foreach ($records as $row) {
         ? html_writer::span(get_string('paymentstatuscompleted', 'paygw_razorpay'), 'badge bg-success text-white')
         : html_writer::span(get_string('paymentstatuspending', 'paygw_razorpay'), 'badge bg-warning text-dark');
 
+    $invoicelabel = '-';
+    if ($row->status === 'completed') {
+        $fs = get_file_storage();
+        $usercontext = context_user::instance((int) $row->userid);
+        $files = $fs->get_area_files(
+            $usercontext->id,
+            'paygw_razorpay',
+            \paygw_razorpay\invoice::FILEAREA,
+            (int) $row->id,
+            'filename',
+            false
+        );
+        if ($files) {
+            $file = reset($files);
+            $url = moodle_url::make_pluginfile_url(
+                $usercontext->id,
+                'paygw_razorpay',
+                \paygw_razorpay\invoice::FILEAREA,
+                (int) $row->id,
+                '/',
+                $file->get_filename(),
+                true
+            );
+            $label = !empty($row->invoicenumber) ? s($row->invoicenumber) : get_string('downloadinvoice', 'paygw_razorpay');
+            $invoicelabel = html_writer::link($url, $label);
+        } else if (!empty($row->invoicenumber)) {
+            $invoicelabel = s($row->invoicenumber);
+        }
+    }
+
     $table->data[] = [
         userdate($row->timecreated, get_string('strftimedatetimeshort', 'langconfig')),
         $userlink,
@@ -75,6 +106,7 @@ foreach ($records as $row) {
         $courselabel,
         s($row->currency . ' ' . number_format((float) $row->amount, 2)),
         $statuslabel,
+        $invoicelabel,
         s($row->txnref),
         s($row->orderid ?? '-'),
         s($row->paymentid ?? '-'),

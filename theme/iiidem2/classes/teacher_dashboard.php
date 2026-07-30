@@ -58,6 +58,7 @@ class teacher_dashboard {
         }
 
         $livecontrolitems = self::get_live_control_items($courses, $livesessions, $userid);
+        $upcominglives = self::format_upcoming_live_list($livesessions);
         $gradingqueueitems = self::get_grading_queue_items($courses, $pendingtasks);
         $teachercourses = self::get_course_cards($courses, $userid);
         $quickactions = self::get_quick_actions($userid, $courses);
@@ -76,6 +77,8 @@ class teacher_dashboard {
             'statcards' => self::get_stat_cards($courses, $pendingtasks, $userid),
             'livecontrolitems' => $livecontrolitems,
             'haslivecontrolitems' => !empty($livecontrolitems),
+            'upcominglives' => $upcominglives,
+            'hasupcominglives' => !empty($upcominglives),
             'launchurl' => $launchurl,
             'haslaunchurl' => $launchurl !== '',
             'gradingqueueitems' => $gradingqueueitems,
@@ -521,42 +524,21 @@ class teacher_dashboard {
                     'sorttime' => $assign->duedate,
                 ];
             }
+        }
 
-            $livemods = ['bigbluebuttonbn', 'zoom', 'webexactivity'];
-            foreach ($livemods as $modname) {
-                $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_' . $modname);
-                if (!$plugin || !$plugin->is_enabled()) {
-                    continue;
-                }
-                $tables = [
-                    'bigbluebuttonbn' => 'openingtime',
-                    'zoom' => 'start_time',
-                    'webexactivity' => 'starttime',
-                ];
-                $startfield = $tables[$modname];
-
-                foreach ($modinfo->get_instances_of($modname) as $cm) {
-                    if (!$cm->uservisible) {
-                        continue;
-                    }
-                    $instance = $DB->get_record($modname, ['id' => $cm->instance], $startfield, IGNORE_MISSING);
-                    if (!$instance || empty($instance->$startfield)) {
-                        continue;
-                    }
-                    $start = (int) $instance->$startfield;
-                    if ($start < $now || $start > $horizon) {
-                        continue;
-                    }
-                    $events[] = [
-                        'typelabel' => get_string('dashboardteacherlive', 'theme_iiidem2'),
-                        'title' => format_string($cm->name, true, ['context' => \context_module::instance($cm->id)]),
-                        'coursefullname' => $coursename,
-                        'date' => userdate($start, get_string('strftimedatefullshort', 'core_langconfig')),
-                        'url' => (new \moodle_url('/mod/' . $modname . '/view.php', ['id' => $cm->id]))->out(false),
-                        'sorttime' => $start,
-                    ];
-                }
+        foreach (liveclass_sessions::get_upcoming($courses, $userid, 30 * DAYSECS, 20) as $session) {
+            $start = (int) $session['sorttime'];
+            if ($start < $now || $start > $horizon) {
+                continue;
             }
+            $events[] = [
+                'typelabel' => get_string('dashboardteacherlive', 'theme_iiidem2'),
+                'title' => $session['title'],
+                'coursefullname' => $session['coursename'] ?? ($session['coursefullname'] ?? ''),
+                'date' => $session['datetime'],
+                'url' => $session['joinurl'],
+                'sorttime' => $start,
+            ];
         }
 
         usort($events, static function(array $a, array $b): int {
@@ -784,59 +766,37 @@ class teacher_dashboard {
      * @return array
      */
     protected static function get_upcoming_live_sessions(array $courses, int $userid): array {
-        global $DB;
+        return liveclass_sessions::get_upcoming($courses, $userid, 30 * DAYSECS, 8);
+    }
 
+    /**
+     * Teacher dashboard list rows for upcoming live classes (with dates).
+     *
+     * @param array $livesessions
+     * @return array
+     */
+    protected static function format_upcoming_live_list(array $livesessions): array {
         $now = time();
-        $horizon = $now + (60 * 60 * 24 * 14);
-        $sessions = [];
-        $livemods = [
-            'bigbluebuttonbn' => ['table' => 'bigbluebuttonbn', 'start' => 'openingtime'],
-            'zoom' => ['table' => 'zoom', 'start' => 'start_time'],
-            'webexactivity' => ['table' => 'webexactivity', 'start' => 'starttime'],
-        ];
-
-        foreach ($courses as $course) {
-            try {
-                $modinfo = get_fast_modinfo($course, $userid);
-            } catch (\Exception $e) {
+        $items = [];
+        foreach ($livesessions as $session) {
+            $start = (int) ($session['sorttime'] ?? 0);
+            if ($start < $now - DAYSECS) {
                 continue;
             }
-
-            foreach ($livemods as $modname => $meta) {
-                $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_' . $modname);
-                if (!$plugin || !$plugin->is_enabled()) {
-                    continue;
-                }
-
-                foreach ($modinfo->get_instances_of($modname) as $cm) {
-                    if (!$cm->uservisible) {
-                        continue;
-                    }
-                    $instance = $DB->get_record($meta['table'], ['id' => $cm->instance], '*', IGNORE_MISSING);
-                    if (!$instance || empty($instance->{$meta['start']})) {
-                        continue;
-                    }
-                    $start = (int) $instance->{$meta['start']};
-                    if ($start < $now - DAYSECS || $start > $horizon) {
-                        continue;
-                    }
-
-                    $sessions[] = [
-                        'title' => format_string($cm->name, true, ['context' => \context_module::instance($cm->id)]),
-                        'joinurl' => (new \moodle_url('/mod/' . $modname . '/view.php', ['id' => $cm->id]))->out(false),
-                        'sorttime' => $start,
-                        'cmid' => $cm->id,
-                        'modname' => $modname,
-                    ];
-                }
-            }
+            $minutes = max(0, (int) round(($start - $now) / 60));
+            $relativemeta = $minutes > 0
+                ? get_string('dashboardteacherstartsinn', 'theme_iiidem2', $minutes)
+                : get_string('dashboardteacherlivestarting', 'theme_iiidem2');
+            $items[] = [
+                'title' => $session['title'],
+                'coursename' => $session['coursename'] ?? ($session['coursefullname'] ?? ''),
+                'datetime' => $session['datetime'] ?? trim(($session['date'] ?? '') . ' · ' . ($session['time'] ?? '')),
+                'meta' => $relativemeta,
+                'url' => $session['joinurl'] ?? '',
+                'hasurl' => !empty($session['joinurl']),
+            ];
         }
-
-        usort($sessions, static function(array $a, array $b): int {
-            return $a['sorttime'] <=> $b['sorttime'];
-        });
-
-        return array_slice($sessions, 0, 6);
+        return $items;
     }
 
     /**
@@ -854,11 +814,12 @@ class teacher_dashboard {
         if (!empty($livesessions[0])) {
             $session = $livesessions[0];
             $minutes = max(0, (int) round(($session['sorttime'] - $now) / 60));
+            $when = $session['datetime'] ?? userdate((int) $session['sorttime'], get_string('strftimedatetimeshort', 'langconfig'));
             $items[] = [
                 'title' => $session['title'],
-                'meta' => $minutes > 0
+                'meta' => $when . ' · ' . ($minutes > 0
                     ? get_string('dashboardteacherstartsinn', 'theme_iiidem2', $minutes)
-                    : get_string('dashboardteacherlivestarting', 'theme_iiidem2'),
+                    : get_string('dashboardteacherlivestarting', 'theme_iiidem2')),
                 'buttonlabel' => get_string('dashboardteacherbtnstart', 'theme_iiidem2'),
                 'buttonclass' => 'green',
                 'url' => $session['joinurl'],
@@ -958,7 +919,7 @@ class teacher_dashboard {
 
             foreach ($assignments as $assign) {
                 $name = format_string($assign->name);
-                $lower = core_text::strtolower($name);
+                $lower = \core_text::strtolower($name);
                 if (strpos($lower, 'capstone') !== false) {
                     $buttonlabel = get_string('dashboardteacherbtncomment', 'theme_iiidem2');
                     $buttonclass = 'grey';

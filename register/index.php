@@ -67,10 +67,98 @@ $form->display();
 
     var registerWrap = document.querySelector('.iiidem-register-form') || form.parentElement;
     var phoneIti = null;
+    var emailInput = document.getElementById('id_email');
     var phoneInput = document.getElementById('id_phone1');
     var countrySelect = document.getElementById('id_country');
+    var emailCheckUrl = emailInput ? emailInput.getAttribute('data-email-check-url') : '';
+    var emailExistsMsg = (emailInput && emailInput.getAttribute('data-email-exists-message'))
+        || 'This email address is already registered.';
+    var approvedEmail = '';
+    var emailCheckSequence = 0;
+    var bypassEmailCheck = false;
     var invalidPhoneMsg = (phoneInput && phoneInput.getAttribute('data-invalid-phone'))
         || 'Please enter a valid contact number with country code.';
+
+    // Conditional role fields are required only for the selected role. Moodle's
+    // client required rules validate hidden role fields too, so render the
+    // required indicators without attaching unconditional client rules.
+    [
+        'organization', 'jobprofile', 'jobpostingcountry',
+        'emb_organization', 'emb_designation', 'emb_country',
+        'university', 'position', 'specialization',
+        'instructor_university', 'instructor_course', 'presentcountry'
+    ].forEach(function(fieldName) {
+        var field = form.querySelector('[name="' + fieldName + '"]');
+        if (!field) {
+            return;
+        }
+        field.setAttribute('aria-required', 'true');
+
+        var item = field.closest('.fitem');
+        var labelColumn = item ? item.querySelector('.col-form-label') : null;
+        if (!labelColumn) {
+            return;
+        }
+
+        var addon = labelColumn.querySelector('.form-label-addon');
+        if (!addon) {
+            addon = document.createElement('div');
+            addon.className = 'form-label-addon d-flex align-items-center align-self-start';
+            labelColumn.appendChild(addon);
+        }
+        addon.innerHTML =
+            '<span class="iiidem-required-asterisk" title="Required" aria-hidden="true">*</span>';
+    });
+
+    // Keep the required marker attached to the label text. This prevents the
+    // marker from being pushed to the edge when a label wraps onto two lines.
+    form.querySelectorAll('.col-form-label').forEach(function(labelColumn) {
+        var label = labelColumn.querySelector('label');
+        var addon = labelColumn.querySelector('.form-label-addon');
+        var field = label && label.htmlFor ? document.getElementById(label.htmlFor) : null;
+        if (label && addon && field && field.getAttribute('aria-required') === 'true') {
+            label.classList.add('iiidem-required-label');
+        }
+    });
+
+    function addPasswordToggle(inputId) {
+        var input = document.getElementById(inputId);
+        if (!input || input.getAttribute('data-password-toggle-ready') === '1') {
+            return;
+        }
+
+        var wrap = document.createElement('div');
+        wrap.className = 'iiidem-register-password-wrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'iiidem-register-password-toggle';
+        button.setAttribute('aria-label', 'Show or hide password');
+        button.setAttribute('aria-pressed', 'false');
+        button.setAttribute('title', 'Show or hide password');
+        button.innerHTML =
+            '<span class="fa fa-eye-slash" aria-hidden="true" data-icon="hidden"></span>' +
+            '<span class="fa fa-eye d-none" aria-hidden="true" data-icon="visible"></span>';
+        wrap.appendChild(button);
+
+        button.addEventListener('click', function () {
+            var show = input.getAttribute('type') === 'password';
+            input.setAttribute('type', show ? 'text' : 'password');
+            button.setAttribute('aria-pressed', show ? 'true' : 'false');
+
+            var hiddenIcon = button.querySelector('[data-icon="hidden"]');
+            var visibleIcon = button.querySelector('[data-icon="visible"]');
+            hiddenIcon.classList.toggle('d-none', show);
+            visibleIcon.classList.toggle('d-none', !show);
+        });
+
+        input.setAttribute('data-password-toggle-ready', '1');
+    }
+
+    addPasswordToggle('id_password');
+    addPasswordToggle('id_password2');
 
     function syncOccupationSections() {
         var selected = form.querySelector('input[name="occupation"]:checked');
@@ -80,14 +168,16 @@ $form->display();
         }
         registerWrap.classList.remove(
             'iiidem-occupation-working',
+            'iiidem-occupation-workingemb',
             'iiidem-occupation-student',
             'iiidem-occupation-instructor'
         );
-        if (value === 'working' || value === 'student' || value === 'instructor') {
+        if (value === 'working' || value === 'workingemb' || value === 'student' || value === 'instructor') {
             registerWrap.classList.add('iiidem-occupation-' + value);
             // Expand the matching Moodle collapsible section.
             var map = {
                 working: 'id_workingheader',
+                workingemb: 'id_workingembheader',
                 student: 'id_studentheader',
                 instructor: 'id_instructorheader'
             };
@@ -114,20 +204,6 @@ $form->display();
 
     // Initial state: all profile sections hidden until an occupation is chosen.
     syncOccupationSections();
-
-    function markerOf(item) {
-        var addon = item.querySelector('.form-label-addon');
-        if (!addon) {
-            return null;
-        }
-        return addon.querySelector('.text-danger, .text-success, [title="Required"], [title="Completed"]')
-            || addon.firstElementChild;
-    }
-
-    function iconOf(item) {
-        var addon = item.querySelector('.form-label-addon');
-        return addon ? addon.querySelector('.icon, i') : null;
-    }
 
     function clearFeedback(field) {
         var item = field && field.closest ? field.closest('.fitem') : null;
@@ -162,6 +238,54 @@ $form->display();
         }
     }
 
+    function checkEmailAvailability() {
+        if (!emailInput || !emailCheckUrl) {
+            return Promise.resolve(true);
+        }
+
+        var email = String(emailInput.value || '').trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return Promise.resolve(true);
+        }
+
+        var sequence = ++emailCheckSequence;
+        var body = new URLSearchParams();
+        body.set('email', email);
+        body.set('sesskey', (window.M && M.cfg) ? M.cfg.sesskey : '');
+
+        return fetch(emailCheckUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: body.toString()
+        }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('Email availability check failed');
+            }
+            return response.json();
+        }).then(function(result) {
+            if (sequence !== emailCheckSequence
+                    || email !== String(emailInput.value || '').trim().toLowerCase()) {
+                return false;
+            }
+            if (result.exists) {
+                approvedEmail = '';
+                setFeedback(emailInput, emailExistsMsg);
+                paint(emailInput);
+                return false;
+            }
+            approvedEmail = email;
+            clearFeedback(emailInput);
+            paint(emailInput, true);
+            return true;
+        }).catch(function() {
+            // Do not block registration if AJAX is unavailable. PHP validation
+            // below remains the authoritative duplicate-email check.
+            approvedEmail = email;
+            return true;
+        });
+    }
+
     function isPhoneValid() {
         if (!phoneInput) {
             return false;
@@ -172,7 +296,9 @@ $form->display();
         }
         if (phoneIti && typeof phoneIti.isValidNumber === 'function') {
             try {
-                return !!phoneIti.isValidNumber();
+                if (phoneIti.isValidNumber()) {
+                    return true;
+                }
             } catch (e) {
                 // Fall through.
             }
@@ -181,7 +307,7 @@ $form->display();
         if (/^\+[1-9]\d{7,14}$/.test(raw.replace(/[\s\-()]/g, ''))) {
             return true;
         }
-        return /^[6-9]\d{9}$/.test(raw.replace(/\D/g, ''));
+        return /^(?:0)?[6-9]\d{9}$/.test(raw.replace(/\D/g, ''));
     }
 
     function hasValue(field) {
@@ -207,7 +333,7 @@ $form->display();
         return String(field.value || '').trim() !== '';
     }
 
-    function paint(field) {
+    function paint(field, allowFeedbackClear) {
         if (!field || !field.closest) {
             return;
         }
@@ -216,43 +342,36 @@ $form->display();
             return;
         }
         var ok = hasValue(field);
-        var marker = markerOf(item);
-        var icon = iconOf(item);
-
+        // Keep server-side errors (for example, "Email already exists") visible
+        // after a rejected submission. They may be cleared once the user edits
+        // the field, but never by the initial green-check rendering.
+        var existingFeedback = document.getElementById('id_error_' + field.name)
+            || item.querySelector('.form-control-feedback, .invalid-feedback');
+        var hasServerError = field.classList.contains('is-invalid')
+            || field.getAttribute('aria-invalid') === 'true'
+            || item.classList.contains('has-danger')
+            || (existingFeedback && String(existingFeedback.textContent || '').trim() !== '');
+        if (hasServerError && !allowFeedbackClear) {
+            ok = false;
+        }
         item.classList.toggle('iiidem-field-valid', ok);
         item.classList.toggle('iiidem-field-empty', !ok);
 
-        if (marker) {
-            marker.classList.remove(ok ? 'text-danger' : 'text-success');
-            marker.classList.add(ok ? 'text-success' : 'text-danger');
-            marker.setAttribute('title', ok ? 'Completed' : 'Required');
-            marker.style.setProperty('color', ok ? '#198754' : '#dc3545', 'important');
-        }
-        if (icon) {
-            icon.classList.remove(ok ? 'text-danger' : 'text-success');
-            icon.classList.add(ok ? 'text-success' : 'text-danger');
-            if (ok) {
-                icon.classList.remove('fa-circle-exclamation', 'fa-exclamation-circle');
-                icon.classList.add('fa-circle-check', 'fa-check-circle');
-            } else {
-                icon.classList.remove('fa-circle-check', 'fa-check-circle');
-                icon.classList.add('fa-circle-exclamation', 'fa-exclamation-circle');
-            }
-            icon.style.setProperty('color', ok ? '#198754' : '#dc3545', 'important');
-        }
-
         if (field.id === 'id_phone1') {
+            if (hasServerError && !allowFeedbackClear) {
+                return;
+            }
             var raw = String(field.value || '').trim();
             if (!raw) {
                 // Keep Moodle required messaging for empty.
                 return;
             }
-            if (ok) {
+            if (ok && allowFeedbackClear) {
                 clearFeedback(field);
             } else {
                 setFeedback(field, invalidPhoneMsg);
             }
-        } else if (ok) {
+        } else if (ok && allowFeedbackClear) {
             clearFeedback(field);
         }
     }
@@ -303,7 +422,20 @@ $form->display();
                 : '') + '/theme/iiidem2/javascript/intl-tel-input/utils.js'
         });
 
+        function syncPhoneInputPadding() {
+            var wrapper = phoneInput.closest('.iti');
+            var selector = wrapper ? wrapper.querySelector('.iti__flag-container') : null;
+            if (!selector) {
+                return;
+            }
+            // Country dial-code widths vary (+1, +971, etc.). Keep the typed
+            // number clear of the selector instead of relying on fixed padding.
+            var selectorWidth = Math.ceil(selector.getBoundingClientRect().width);
+            phoneInput.style.setProperty('padding-left', (selectorWidth + 14) + 'px', 'important');
+        }
+
         phoneInput.setAttribute('data-iti-ready', '1');
+        window.requestAnimationFrame(syncPhoneInputPadding);
 
         phoneInput.addEventListener('countrychange', function () {
             if (!countrySelect || !phoneIti) {
@@ -320,6 +452,7 @@ $form->display();
                     }
                 }
             }
+            window.requestAnimationFrame(syncPhoneInputPadding);
             paint(phoneInput);
         });
 
@@ -328,9 +461,12 @@ $form->display();
                 if (phoneIti && countrySelect.value) {
                     phoneIti.setCountry(String(countrySelect.value).toLowerCase());
                 }
+                window.requestAnimationFrame(syncPhoneInputPadding);
                 paint(phoneInput);
             });
         }
+
+        window.addEventListener('resize', syncPhoneInputPadding);
 
         return true;
     }
@@ -352,7 +488,11 @@ $form->display();
         if (e.target && e.target.tagName) {
             var tag = e.target.tagName.toLowerCase();
             if (tag === 'input' || tag === 'select' || tag === 'textarea') {
-                paint(e.target);
+                if (e.target === emailInput) {
+                    approvedEmail = '';
+                    emailCheckSequence++;
+                }
+                paint(e.target, true);
             }
         }
     }, true);
@@ -368,8 +508,51 @@ $form->display();
 
     form.addEventListener('keyup', function (e) {
         if (e.target && e.target.tagName) {
-            paint(e.target);
+            paint(e.target, true);
         }
+    }, true);
+
+    if (emailInput) {
+        emailInput.addEventListener('blur', function () {
+            checkEmailAvailability();
+        });
+    }
+
+    form.addEventListener('submit', function (e) {
+        if (!emailInput || bypassEmailCheck) {
+            return;
+        }
+
+        var email = String(emailInput.value || '').trim().toLowerCase();
+        if (email && approvedEmail === email) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var submitter = e.submitter || null;
+
+        checkEmailAvailability().then(function(available) {
+            if (!available) {
+                emailInput.focus();
+                return;
+            }
+
+            bypassEmailCheck = true;
+            try {
+                if (typeof form.requestSubmit === 'function') {
+                    if (submitter) {
+                        form.requestSubmit(submitter);
+                    } else {
+                        form.requestSubmit();
+                    }
+                } else {
+                    form.submit();
+                }
+            } finally {
+                bypassEmailCheck = false;
+            }
+        });
     }, true);
 
     form.addEventListener('submit', function (e) {
@@ -384,15 +567,22 @@ $form->display();
             e.preventDefault();
             e.stopPropagation();
             setFeedback(phoneInput, invalidPhoneMsg);
-            paint(phoneInput);
+            paint(phoneInput, true);
             phoneInput.focus();
             return false;
         }
         if (phoneIti && typeof phoneIti.getNumber === 'function') {
+            var countryData = phoneIti.getSelectedCountryData();
+            var nationalDigits = String(phoneInput.value || '').replace(/\D/g, '');
+            // Users commonly type India's trunk prefix 0 even though +91 is
+            // already displayed separately. Remove it before creating E.164.
+            if (countryData && countryData.iso2 === 'in' && /^0[6-9]\d{9}$/.test(nationalDigits)) {
+                phoneIti.setNumber('+91' + nationalDigits.substring(1));
+            }
             phoneInput.value = phoneIti.getNumber(); // E.164 e.g. +9198xxxxxxxx
         }
         clearFeedback(phoneInput);
-        paint(phoneInput);
+        paint(phoneInput, true);
         return true;
     }, true);
 

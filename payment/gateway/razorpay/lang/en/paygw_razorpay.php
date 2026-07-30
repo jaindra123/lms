@@ -30,7 +30,7 @@ $string['apiservererror'] = 'Razorpay payment gateway is currently experiencing 
 
 $string['apierror'] = '{$a}';
 $string['apierrorprefix'] = 'Razorpay could not start this payment: {$a}';
-$string['paymentnotallowed'] = 'Course fee payment is only available for registered university students.';
+$string['paymentnotallowed'] = 'Course fee payment is only available for registered students and NON-EMB professionals.';
 $string['privacy:metadata'] = 'The Razorpay payment gateway stores transaction references linked to Moodle payments.';
 $string['mocktitle'] = 'Razorpay payment (test simulator)';
 $string['mocknotice'] = 'This is a local test page. Configure your Razorpay test or live API keys in Site administration → Payments for real checkout.';
@@ -42,10 +42,11 @@ $string['paymentresultfailheading'] = 'Payment not completed';
 $string['paymentsuccessemailusersubject'] = '{$a->sitename}: Payment successful — {$a->coursename}';
 $string['paymentsuccessemailuserbody'] = 'Hi {$a->firstname},
 
-Your payment was successful.
+Your payment was successful. Please find your invoice attached to this email.
 
 Course: {$a->coursename}
 Amount: {$a->amount}
+Invoice: {$a->invoicenumber}
 Reference: {$a->txnref}
 Razorpay order: {$a->orderid}
 Razorpay payment: {$a->paymentid}
@@ -60,6 +61,7 @@ $string['paymentsuccessemailadminbody'] = 'A course fee payment was completed.
 Student: {$a->fullname} ({$a->email})
 Course: {$a->coursename}
 Amount: {$a->amount}
+Invoice: {$a->invoicenumber}
 Reference: {$a->txnref}
 Razorpay order: {$a->orderid}
 Razorpay payment: {$a->paymentid}
@@ -94,6 +96,32 @@ Reason: {$a->reason}
 Course URL: {$a->courseurl}
 
 {$a->admin}';
+$string['invoicetitle'] = 'TAX INVOICE / PAYMENT RECEIPT';
+$string['invoicebillto'] = 'Bill to';
+$string['invoicedetails'] = 'Invoice details';
+$string['invoicenumberlabel'] = 'Invoice number';
+$string['invoicedatelabel'] = 'Date';
+$string['invoicedescription'] = 'Description';
+$string['invoiceamount'] = 'Amount';
+$string['invoicetotal'] = 'Total paid';
+$string['invoicelineitem'] = 'Course fee — {$a}';
+$string['invoicepaidnote'] = 'This invoice confirms that the course fee payment was received successfully via Razorpay.';
+$string['invoicefooterdefault'] = 'This is a computer-generated invoice. No physical signature is required.';
+$string['invoicegstinlabel'] = 'GSTIN: {$a}';
+$string['invoicesupportlabel'] = 'Support: {$a}';
+$string['invoiceorgname'] = 'Invoice organisation name';
+$string['invoiceorgname_desc'] = 'Shown at the top of PDF invoices. Leave blank to use the site name.';
+$string['invoiceaddress'] = 'Invoice organisation address';
+$string['invoiceaddress_desc'] = 'Optional postal / registered address printed on invoices.';
+$string['invoicegstin'] = 'GSTIN (optional)';
+$string['invoicegstin_desc'] = 'If set, printed on the PDF invoice.';
+$string['invoicesupport'] = 'Invoice support contact';
+$string['invoicesupport_desc'] = 'Email or phone shown on invoices. Leave blank to use the site support email.';
+$string['invoicefooter'] = 'Invoice footer text';
+$string['invoicefooter_desc'] = 'Optional note at the bottom of the PDF. Leave blank for the default message.';
+$string['invoiceattachname'] = 'Invoice {$a}.pdf';
+$string['invoicecolumn'] = 'Invoice';
+$string['downloadinvoice'] = 'Download invoice';
 $string['transactionhistory'] = 'Razorpay transaction history';
 $string['transactionhistorydesc'] = 'Course fee payments processed through the Razorpay payment gateway (test and live).';
 $string['paymentstatuscompleted'] = 'Completed';

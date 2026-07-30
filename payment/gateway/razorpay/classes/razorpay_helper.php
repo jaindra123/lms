@@ -390,9 +390,26 @@ class razorpay_helper {
             'txnref' => (string) ($txn->txnref ?? ''),
             'orderid' => (string) ($txn->orderid ?? ''),
             'paymentid' => (string) ($txn->paymentid ?? ''),
+            'invoicenumber' => (string) ($txn->invoicenumber ?? ''),
             'reason' => $reason !== '' ? $reason : get_string('paymentfailed', 'paygw_razorpay'),
             'admin' => '',
         ];
+
+        $attachment = '';
+        $attachname = '';
+        if ($success) {
+            try {
+                $invoice = invoice::create_for_transaction($txn);
+                if ($invoice) {
+                    $attachment = $invoice['path'];
+                    $attachname = $invoice['filename'];
+                    $a->invoicenumber = $invoice['invoicenumber'];
+                    $txn->invoicenumber = $invoice['invoicenumber'];
+                }
+            } catch (\Throwable $e) {
+                error_log('paygw_razorpay invoice create failed: ' . $e->getMessage());
+            }
+        }
 
         if ($success) {
             $usersubject = get_string('paymentsuccessemailusersubject', 'paygw_razorpay', $a);
@@ -413,7 +430,7 @@ class razorpay_helper {
         $CFG->debugdisplay = false;
 
         try {
-            email_to_user($user, $sender, $usersubject, $userbody);
+            email_to_user($user, $sender, $usersubject, $userbody, '', $attachment, $attachname);
             foreach (get_admins() as $admin) {
                 if (empty($admin->email) || !validate_email($admin->email)) {
                     continue;
@@ -421,13 +438,17 @@ class razorpay_helper {
                 if ((int) $admin->id === (int) $user->id) {
                     continue;
                 }
-                email_to_user($admin, $sender, $adminsubject, $adminbody);
+                // Admins get the same PDF so finance has a copy.
+                email_to_user($admin, $sender, $adminsubject, $adminbody, '', $attachment, $attachname);
             }
         } catch (\Throwable $e) {
             error_log('paygw_razorpay notify_payment_result: ' . $e->getMessage());
         } finally {
             $CFG->debug = $olddebug;
             $CFG->debugdisplay = $olddebugdisplay;
+            if ($attachment !== '' && is_file($attachment)) {
+                @unlink($attachment);
+            }
         }
     }
 }

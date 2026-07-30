@@ -68,7 +68,10 @@ class hook_listener {
     }
 
     /**
-     * Send users to their role dashboard after login (unless they requested another page).
+     * Send generic logins to the certificate course.
+     *
+     * A specific requested page is preserved, for example when login was
+     * triggered while opening a protected activity.
      *
      * @param \core_user\hook\after_login_completed $hook
      */
@@ -90,7 +93,7 @@ class hook_listener {
             return;
         }
 
-        $SESSION->wantsurl = \theme_iiidem2_get_dashboard_url()->out(false);
+        $SESSION->wantsurl = (new \moodle_url('/course/view.php', ['id' => 4]))->out(false);
     }
 
     /**
@@ -152,6 +155,20 @@ class hook_listener {
         }
 
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        $pagepath = $PAGE->url->get_path(false);
+        if (in_array($pagepath, ['/user/editadvanced.php', '/user/edit.php'], true)) {
+            $scriptpath = $CFG->dirroot . '/theme/iiidem2/javascript/admin_registration_profile.js';
+            $profilescript = is_readable($scriptpath) ? file_get_contents($scriptpath) : '';
+            $hook->add_html(
+                '<style>' .
+                '.fitem:has([name="profile_field_iiidem_emb"]),' .
+                '.fitem:has([name="profile_field_iiidem_electoral_practitioner"])' .
+                '{display:none!important}' .
+                '</style>' .
+                ($profilescript !== '' ? '<script>' . $profilescript . '</script>' : '')
+            );
+        }
 
         if (\theme_iiidem2_is_admin_index_page($PAGE)) {
             $hook->add_html(\theme_iiidem2_admin_index_head_script());

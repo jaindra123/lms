@@ -40,7 +40,10 @@ class register_form extends \moodleform {
         $mform->setType('lastname', PARAM_TEXT);
         $mform->addRule('lastname', get_string('required'), 'required', null, 'client');
 
-        $mform->addElement('text', 'email', get_string('email'));
+        $mform->addElement('text', 'email', get_string('email'), [
+            'data-email-check-url' => (new \moodle_url('/register/check_email.php'))->out(false),
+            'data-email-exists-message' => get_string('emailexists'),
+        ]);
         $mform->setType('email', \core_user::get_property_type('email'));
         $mform->addRule('email', get_string('required'), 'required', null, 'client');
         $mform->setForceLtr('email');
@@ -75,6 +78,7 @@ class register_form extends \moodleform {
 
         // Radios: only one occupation can be selected (no JS required).
         $mform->addElement('radio', 'occupation', '', get_string('registeroccupationworking', 'theme_iiidem2'), 'working');
+        $mform->addElement('radio', 'occupation', '', get_string('registeroccupationworkingemb', 'theme_iiidem2'), 'workingemb');
         $mform->addElement('radio', 'occupation', '', get_string('registeroccupationstudent', 'theme_iiidem2'), 'student');
         $mform->addElement('radio', 'occupation', '', get_string('registeroccupationinstructor', 'theme_iiidem2'), 'instructor');
         $mform->setType('occupation', PARAM_ALPHA);
@@ -83,10 +87,8 @@ class register_form extends \moodleform {
         $mform->addElement('header', 'workingheader', get_string('registerworkingprofile', 'theme_iiidem2'));
 
         // Radios: only one working category can be selected.
-        $mform->addElement('radio', 'workingcategory', '', get_string('registeremb', 'theme_iiidem2'), 'emb');
         $mform->addElement('radio', 'workingcategory', '', get_string('registerpolicymaker', 'theme_iiidem2'), 'policymaker');
         $mform->addElement('radio', 'workingcategory', '', get_string('registerjournalist', 'theme_iiidem2'), 'journalist');
-        $mform->addElement('radio', 'workingcategory', '', get_string('registerelectoralpractitioner', 'theme_iiidem2'), 'electoralpractitioner');
         $mform->addElement('radio', 'workingcategory', '', get_string('registerresearcher', 'theme_iiidem2'), 'researcher');
         $mform->setType('workingcategory', PARAM_ALPHA);
 
@@ -98,6 +100,17 @@ class register_form extends \moodleform {
 
         $mform->addElement('text', 'jobpostingcountry', get_string('registerjobpostingcountry', 'theme_iiidem2'));
         $mform->setType('jobpostingcountry', PARAM_TEXT);
+
+        $mform->addElement('header', 'workingembheader', get_string('registerworkingembprofile', 'theme_iiidem2'));
+
+        $mform->addElement('text', 'emb_organization', get_string('registerorganisation', 'theme_iiidem2'));
+        $mform->setType('emb_organization', PARAM_TEXT);
+
+        $mform->addElement('text', 'emb_designation', get_string('registerdesignation', 'theme_iiidem2'));
+        $mform->setType('emb_designation', PARAM_TEXT);
+
+        $mform->addElement('text', 'emb_country', get_string('registerembcountry', 'theme_iiidem2'));
+        $mform->setType('emb_country', PARAM_TEXT);
 
         $mform->addElement('header', 'studentheader', get_string('registerstudentprofile', 'theme_iiidem2'));
 
@@ -132,6 +145,16 @@ class register_form extends \moodleform {
             $mform->hideIf($field, 'occupation', 'neq', 'working');
         }
 
+        $workingembfields = [
+            'workingembheader',
+            'emb_organization',
+            'emb_designation',
+            'emb_country',
+        ];
+        foreach ($workingembfields as $field) {
+            $mform->hideIf($field, 'occupation', 'neq', 'workingemb');
+        }
+
         $studentfields = ['studentheader', 'university', 'position', 'specialization'];
         foreach ($studentfields as $field) {
             $mform->hideIf($field, 'occupation', 'neq', 'student');
@@ -143,7 +166,7 @@ class register_form extends \moodleform {
         }
 
         // Collapsed until the matching occupation option is selected.
-        foreach (['workingheader', 'studentheader', 'instructorheader'] as $header) {
+        foreach (['workingheader', 'workingembheader', 'studentheader', 'instructorheader'] as $header) {
             $mform->setExpanded($header, false);
         }
 
@@ -183,8 +206,10 @@ class register_form extends \moodleform {
     public function definition_after_data() {
         foreach ([
             'firstname', 'middlename', 'lastname', 'email', 'phone1', 'city',
-            'organization', 'jobprofile', 'jobpostingcountry', 'university', 'position',
-            'specialization', 'instructor_university', 'instructor_course', 'presentcountry',
+            'organization', 'jobprofile', 'jobpostingcountry',
+            'emb_organization', 'emb_designation', 'emb_country',
+            'university', 'position', 'specialization',
+            'instructor_university', 'instructor_course', 'presentcountry',
         ] as $field) {
             $this->_form->applyFilter($field, 'trim');
         }
@@ -211,6 +236,9 @@ class register_form extends \moodleform {
                 'AU' => '61', 'CA' => '1', 'DE' => '49', 'FR' => '33', 'NP' => '977',
                 'BD' => '880', 'LK' => '94', 'PK' => '92', 'ZA' => '27',
             ];
+            if ($countryiso2 === 'IN' && preg_match('/^0[6-9]\d{9}$/', $phone)) {
+                $phone = substr($phone, 1);
+            }
             if (isset($dialcodes[$countryiso2]) && preg_match('/^\d{6,14}$/', $phone)) {
                 $phone = '+' . $dialcodes[$countryiso2] . $phone;
             }
@@ -259,6 +287,12 @@ class register_form extends \moodleform {
                 $errors['workingcategory'] = get_string('registerworkingcategoryrequired', 'theme_iiidem2');
             }
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
+                if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
+                    $errors[$field] = get_string('required');
+                }
+            }
+        } else if ($occupation === 'workingemb') {
+            foreach (['emb_organization', 'emb_designation', 'emb_country'] as $field) {
                 if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
                     $errors[$field] = get_string('required');
                 }

@@ -4161,25 +4161,110 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   min-height: 44px;
 }
 
-/* Required icon: red when empty, green when filled. */
-.iiidem-register-form .fitem .form-label-addon .text-success,
-.iiidem-register-form .fitem .form-label-addon .icon.text-success,
-.iiidem-register-form .fitem .form-label-addon i.text-success {
-  color: #198754 !important;
+.iiidem-register-password-wrap {
+  position: relative;
+  width: 100%;
 }
 
-.iiidem-register-form .fitem .form-label-addon .text-danger,
-.iiidem-register-form .fitem .form-label-addon .icon.text-danger,
-.iiidem-register-form .fitem .form-label-addon i.text-danger {
+.iiidem-register-password-wrap input.form-control {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+
+.iiidem-register-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #8a94a6;
+  cursor: pointer;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.iiidem-register-password-toggle:hover,
+.iiidem-register-password-toggle:focus {
+  color: #0b3d91;
+  outline: none;
+}
+
+.iiidem-register-password-toggle .fa {
+  font-size: 1.05rem;
+}
+
+/* Use the conventional red asterisk beside required labels instead of
+   warning/check icons. The marker remains visible after the field is filled. */
+.iiidem-register-form .fitem .col-form-label {
+  justify-content: flex-start !important;
+  gap: 0.25rem;
+}
+
+.iiidem-register-form .fitem .form-label-addon {
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+  padding: 0 !important;
+}
+
+.iiidem-register-form .fitem label.iiidem-required-label::after {
+  content: " *";
+  color: #dc3545;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.iiidem-register-form .fitem label.iiidem-required-label ~ .form-label-addon {
+  display: none !important;
+}
+
+.iiidem-register-form .fitem .form-label-addon .icon,
+.iiidem-register-form .fitem .form-label-addon i {
+  display: none !important;
+}
+
+.iiidem-register-form .fitem .form-label-addon > div {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.iiidem-register-form .fitem .form-label-addon > div::after,
+.iiidem-register-form .iiidem-required-asterisk {
+  content: "*";
   color: #dc3545 !important;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-/* Prefer the valid-state class so green always wins after input. */
-.iiidem-register-form .fitem.iiidem-field-valid .form-label-addon .text-danger,
-.iiidem-register-form .fitem.iiidem-field-valid .form-label-addon .text-success,
-.iiidem-register-form .fitem.iiidem-field-valid .form-label-addon .icon,
-.iiidem-register-form .fitem.iiidem-field-valid .form-label-addon i {
-  color: #198754 !important;
+/* Moodle renders radio-button required markers outside form-label-addon. */
+.iiidem-register-form .fitem .form-check > .ms-2 {
+  margin-left: 0.25rem !important;
+}
+
+.iiidem-register-form .fitem .form-check > .ms-2 .icon,
+.iiidem-register-form .fitem .form-check > .ms-2 i {
+  display: none !important;
+}
+
+.iiidem-register-form .fitem .form-check > .ms-2 > div {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.iiidem-register-form .fitem .form-check > .ms-2 > div::after {
+  content: "*";
+  color: #dc3545 !important;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .iiidem-register-form .fitem.iiidem-field-valid input.form-control,
@@ -4205,12 +4290,15 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 
 .iiidem-register-form .iti--separate-dial-code input.iiidem-phone-input,
 .iiidem-register-form .iti--separate-dial-code input[name="phone1"] {
-  padding-left: 96px !important;
+  /* JS updates this from the country selector's measured width. */
+  padding-left: 6rem;
+  padding-right: 2.5rem;
 }
 
 .iiidem-register-form .iti--separate-dial-code .iti__selected-flag {
   background-color: #f8fafc;
   border-right: 1px solid #ced4da;
+  border-radius: 7px 0 0 7px;
 }
 
 .iiidem-register-form .iti__country-list {
@@ -4255,10 +4343,12 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 }
 
 .iiidem-register-form #fgroup_id_workingheader,
+.iiidem-register-form #fgroup_id_workingembheader,
 .iiidem-register-form #fgroup_id_studentheader,
 .iiidem-register-form #fgroup_id_instructorheader,
 .iiidem-register-form #fgroup_id_passwordheader,
 .iiidem-register-form #id_workingheader,
+.iiidem-register-form #id_workingembheader,
 .iiidem-register-form #id_studentheader,
 .iiidem-register-form #id_instructorheader {
   margin-top: 1rem;
@@ -4270,22 +4360,26 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 
 /* Hide occupation detail blocks until a matching option is selected. */
 .iiidem-register-form #id_workingheader,
+.iiidem-register-form #id_workingembheader,
 .iiidem-register-form #id_studentheader,
 .iiidem-register-form #id_instructorheader {
   display: none;
 }
 
 .iiidem-register-form.iiidem-occupation-working #id_workingheader,
+.iiidem-register-form.iiidem-occupation-workingemb #id_workingembheader,
 .iiidem-register-form.iiidem-occupation-student #id_studentheader,
 .iiidem-register-form.iiidem-occupation-instructor #id_instructorheader {
   display: block;
 }
 
 .iiidem-register-form #fgroup_id_workingheader .col-form-label,
+.iiidem-register-form #fgroup_id_workingembheader .col-form-label,
 .iiidem-register-form #fgroup_id_studentheader .col-form-label,
 .iiidem-register-form #fgroup_id_instructorheader .col-form-label,
 .iiidem-register-form #fgroup_id_passwordheader .col-form-label,
 .iiidem-register-form #id_workingheader .ftoggler,
+.iiidem-register-form #id_workingembheader .ftoggler,
 .iiidem-register-form #id_studentheader .ftoggler,
 .iiidem-register-form #id_instructorheader .ftoggler {
   font-size: 1rem;
@@ -4676,6 +4770,29 @@ body#page-course-index-category .coursebox .content .summary h2,
 body#page-course-index-category .coursebox .content .summary h3 {
   font-size: 1rem;
   margin: 0 0 0.5rem;
+}
+
+/* Internal/retired registration flags are not editable as standalone fields. */
+#fitem_id_profile_field_iiidem_emb,
+#fitem_id_profile_field_iiidem_electoral_practitioner {
+  display: none !important;
+}
+
+.iiidem-admin-working-category {
+  margin-left: 25%;
+  padding-left: 1rem;
+}
+
+.iiidem-admin-working-category legend {
+  width: auto;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 767px) {
+  .iiidem-admin-working-category {
+    margin-left: 0;
+    padding-left: 0;
+  }
 }
 
 @media (max-width: 767px) {

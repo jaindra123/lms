@@ -114,6 +114,12 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
     $page->add($setting);
 
+    $name = 'theme_iiidem2/registrationcourseids';
+    $title = get_string('registrationcourseids', 'theme_iiidem2');
+    $description = get_string('registrationcourseids_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtext($name, $title, $description, '4', PARAM_TEXT);
+    $page->add($setting);
+
     // Must add the page after definiting all the settings!
     $settings->add($page);
 

@@ -4,6 +4,18 @@
     Role-based dashboard shell (student / teacher / admin).
 }}
 <div class="iiidem-dashboard{{#isstudent}} iiidem-dashboard--student{{/isstudent}}{{#isteacher}} iiidem-dashboard--teacher{{/isteacher}}">
+    {{#dashboardloaderror}}
+    <div class="container py-5">
+        <div class="alert alert-warning" role="alert">
+            <h1 class="h4 mb-2">{{#str}}dashboardloaderrortitle, theme_iiidem2{{/str}}</h1>
+            <p class="mb-0">{{#str}}dashboardloaderrormessage, theme_iiidem2{{/str}}</p>
+        </div>
+        <a class="btn btn-primary" href="{{{dashboardretryurl}}}">
+            {{#str}}dashboardretry, theme_iiidem2{{/str}}
+        </a>
+    </div>
+    {{/dashboardloaderror}}
+
     {{#isstudent}}
         {{> theme_iiidem2/dashboard/student }}
     {{/isstudent}}

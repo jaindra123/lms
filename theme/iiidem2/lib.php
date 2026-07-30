@@ -2579,6 +2579,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
         $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'organization');
         $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobprofile');
         $user->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobpostingcountry');
+    } else if ($occupation === 'workingemb') {
+        $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_organization');
+        $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_designation');
+        $user->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_country');
     } else if ($occupation === 'student') {
         $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'university');
         $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'position');
@@ -2597,6 +2601,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
             $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'organization');
             $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobprofile');
             $profileupdate->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobpostingcountry');
+        } else if ($occupation === 'workingemb') {
+            $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_organization');
+            $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_designation');
+            $profileupdate->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_country');
         } else if ($occupation === 'student') {
             $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'university');
             $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'position');
@@ -2614,15 +2622,16 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     }
 
     \theme_iiidem2\registration_profile::save_user_data($userid, $data);
+    \theme_iiidem2\registration_enrolment::enrol_user($userid);
 
     return $userid;
 }
 
 /**
- * Email the new user (with password-reset link) and site administrators after registration.
+ * Email the new user (with password and reset link) and site administrators after registration.
  *
  * @param stdClass $user Newly created user record.
- * @param stdClass|null $formdata Original registration submission (optional).
+ * @param stdClass|null $formdata Original registration submission (optional; used for plain password).
  * @return void
  */
 function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formdata = null): void {
@@ -2640,8 +2649,11 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
     $loginurl = (new moodle_url('/login/index.php'))->out(false);
 
     $occupation = '';
+    // Plain password exists only on the registration submission (DB stores a hash).
+    $password = '';
     if ($formdata) {
         $occupation = \theme_iiidem2\registration_profile::get_occupation_type($formdata);
+        $password = (string) ($formdata->password ?? '');
     }
 
     $userdata = (object) [
@@ -2649,6 +2661,7 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
         'fullname' => fullname($user),
         'username' => $user->username,
         'email' => $user->email,
+        'password' => $password !== '' ? $password : get_string('none'),
         'phone' => $user->phone1 ?? '',
         'country' => $user->country ?? '',
         'city' => $user->city ?? '',
@@ -3340,7 +3353,7 @@ function theme_iiidem2_get_course_fee_enrol_instance(int $courseid): ?stdClass {
 }
 
 /**
- * Logged-in university student who must pay the course fee before accessing curriculum previews.
+ * Logged-in student or non-EMB professional who must pay before accessing curriculum previews.
  *
  * @param stdClass $course
  * @param int|null $userid
@@ -3374,8 +3387,8 @@ function theme_iiidem2_user_needs_course_fee_for_preview(stdClass $course, ?int 
 /**
  * Whether the current user may expand curriculum activity previews.
  *
- * University students on a paid course must complete fee enrolment. Staff who manage the course
- * and other actively enrolled users may preview without the fee check.
+ * Students and non-EMB professionals on a paid course must complete fee enrolment.
+ * Staff who manage the course and other actively enrolled users may preview without the fee check.
  *
  * @param stdClass $course
  * @param int|null $userid
@@ -3800,8 +3813,16 @@ function theme_iiidem2_mark_curriculum_activity_viewed(int $cmid, ?int $userid =
         }
     }
 
-    // page_view/url_view may record "viewed" without marking complete — always finish completion.
+    // The module view callback normally marks view-based completion itself.
+    // Do not update it a second time, which creates duplicate completion log
+    // entries for one user action.
     $data = $completion->get_data($cm, false, $userid);
+    if (in_array((int) $data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
+        return ['success' => true];
+    }
+
+    // Fallback for unusual completion configurations where the module view
+    // event was recorded but completion was not advanced.
     if (empty($data->viewed)) {
         $data->viewed = COMPLETION_VIEWED;
         $completion->internal_set_data($cm, $data);
@@ -4361,7 +4382,7 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
         );
     }
 
-    // Fee payment is for registered university students only (not EMB / working / instructor).
+    // Students and non-EMB working professionals pay; EMB users and instructors are exempt.
     if (!\theme_iiidem2\registration_profile::user_requires_course_fee_payment((int) $USER->id)) {
         return $defaults;
     }
@@ -4586,8 +4607,8 @@ function theme_iiidem2_page_init($page) {
     }
 
     if (isloggedin() && !isguestuser() && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {
-        $path = $page->url->get_path(false);
-        if ($path === '/my' || $path === '/my/index.php') {
+        $pagepath = $page->url->get_path(false);
+        if ($pagepath === '/my' || $pagepath === '/my/index.php') {
             redirect(theme_iiidem2_get_dashboard_url());
         }
     }

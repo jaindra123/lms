@@ -957,3 +957,77 @@ body.iiidem-student-dashboard-page #page-navbar {
     }
 }
 
+/* Student-only colour identity.
+ * Keep the institute navbar blue while distinguishing the learner workspace
+ * from the admin and teacher dashboards. */
+body.iiidem-student-dashboard-page .iiidem-student-dashboard-v2 {
+    background: #f2f8f7;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar {
+    background: linear-gradient(180deg, #0d4f56 0%, #126b68 100%);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__brand .fa {
+    color: #ffd166;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__item a:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__item.is-active a {
+    background: rgba(255, 255, 255, 0.16);
+    border-left-color: #ffd166;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-topbar__title,
+body.iiidem-student-dashboard-page .iiidem-student-section__title,
+body.iiidem-student-dashboard-page .iiidem-student-panel__title,
+body.iiidem-student-dashboard-page .iiidem-student-course-card__title {
+    color: #123f46;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn.is-active {
+    background: #126b68;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn:hover,
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn:focus {
+    background: #e1f2ef;
+    color: #0d4f56;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-btn-continue,
+body.iiidem-student-dashboard-page .iiidem-student-btn-join {
+    background: #126b68;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-btn-continue:hover,
+body.iiidem-student-dashboard-page .iiidem-student-btn-join:hover {
+    background: #0d4f56;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-course-card__progress-bar,
+body.iiidem-student-dashboard-page .iiidem-weekend-progress__bar-fill {
+    background: linear-gradient(90deg, #19a392, #ffd166);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-section__link,
+body.iiidem-student-dashboard-page .iiidem-student-list__link,
+body.iiidem-student-dashboard-page .iiidem-dashboard-lmslinks__item {
+    color: #126b68;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-lmslinks__item:hover {
+    border-color: #126b68;
+    color: #0d4f56;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-stat {
+    box-shadow: 0 4px 16px rgba(13, 79, 86, 0.08);
+}
+

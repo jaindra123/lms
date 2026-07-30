@@ -158,7 +158,6 @@ class registration_profile {
             'emb' => 'iiidem_emb',
             'policymaker' => 'iiidem_policymaker',
             'journalist' => 'iiidem_journalist',
-            'electoralpractitioner' => 'iiidem_electoral_practitioner',
             'researcher' => 'iiidem_researcher',
         ];
     }
@@ -167,7 +166,7 @@ class registration_profile {
      * Selected working category from radio (or legacy checkboxes).
      *
      * @param \stdClass $data
-     * @return string emb|policymaker|journalist|electoralpractitioner|researcher|''
+     * @return string emb|policymaker|journalist|researcher|''
      */
     public static function get_working_category(\stdClass $data): string {
         $allowed = array_keys(self::working_category_fields());
@@ -217,13 +216,19 @@ class registration_profile {
     }
 
     /**
-     * Whether the user must pay the course fee (students only; EMB/working/instructor exempt).
+     * Whether the user must pay the course fee.
+     *
+     * Students and non-EMB working professionals pay. EMB working
+     * professionals and instructors remain exempt.
      *
      * @param int $userid
      * @return bool
      */
     public static function user_requires_course_fee_payment(int $userid): bool {
-        return self::user_is_university_student($userid) && !self::user_is_emb($userid);
+        $occupation = self::get_profile_value($userid, 'iiidem_occupation');
+        $ispayingoccupation = $occupation === 'student' || $occupation === 'working';
+
+        return $ispayingoccupation && !self::user_is_emb($userid);
     }
 
     /**
@@ -395,10 +400,10 @@ class registration_profile {
      * Resolve selected occupation from form data.
      *
      * @param \stdClass $data
-     * @return string working|student|instructor|''
+     * @return string working|workingemb|student|instructor|''
      */
     public static function get_occupation_type(\stdClass $data): string {
-        $allowed = ['working', 'student', 'instructor'];
+        $allowed = ['working', 'workingemb', 'student', 'instructor'];
 
         $value = '';
         if (isset($_POST['occupation'])) {
@@ -440,17 +445,31 @@ class registration_profile {
         self::ensure_fields();
 
         $occupation = self::get_occupation_type($data);
+        // Reuse the existing "working" menu value and identify EMB users through
+        // the dedicated profile flag, avoiding a profile-field schema migration.
+        $storedoccupation = $occupation === 'workingemb' ? 'working' : $occupation;
+        $isemb = $occupation === 'workingemb' || self::is_checked($data, 'emb');
+
+        $organization = self::get_submitted_value($data, 'organization');
+        $jobprofile = self::get_submitted_value($data, 'jobprofile');
+        $jobcountry = self::get_submitted_value($data, 'jobpostingcountry');
+        if ($occupation === 'workingemb') {
+            $organization = self::get_submitted_value($data, 'emb_organization');
+            $jobprofile = self::get_submitted_value($data, 'emb_designation');
+            $jobcountry = self::get_submitted_value($data, 'emb_country');
+        }
+
         $profile = (object) [
             'id' => $userid,
-            'profile_field_iiidem_occupation' => $occupation,
-            'profile_field_iiidem_emb' => self::is_checked($data, 'emb') ? '1' : '0',
+            'profile_field_iiidem_occupation' => $storedoccupation,
+            'profile_field_iiidem_emb' => $isemb ? '1' : '0',
             'profile_field_iiidem_policymaker' => self::is_checked($data, 'policymaker') ? '1' : '0',
             'profile_field_iiidem_journalist' => self::is_checked($data, 'journalist') ? '1' : '0',
             'profile_field_iiidem_electoral_practitioner' => self::is_checked($data, 'electoralpractitioner') ? '1' : '0',
             'profile_field_iiidem_researcher' => self::is_checked($data, 'researcher') ? '1' : '0',
-            'profile_field_iiidem_organization' => self::get_submitted_value($data, 'organization'),
-            'profile_field_iiidem_jobprofile' => self::get_submitted_value($data, 'jobprofile'),
-            'profile_field_iiidem_jobpostingcountry' => self::get_submitted_value($data, 'jobpostingcountry'),
+            'profile_field_iiidem_organization' => $organization,
+            'profile_field_iiidem_jobprofile' => $jobprofile,
+            'profile_field_iiidem_jobpostingcountry' => $jobcountry,
             'profile_field_iiidem_university' => self::get_submitted_value($data, 'university'),
             'profile_field_iiidem_position' => self::get_submitted_value($data, 'position'),
             'profile_field_iiidem_specialization' => self::get_submitted_value($data, 'specialization'),

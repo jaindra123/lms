@@ -191,7 +191,108 @@
     </div>
 </section>
 {{#js}}
-require(['theme_iiidem2/liveclass_join_modal'], function(modal) {
-    modal.init();
-});
+(function() {
+    if (window.iiidemLiveClassModalBound) {
+        return;
+    }
+    window.iiidemLiveClassModalBound = true;
+
+    var activeUrl = '';
+    var lastFocus = null;
+    var fallbackTimer = null;
+
+    function getModal() {
+        return document.getElementById('iiidem-liveclass-modal');
+    }
+
+    function openWindow(url) {
+        var width = Math.min(1200, window.screen.availWidth - 40);
+        var height = Math.min(800, window.screen.availHeight - 80);
+        var left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
+        var top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
+        window.open(url, 'iiidemLiveClass',
+            'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top +
+            ',resizable=yes,scrollbars=yes,noopener,noreferrer');
+    }
+
+    function closeModal() {
+        var modal = getModal();
+        if (!modal) {
+            return;
+        }
+        if (fallbackTimer) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+        modal.hidden = true;
+        document.body.classList.remove('iiidem-liveclass-modal-open');
+        var frame = modal.querySelector('.iiidem-liveclass-modal__frame');
+        if (frame) {
+            frame.removeAttribute('src');
+        }
+        var fallback = modal.querySelector('.iiidem-liveclass-modal__fallback');
+        if (fallback) {
+            fallback.hidden = true;
+        }
+        activeUrl = '';
+        if (lastFocus && typeof lastFocus.focus === 'function') {
+            lastFocus.focus();
+        }
+    }
+
+    function openModal(url) {
+        var modal = getModal();
+        var frame = modal ? modal.querySelector('.iiidem-liveclass-modal__frame') : null;
+        if (!modal || !frame || !url) {
+            if (url) {
+                openWindow(url);
+            }
+            return;
+        }
+        lastFocus = document.activeElement;
+        activeUrl = url;
+        var fallback = modal.querySelector('.iiidem-liveclass-modal__fallback');
+        if (fallback) {
+            fallback.hidden = true;
+        }
+        frame.src = url;
+        modal.hidden = false;
+        document.body.classList.add('iiidem-liveclass-modal-open');
+        var closeButton = modal.querySelector('[data-action="close-liveclass-modal"]');
+        if (closeButton) {
+            closeButton.focus();
+        }
+        fallbackTimer = window.setTimeout(function() {
+            if (fallback) {
+                fallback.hidden = false;
+            }
+        }, 1800);
+    }
+
+    document.addEventListener('click', function(event) {
+        var openButton = event.target.closest('[data-action="open-liveclass-modal"]');
+        if (openButton) {
+            event.preventDefault();
+            openModal(openButton.getAttribute('data-join-url') || '');
+            return;
+        }
+        if (event.target.closest('[data-action="close-liveclass-modal"]')) {
+            event.preventDefault();
+            closeModal();
+            return;
+        }
+        if (event.target.closest('[data-action="open-liveclass-window"]')) {
+            event.preventDefault();
+            if (activeUrl) {
+                openWindow(activeUrl);
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+}());
 {{/js}}
