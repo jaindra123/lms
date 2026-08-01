@@ -54,6 +54,9 @@ $string['liveclassrec'] = 'REC';
 $string['liveclasspresenter'] = 'Faculty · sharing slides';
 $string['liveclassjoin'] = 'Join Live Class';
 $string['liveclassnojoin'] = 'Add a join link to this page content (e.g. a button linking to your Webex meeting).';
+$string['liveclassmodaltitle'] = 'Live class session';
+$string['liveclassmodalblocked'] = 'Webex could not be embedded here. Continue in a centered window to join the session.';
+$string['liveclassmodalopenexternal'] = 'Open Webex window';
 $string['liveclassfeat_hd'] = 'HD video & screen share';
 $string['liveclassfeat_hd_desc'] = 'Faculty present slides and case studies in real time.';
 $string['liveclassfeat_breakout'] = 'Breakout rooms';
@@ -76,6 +79,17 @@ $string['dashboardteacherlivemcqbtn'] = 'Manage';
 $string['quizmcq_customize_hint'] = 'Quiz attempt UI is controlled by theme layouts and CSS: layout/quizattempt.php, templates/layout/quizattempt.mustache, style/quiz-mcq.css, and classes/output/mod_quiz/renderer.php.';
 $string['coursequizzes_eyebrow'] = 'Assessment';
 $string['curriculumpreview'] = 'Preview';
+$string['curriculumassignsubmit'] = 'Submit assignment';
+$string['curriculumassigncontinuesubmit'] = 'Continue submission';
+$string['curriculumassignviewsubmission'] = 'View submission';
+$string['curriculumassignopen'] = 'Open assignment';
+$string['curriculumassignstatus'] = 'Status: {$a}';
+$string['curriculumassignfiletypes'] = 'Accepted files: {$a}';
+$string['curriculumassignattempts'] = 'Attempts: {$a->used} of {$a->max}';
+$string['curriculumassignattemptsunlimited'] = 'Attempts: {$a} used (unlimited allowed)';
+$string['curriculumassignawaitingreopen'] = 'Your submission is locked until the teacher grades it or reopens another attempt.';
+$string['curriculumassigncanretry'] = 'You can submit again for another attempt.';
+$string['assigngradingfiltertip'] = 'Tip: Status is set to “Submitted” by default so you only see students who uploaded work. Choose Status → All to see everyone.';
 $string['coursequizzes_title'] = 'Course quizzes';
 $string['coursequizzes_lead'] = 'This course includes {$a} quiz(zes). Question lists are loaded from the course automatically.';
 $string['coursequizzes_lead_embedded'] = 'This course includes {$a} quiz(zes). Answer questions below (same screen as the quiz attempt page).';
@@ -93,6 +107,8 @@ $string['loginbrandpanel'] = 'About IIIDEM';
 $string['logintagline'] = 'Learn. Certify. Lead with confidence.';
 $string['loginwelcome'] = 'Welcome back';
 $string['loginsubtitle'] = 'Sign in to access your courses and certifications';
+$string['frontpagectaguest'] = 'Sign in to access your courses, live classes, and certificates.';
+$string['frontpagectaloggedin'] = 'Continue to your courses, live classes, and certificates.';
 $string['loginfeature1'] = 'Structured certification programs for election professionals';
 $string['loginfeature2'] = 'Live sessions and self-paced learning in one portal';
 $string['loginfeature3'] = 'Track progress, assessments, and credentials';
@@ -152,6 +168,9 @@ $string['dashboarddueon'] = 'Due {$a}';
 $string['dashboardsessiontoday'] = 'Today';
 $string['dashboardsessionsoon'] = 'Soon';
 $string['dashboardwelcome'] = 'Welcome, {$a}';
+$string['dashboardloaderrortitle'] = 'Dashboard temporarily unavailable';
+$string['dashboardloaderrormessage'] = 'We could not load your dashboard right now. Please try again. If the problem continues, contact the site administrator.';
+$string['dashboardretry'] = 'Try again';
 $string['dashboardroleadmin'] = 'You are viewing the administrator dashboard.';
 $string['dashboardroleteacher'] = 'You are viewing the teacher dashboard.';
 $string['dashboardrolestudent'] = 'You are viewing the student dashboard.';
@@ -165,6 +184,9 @@ $string['dashboardviewbadges'] = 'View my badges';
 $string['dashboardupcoming'] = 'Upcoming activities';
 $string['dashboardnoupcoming'] = 'No assignments or quizzes due in the next 30 days.';
 $string['dashboardliveclasses'] = 'Live classes / meetings';
+$string['dashboardliveclassestoday'] = 'Today';
+$string['dashboardliveclassesupcoming'] = 'Upcoming';
+$string['dashboardteacherupcominglive'] = 'Upcoming live classes';
 $string['dashboardjoin'] = 'Join';
 $string['dashboardnolive'] = 'No upcoming live sessions in the next two weeks.';
 $string['dashboardnotifications'] = 'Notifications';
@@ -274,7 +296,7 @@ $string['dashboardteacherlive'] = 'Live class';
 $string['dashboardteachercommunication'] = 'Communication';
 $string['dashboardteachermsgdesc'] = 'Send messages to students';
 $string['dashboardteacherannounce'] = 'Announcements: {$a}';
-$string['dashboardteacherlabel'] = 'Instructor';
+$string['dashboardteacherlabel'] = 'Professors';
 $string['dashboardteacherteachingconsole'] = 'Teaching Console';
 $string['dashboardteacheractivelearners'] = 'Active Learners';
 $string['dashboardteacherpendingreviews'] = 'Pending Reviews';
@@ -298,7 +320,7 @@ $string['dashboardteacherstudentattendancepending'] = 'Session not taken';
 $string['dashboardteacherstudentattendanceawaiting'] = 'Awaiting live attendance mark';
 $string['dashboardteacherstudentattendancecurriculum'] = 'Completed (online curriculum)';
 $string['dashboardteacherstudentattendancelivemarked'] = 'Live attendance marked: {$a->present} / {$a->total} sessions present';
-$string['dashboardteacherstudentattendancehelp'] = 'Weekend completion (above) tracks online activities. Live attendance is marked separately in the Attendance activity by the instructor.';
+$string['dashboardteacherstudentattendancehelp'] = 'Weekend completion (above) tracks online activities. Live attendance is marked separately in the Attendance activity by the professors.';
 $string['dashboardteacherstudentattendanceupcoming'] = '{$a} upcoming sessions scheduled (not shown until their date).';
 $string['dashboardteacherstudentattendancenorecords'] = 'No attendance sessions to show yet.';
 $string['dashboardteachernavgrading'] = 'Grading';
@@ -364,9 +386,13 @@ $string['dashboardsiteadmin_desc'] = 'Open site administration settings.';
 $string['entercourse'] = 'Enter course';
 $string['coursedetailintro'] = 'Sign in to enrol and access all lessons, quizzes, and certificates.';
 $string['coursedetaillogin'] = 'Login to start';
-$string['coursecontentheading'] = 'Course content';
+$string['coursecontentheading'] = 'Course Curriculum';
 $string['coursecontentlectures'] = '{$a} lectures';
-$string['courseinstructorsheading'] = 'Meet your instructors';
+$string['curriculumintro'] = 'Explore the structured journey of this program. Click on any weekend to view the lectures and activities.';
+$string['curriculumtotalduration'] = 'Total Duration';
+$string['curriculumtotallectures'] = 'Total Lectures';
+$string['curriculumlecturescount'] = '{$a} Lectures';
+$string['courseinstructorsheading'] = 'Meet your Professors';
 $string['coursefaqheading'] = 'Frequently asked questions';
 $string['coursefaqempty'] = 'No questions have been added for this course yet.';
 $string['mycoursespageintro'] = 'Browse and continue your enrolled courses.';
@@ -385,6 +411,15 @@ $string['contactusemailbody'] = 'Contact form submission from {$a->name} ({$a->e
 
 Subject: {$a->subject}
 
+{$a->message}';
+$string['contactususeremailsubject'] = '[{$a->site}] We received your message';
+$string['contactususeremailbody'] = 'Dear {$a->name},
+
+Thank you for contacting {$a->site}. We have received your message and will get back to you soon.
+
+Subject: {$a->subject}
+
+Your message:
 {$a->message}';
 $string['marketingtemplaterequired'] = 'A marketing page template must be set before rendering this layout.';
 
@@ -414,7 +449,7 @@ $string['testimonialheading'] = 'Testimonial {$a}';
 $string['testimonialheading_desc'] = 'Leave name and quote empty to hide this card.';
 $string['testimonialname'] = 'Learner name';
 $string['testimonialsubtitle'] = 'Subtitle';
-$string['testimonialsubtitle_desc'] = 'e.g. Learner since 2024 or University student';
+$string['testimonialsubtitle_desc'] = 'e.g. Learner since 2024 or student';
 $string['testimonialquote'] = 'Quote';
 $string['testimonialstars'] = 'Star rating';
 $string['testimonialstars_desc'] = 'Displayed as filled stars on the testimonial card.';
@@ -436,19 +471,72 @@ $string['studentreviewsenrolprompt'] = 'Enrol in this course to leave a review.'
 $string['studentreviewsemptyenrolled'] = 'No student reviews yet. Be the first to share your experience.';
 
 $string['coursefeepaymentlabel'] = 'Course fee';
+$string['programmeaudienceeyebrow'] = 'Target audience';
+$string['programmeaudiencetitle'] = 'Who is this Programme For';
+$string['programmeaudienceintro'] = 'The course is designed for practitioners and advanced learners from a range of backgrounds. No technical background in AI is required — the programme will benefit the following, each of whom has a reason to build this knowledge:';
+$string['programmeaudienceitem1title'] = 'Election Administrators & EMB Officials';
+$string['programmeaudienceitem1text'] = 'Who need to govern AI during the election process.';
+$string['programmeaudienceitem2title'] = 'Policymakers & Regulators';
+$string['programmeaudienceitem2text'] = 'Who evaluate AI risks and frame rules.';
+$string['programmeaudienceitem3title'] = 'Civil Society Groups';
+$string['programmeaudienceitem3text'] = 'Who monitor AI and engage in policy debates.';
+$string['programmeaudienceitem4title'] = 'Journalists';
+$string['programmeaudienceitem4text'] = 'Who need practical skills to identify and report on AI-generated disinformation.';
+$string['programmeaudienceitem5title'] = 'Academics & Legal Researchers';
+$string['programmeaudienceitem5text'] = 'Working at the intersection of AI, electoral law, and democratic theory.';
+$string['programmeaudienceitem6title'] = 'Political Campaign Managers';
+$string['programmeaudienceitem6text'] = 'Who need to understand their responsibilities in AI-assisted campaigning.';
+$string['programmeaudienceitem7title'] = 'International Development Professionals';
+$string['programmeaudienceitem7text'] = 'Supporting democratic governance and integrating AI risk into their work.';
+$string['programmeaudienceitem8title'] = 'Graduate Students';
+$string['programmeaudienceitem8text'] = 'In law, political science, public policy, or technology studies.';
+$string['programmetenetseyebrow'] = 'Foundations';
+$string['programmetenetstitle'] = 'Programme\'s Six Core Tenets';
+$string['programmetenetsitem1title'] = 'Election Integrity and Public Trust';
+$string['programmetenetsitem1text'] = 'The programme is designed for practitioners and researchers seeking to protect the information environment, voter agency, and institutional legitimacy from AI-driven threats. The course will help them engage with these challenges from a governance, policy and institutional perspective, without requiring a technical background.';
+$string['programmetenetsitem2title'] = 'AI Governance and Regulation';
+$string['programmetenetsitem2text'] = 'This course seeks to develop an understanding of how institutions can actually apply or operationalise AI tools for transparency, risk assessment, auditability, oversight, and accountability.';
+$string['programmetenetsitem3title'] = 'AI for Electoral Innovation and Service Delivery';
+$string['programmetenetsitem3text'] = 'This course seeks to explore the responsible use of AI to improve electoral processes, including voter information and education, accessibility, inclusion, operational efficiency and service delivery.';
+$string['programmetenetsitem4title'] = 'Real-World Application and Institutional Practice';
+$string['programmetenetsitem4text'] = 'This course seeks to develop implementable solutions through case-based learning, simulations, and a capstone project anchored in each participant\'s own professional context.';
+$string['programmetenetsitem5title'] = 'Global South Perspective and Comparative Experience';
+$string['programmetenetsitem5text'] = 'This course seeks to apply international frameworks to contexts in South Asia, Africa, and Latin America where AI risks are acute, but governance capacity is nascent. The course will emphasise learning from comparative experience across jurisdictions.';
+$string['programmetenetsitem6title'] = 'Interdisciplinary Lens';
+$string['programmetenetsitem6text'] = 'Finally, this course seeks to integrate law, political science, technology studies, communications, and ethics. Since tackling AI issues is increasingly relying on inter-agency cooperation and coordination, the course will focus on cross-sectoral coordination and decision-making.';
+$string['coursefeeinclusive'] = 'Inclusive of all taxes';
+$string['coursestatduration'] = 'Duration';
+$string['coursestatmode'] = 'Mode';
+$string['coursestatlectures'] = 'Lectures';
+$string['coursestatcertificate'] = 'Certificate';
+$string['coursestatdurationweeks'] = '{$a} Weeks';
+$string['coursestatmodelive'] = 'Live Online';
+$string['coursewhatsincluded'] = 'What\'s Included';
+$string['courseincludeditem1'] = 'Live interactive sessions with experts';
+$string['courseincludeditem2'] = 'Certificate of Completion';
+$string['courseincludeditem3'] = 'Access to recordings & live classes';
+$string['courseincludeditem4'] = 'Lifetime access to course materials';
+$string['coursesecurepayment'] = 'Secure Payment';
+$string['coursepaymentencrypted'] = 'Your payment is secure and encrypted';
+$string['paynow'] = 'Pay Now';
 $string['paywithpnb'] = 'Pay with PNB';
 $string['paywithicici'] = 'Pay with ICICI';
 $string['paywithrazorpay'] = 'Pay with Razorpay';
-$string['coursefeepaymentnote'] = 'Pay with Razorpay or ICICI for live settlement. PNB is available for test payments during development.';
+$string['coursefeepaymentnote'] = 'Pay securely with Razorpay to complete your course enrolment.';
 $string['coursefeepaymentpending'] = 'Online payment is being configured. Please contact the administrator.';
 $string['coursepaymentsuccesstitle'] = 'Payment successful';
 $string['coursepaymentsuccessbody'] = 'Your course fee payment was successful. You are now enrolled and can access the course content.';
 $string['curriculumpaymentrequiredtitle'] = 'Payment required';
 $string['curriculumpaymentrequiredalertheading'] = 'Course fee not paid';
 $string['curriculumpaymentrequiredalertbody'] = 'Please complete the course fee payment ({$a}) to unlock lecture previews and full course access.';
-$string['curriculumpaymentrequiredhint'] = 'Use the Pay with PNB button in the course fee section above to complete your enrolment securely.';
+$string['curriculumpaymentrequiredhint'] = 'Use the Pay Now button in the course fee panel on the right to complete your enrolment securely.';
 $string['curriculumpaymentrequiredunderstood'] = 'OK, take me to payment';
 $string['curriculumpaymentrequiredviewfee'] = 'View course fee';
+$string['curriculumenrolrequiredtitle'] = 'Enrolment required';
+$string['curriculumenrolrequiredalertheading'] = 'You are not enrolled yet';
+$string['curriculumenrolrequiredalertbody'] = 'Please enrol in this course first to unlock lecture previews and full course access.';
+$string['curriculumenrolrequiredhint'] = 'If you do not see an enrolment option on this page, contact the course administrator for access.';
+$string['curriculumenrolrequiredunderstood'] = 'OK';
 
 $string['loginsignup'] = 'Sign up';
 $string['registerpagetitle'] = 'Create your account';
@@ -457,23 +545,325 @@ $string['registerfirstname'] = 'First name';
 $string['registermiddlename'] = 'Middle name';
 $string['registerlastname'] = 'Last name';
 $string['registercontact'] = 'Contact number';
+$string['registercontact_help'] = 'Select your country code, then enter your mobile number. Example for India: 9876543210 (saved as +919876543210).';
+$string['registerphoneinvalid'] = 'Please enter a valid contact number with country code.';
+$string['registerphoneplaceholder'] = 'Mobile number';
 $string['registercreateaccount'] = 'Create account';
 $string['registerhaveaccount'] = 'Already have an account?';
 $string['registersuccess'] = 'Your account has been created. Welcome!';
-$string['registeroccupation'] = 'Occupation';
-$string['registeroccupationworking'] = 'Working profile';
-$string['registeroccupationstudent'] = 'University student';
-$string['registeroccupationinstructor'] = 'Instructor';
-$string['registeroccupationrequired'] = 'Please select one occupation option.';
-$string['registerworkingprofile'] = 'Working profile details';
-$string['registerstudentprofile'] = 'University student details';
-$string['registerinstructorprofile'] = 'Instructor details';
-$string['registeremb'] = 'EMB';
+$string['registersuccesstitle'] = 'Registration successful';
+$string['registersuccessbody'] = 'Your account has been created successfully. You can now explore the course and complete enrolment when you are ready.';
+$string['registeremailusersubject'] = '{$a->sitename}: Account created';
+$string['registeremailusertitle'] = 'Welcome to {$a->sitename}!';
+$string['registeremailuserintro'] = 'Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:';
+$string['registeremailusercta'] = 'Sign in';
+$string['registeremailuserreset'] = 'Password reset link';
+$string['registeremailusernote'] = 'Note: This password reset link is valid for approximately {$a->resetminutes} minutes.';
+$string['registeremailuserhelp'] = 'For any assistance, please contact the {$a->sitename} support team.';
+$string['registeremailusersignoff'] = '{$a->sitename} Administrator';
+$string['registeremailuserlabel_username'] = 'Username';
+$string['registeremailuserlabel_email'] = 'Email';
+$string['registeremailuserlabel_password'] = 'Password';
+$string['passwordresetemailsubject'] = '{$a->sitename}: Password reset request';
+$string['passwordresetemailtitle'] = 'Password reset request';
+$string['passwordresetemailcta'] = 'Reset Password';
+$string['passwordresetemailregards'] = 'Kind regards';
+$string['passwordresetemailsignoff'] = 'IIIDEM Support Team';
+$string['passwordresetemailsignoffextra'] = 'Site Administrator';
+$string['passwordresetemailintrohtml'] = '<p style="margin:0 0 12px;">We received a request to reset the password for your {$a->sitename} account associated with {$a->emailhtml}.</p>
+<p style="margin:0;">To create a new password, please click the link below:</p>';
+$string['passwordresetemailnotehtml'] = '<p style="margin:0 0 12px;">For your security, this password reset link is valid for {$a->resetminutes} from the time the request was made.</p>
+<p style="margin:0 0 12px;">If you did not request a password reset, you can safely ignore this email. Your account will remain secure, and no further action is required.</p>
+<p style="margin:0;">If you need any assistance, please contact the {$a->sitename} Site Administrator.</p>';
+$string['passwordresetemailbody'] = 'Dear {$a->firstname},
+
+We received a request to reset the password for your {$a->sitename} account associated with {$a->email}.
+
+To create a new password, please click the link below:
+
+{$a->resetlink}
+
+For your security, this password reset link is valid for {$a->resetminutes} minutes from the time the request was made.
+
+If you did not request a password reset, you can safely ignore this email. Your account will remain secure, and no further action is required.
+
+If you need any assistance, please contact the {$a->sitename} Site Administrator.
+
+Kind regards,
+IIIDEM Support Team
+Site Administrator
+';
+$string['registeremailuserbody'] = 'Dear {$a->firstname},
+
+Welcome to {$a->sitename}!
+
+Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:
+
+Username: {$a->username}
+Email: {$a->email}
+Password: {$a->password}
+
+You can sign in using the following link:
+{$a->loginurl}
+
+If you need to reset your password at any time, please use the secure password reset link below:
+{$a->resetlink}
+
+Note: This password reset link is valid for approximately {$a->resetminutes} minutes.
+
+For any assistance, please contact the {$a->sitename} support team.
+
+Regards,
+{$a->sitename} Administrator
+';
+$string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
+$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
+
+Name: {$a->fullname}
+Username: {$a->username}
+Email: {$a->email}
+Contact: {$a->phone}
+Country: {$a->country}
+City: {$a->city}
+Role: {$a->occupation}
+
+Profile: {$a->profileurl}
+
+{$a->admin}
+';
+$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong>.</p>
+<ul>
+<li><strong>Name:</strong> {$a->fullname}</li>
+<li><strong>Username:</strong> {$a->username}</li>
+<li><strong>Email:</strong> {$a->email}</li>
+<li><strong>Contact:</strong> {$a->phone}</li>
+<li><strong>Country:</strong> {$a->country}</li>
+<li><strong>City:</strong> {$a->city}</li>
+<li><strong>Role:</strong> {$a->occupation}</li>
+</ul>
+<p><a href="{$a->profileurl}">View user profile</a></p>
+<p>{$a->admin}</p>';
+$string['registersmsbody'] = 'Hi {$a->firstname}, your {$a->sitename} account is ready. Username: {$a->username}. Set password: {$a->resetlink}';
+$string['registerwhatsappbody'] = 'Hi {$a->firstname}, welcome to {$a->sitename}. Username: {$a->username}. Set your password here: {$a->resetlink}';
+$string['registrationmessagingsettings'] = 'Registration SMS / WhatsApp';
+$string['registrationmessagingheading'] = 'SMS and WhatsApp after registration';
+$string['registrationmessagingheading_desc'] = 'Optional messaging. Without Twilio/MSG91, choose Local test (log only), enable SMS and WhatsApp, then register a user and check the log file. Email still goes to Mailpit. Real SMS/WhatsApp need a paid provider account.';
+$string['enableregistrationsms'] = 'Send SMS on registration';
+$string['enableregistrationsms_desc'] = 'Sends a welcome SMS with username and password-reset link to the user contact number. Provider charges apply per SMS.';
+$string['enableregistrationwhatsapp'] = 'Send WhatsApp on registration';
+$string['enableregistrationwhatsapp_desc'] = 'Sends a WhatsApp message to the user contact number. Requires WhatsApp Business setup; Meta/provider charges apply.';
+$string['messagingprovider'] = 'Messaging provider';
+$string['messagingprovider_desc'] = 'Use Local test (log only) until you have a paid Twilio or MSG91 account. Log mode writes SMS/WhatsApp text to local_dev_logs/registration_messages.log in the project folder (and also under Moodle dataroot).';
+$string['messagingproviderlog'] = 'Local test (log only — no account needed)';
+$string['registrationmessagingtestok'] = 'SMS/WhatsApp were NOT sent to {$a->phone}. Local test mode saved the message text in your project folder: local_dev_logs/registration_messages.log (full path: {$a->logfile}). Real delivery needs Twilio or MSG91.';
+$string['messagingprovidertwilio'] = 'Twilio';
+$string['messagingprovidermsg91'] = 'MSG91';
+$string['registrationsmsbody'] = 'SMS message body';
+$string['registrationsmsbody_desc'] = 'Leave blank for default. Placeholders: {$a->firstname}, {$a->username}, {$a->sitename}, {$a->resetlink}, {$a->loginurl}. Keep short (SMS length limits).';
+$string['registrationwhatsappbody'] = 'WhatsApp message body';
+$string['registrationwhatsappbody_desc'] = 'Leave blank for default. Same placeholders as SMS. For production WhatsApp, prefer approved templates (Twilio ContentSid / MSG91 template name).';
+$string['twilioheading'] = 'Twilio credentials';
+$string['twilioheading_desc'] = 'From your Twilio console: Account SID, Auth Token, SMS from-number, and WhatsApp-enabled from-number.';
+$string['twilioaccountsid'] = 'Twilio Account SID';
+$string['twilioauthtoken'] = 'Twilio Auth Token';
+$string['twiliosmsfrom'] = 'Twilio SMS From number';
+$string['twiliosmsfrom_desc'] = 'E.164 sender, e.g. +12025550123';
+$string['twiliowhatsappfrom'] = 'Twilio WhatsApp From';
+$string['twiliowhatsappfrom_desc'] = 'e.g. whatsapp:+14155238886 (sandbox) or your WhatsApp Business number';
+$string['twiliowhatsappcontentsid'] = 'Twilio WhatsApp ContentSid (optional)';
+$string['twiliowhatsappcontentsid_desc'] = 'Approved Content Template SID for business-initiated WhatsApp. If set, Body text is not used.';
+$string['twiliowhatsappcontentvars'] = 'Twilio ContentVariables JSON (optional)';
+$string['twiliowhatsappcontentvars_desc'] = 'Example: {"1":"Firstname","2":"username","3":"https://…/reset"} — must match your template variables.';
+$string['msg91heading'] = 'MSG91 credentials';
+$string['msg91heading_desc'] = 'From MSG91 dashboard: Auth key, SMS sender ID (DLT), and WhatsApp integrated number.';
+$string['msg91authkey'] = 'MSG91 Auth key';
+$string['msg91smssender'] = 'MSG91 SMS sender ID';
+$string['msg91smssender_desc'] = 'Approved 6-character sender ID (India DLT).';
+$string['msg91smsroute'] = 'MSG91 SMS route';
+$string['msg91smsroute_desc'] = 'Usually 4 for transactional.';
+$string['msg91smstemplateid'] = 'MSG91 / DLT SMS template ID (optional)';
+$string['msg91smstemplateid_desc'] = 'Required in India for transactional SMS in many cases.';
+$string['msg91whatsappfrom'] = 'MSG91 WhatsApp integrated number';
+$string['msg91whatsappfrom_desc'] = 'Digits only or E.164 — your MSG91 WhatsApp Business number.';
+$string['msg91whatsapptemplate'] = 'MSG91 WhatsApp template name';
+$string['msg91whatsapptemplate_desc'] = 'Approved template name. Body variables map to firstname, username, resetlink. Leave blank to try plain text (session only).';
+$string['msg91whatsappnamespace'] = 'MSG91 WhatsApp template namespace (optional)';
+$string['msg91whatsappnamespace_desc'] = 'Meta template namespace if your MSG91 setup requires it.';
+$string['registeroccupation'] = 'Role';
+$string['registrationcourseids'] = 'Registration course IDs';
+$string['registrationcourseids_desc'] = 'Comma-separated course IDs that receive newly registered users (for example: 4,5). Students and NON-EMB professionals are enrolled as suspended until fee payment succeeds; EMB professionals and instructors are enrolled as active participants. Each paid course must have an enabled Enrolment on payment method, and exempt users require an enabled Manual enrolment method.';
+$string['registeroccupationworking'] = 'Working professional / NON-EMB';
+$string['registeroccupationworkingemb'] = 'Working professional / EMB';
+$string['registeroccupationstudent'] = 'Student';
+$string['registeroccupationinstructor'] = 'Professor / Instructor';
+$string['registeroccupationrequired'] = 'Please select your role.';
+$string['registerworkingprofile'] = 'Working professional / NON-EMB details';
+$string['registerworkingembprofile'] = 'Working professional / EMB details';
+$string['registerstudentprofile'] = 'Student details';
+$string['registerinstructorprofile'] = 'Professor / Instructor details';
+$string['registerpasswordheader'] = 'Password';
+$string['registerpasswordshouldbe'] = 'Password requirements';
+$string['registeremb'] = 'I am from an EMB';
+$string['registerembrequired'] = 'Please confirm that you are from an EMB.';
+$string['registerpolicymaker'] = 'Policymaker';
+$string['registerjournalist'] = 'Journalist';
+$string['registerelectoralpractitioner'] = 'Electoral practitioner';
+$string['registerresearcher'] = 'Researcher / Academician';
+$string['registerworkingcategoryrequired'] = 'Please select one option (Policymaker, Journalist, or Researcher).';
 $string['registerorganization'] = 'Organization';
+$string['registerorganisation'] = 'Organisation';
 $string['registerjobprofile'] = 'Job profile';
+$string['registerdesignation'] = 'Designation';
 $string['registerjobpostingcountry'] = 'Job posting country';
+$string['registerembcountry'] = 'Country';
 $string['registeruniversity'] = 'University';
-$string['registerposition'] = 'Position';
+$string['registerposition'] = 'Higher level of education';
 $string['registerspecialization'] = 'Specialization';
-$string['registercourse'] = 'Course';
+$string['registercourse'] = 'Current position';
 $string['registerpresentcountry'] = 'Present country';
+
+// Live class / Webex create-update email notifications.
+$string['liveclassnotify_na'] = 'Not provided';
+$string['liveclassnotify_tbat'] = 'To be announced';
+$string['liveclassnotify_createdsubject'] = 'New live class: {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_updatedsubject'] = 'Live class updated: {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_createdbody'] = 'Dear {$a->firstname},
+
+A new live class has been scheduled in {$a->coursename} on {$a->sitename}.
+
+Session: {$a->sessionname}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['liveclassnotify_updatedbody'] = 'Dear {$a->firstname},
+
+Live class details have been updated in {$a->coursename} on {$a->sitename}.
+
+Session: {$a->sessionname}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['liveclassnotify_remindersubject'] = 'Reminder: live class in 1 hour — {$a->sessionname} ({$a->coursename})';
+$string['liveclassnotify_reminderbody'] = 'Dear {$a->firstname},
+
+This is a reminder that your live class starts in about 1 hour.
+
+Session: {$a->sessionname}
+Course: {$a->coursename}
+Date / time: {$a->sessiontime}
+Join link: {$a->joinurl}
+Meeting number: {$a->meetingnumber}
+Password: {$a->password}
+
+Open the activity: {$a->activityurl}
+Course page: {$a->courseurl}
+
+Regards,
+{$a->sitename}';
+$string['tasksendliveclassreminders'] = 'Send live class reminder emails (1 hour before)';
+$string['assignnotify_opennow'] = 'Already open';
+$string['assignnotify_createdsubject'] = 'New assignment: {$a->assignmentname} (due {$a->duedate})';
+$string['assignnotify_updatedsubject'] = 'Assignment updated: {$a->assignmentname} (due {$a->duedate})';
+$string['assignnotify_remindersubject'] = 'Reminder: {$a->assignmentname} is due soon ({$a->duedate})';
+$string['assignnotify_badge_created'] = 'New assignment';
+$string['assignnotify_badge_updated'] = 'Assignment updated';
+$string['assignnotify_badge_reminder'] = 'Due soon';
+$string['assignnotify_title_created'] = 'New assignment posted';
+$string['assignnotify_title_updated'] = 'Assignment updated';
+$string['assignnotify_title_reminder'] = 'Assignment due soon';
+$string['assignnotify_intro_created'] = 'This is to inform you that a new assignment has been posted in the course {$a->coursename} on the {$a->sitename} Learning Management System.';
+$string['assignnotify_intro_updated'] = 'This is to inform you that an assignment has been updated in the course {$a->coursename} on the {$a->sitename} Learning Management System.';
+$string['assignnotify_intro_reminder'] = 'This is to remind you that an assignment in the course {$a->coursename} on the {$a->sitename} Learning Management System is due within 24 hours.';
+$string['assignnotify_note'] = 'Kindly complete and submit the assignment on or before the due date.';
+$string['assignnotify_help'] = 'If you have any questions or require assistance, please contact the course administrator.';
+$string['assignnotify_cta'] = 'Assignment Link';
+$string['assignnotify_secondary'] = 'Course Page';
+$string['assignnotify_label_assignment'] = 'Assignment';
+$string['assignnotify_label_course'] = 'Course';
+$string['assignnotify_label_available'] = 'Available From';
+$string['assignnotify_label_due'] = 'Due Date';
+$string['assignnotify_createdbody'] = 'Dear {$a->firstname},
+
+This is to inform you that a new assignment has been posted in the course {$a->coursename} on the {$a->sitename} Learning Management System.
+
+Assignment: {$a->assignmentname}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
+
+Kindly complete and submit the assignment on or before the due date.
+
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
+
+Regards,
+{$a->sitename}';
+$string['assignnotify_updatedbody'] = 'Dear {$a->firstname},
+
+This is to inform you that an assignment has been updated in the course {$a->coursename} on the {$a->sitename} Learning Management System.
+
+Assignment: {$a->assignmentname}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
+
+Kindly complete and submit the assignment on or before the due date.
+
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
+
+Regards,
+{$a->sitename}';
+$string['assignnotify_reminderbody'] = 'Dear {$a->firstname},
+
+This is to remind you that an assignment in the course {$a->coursename} on the {$a->sitename} Learning Management System is due within 24 hours.
+
+Assignment: {$a->assignmentname}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
+
+Kindly complete and submit the assignment on or before the due date.
+
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
+
+Regards,
+{$a->sitename}';
+$string['tasksendassignreminders'] = 'Send assignment due-date reminder emails (24 hours before)';
+
+// Live class HTML email labels.
+$string['liveclassnotify_badge_created'] = 'New live class';
+$string['liveclassnotify_badge_updated'] = 'Live class updated';
+$string['liveclassnotify_badge_reminder'] = 'Starts in 1 hour';
+$string['liveclassnotify_title_created'] = 'A live class has been scheduled';
+$string['liveclassnotify_title_updated'] = 'Live class details have changed';
+$string['liveclassnotify_title_reminder'] = 'Your live class starts soon';
+$string['liveclassnotify_intro_created'] = 'A new live class has been scheduled in {$a->coursename} on {$a->sitename}.';
+$string['liveclassnotify_intro_updated'] = 'Live class details have been updated in {$a->coursename} on {$a->sitename}.';
+$string['liveclassnotify_intro_reminder'] = 'This is a reminder that your live class starts in about 1 hour.';
+$string['liveclassnotify_cta'] = 'Join live class';
+$string['liveclassnotify_secondary'] = 'Open activity page';
+$string['liveclassnotify_label_session'] = 'Session';
+$string['liveclassnotify_label_course'] = 'Course';
+$string['liveclassnotify_label_time'] = 'Date / time';
+$string['liveclassnotify_label_join'] = 'Join link';
+$string['liveclassnotify_label_meeting'] = 'Meeting number';
+$string['liveclassnotify_label_password'] = 'Password';

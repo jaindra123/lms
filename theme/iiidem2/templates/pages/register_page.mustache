@@ -23,11 +23,6 @@
         </div>
     </section>
 
-    <p class="container text-center text-muted pb-2 mb-0">
-        {{#str}}registerhaveaccount, theme_iiidem2{{/str}}
-        <a href="{{loginurl}}">{{#str}}login{{/str}}</a>
-    </p>
-
 </main>
 
 <section class="iiidem-register-section py-5">
@@ -47,5 +42,127 @@
 </section>
 
 {{> theme_iiidem2/page_end }}
+
+{{#js}}
+(function() {
+    var form = document.querySelector('.iiidem-register-form form.mform, form.mform');
+    if (!form) {
+        return;
+    }
+
+    var getMarker = function(item) {
+        var addon = item.querySelector('.form-label-addon');
+        if (!addon) {
+            return null;
+        }
+        return addon.querySelector('.text-danger, .text-success, [title="Required"], [title="Completed"]')
+            || addon.firstElementChild;
+    };
+
+    var getIcon = function(item) {
+        var addon = item.querySelector('.form-label-addon');
+        return addon ? addon.querySelector('.icon, i') : null;
+    };
+
+    var fieldHasValue = function(field) {
+        if (!field) {
+            return false;
+        }
+        var type = (field.type || '').toLowerCase();
+        if (type === 'checkbox') {
+            return !!field.checked;
+        }
+        if (type === 'radio') {
+            var group = form.querySelectorAll('input[type="radio"][name="' + field.name + '"]');
+            for (var i = 0; i < group.length; i++) {
+                if (group[i].checked) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return String(field.value || '').trim() !== '';
+    };
+
+    var syncRequiredMarker = function(field) {
+        if (!field) {
+            return;
+        }
+        var item = field.closest('.fitem');
+        if (!item) {
+            return;
+        }
+        var marker = getMarker(item);
+        var icon = getIcon(item);
+        if (!marker && !icon) {
+            return;
+        }
+
+        var hasValue = fieldHasValue(field);
+        item.classList.toggle('iiidem-field-valid', hasValue);
+
+        if (marker) {
+            marker.classList.toggle('text-danger', !hasValue);
+            marker.classList.toggle('text-success', hasValue);
+            marker.setAttribute('title', hasValue ? 'Completed' : 'Required');
+            // Force colour in case theme CSS specificity fights Bootstrap utilities.
+            marker.style.color = hasValue ? '#198754' : '#dc3545';
+        }
+
+        if (icon) {
+            icon.classList.toggle('text-danger', !hasValue);
+            icon.classList.toggle('text-success', hasValue);
+            icon.classList.toggle('fa-circle-exclamation', !hasValue);
+            icon.classList.toggle('fa-exclamation-circle', !hasValue);
+            icon.classList.toggle('fa-circle-check', hasValue);
+            icon.classList.toggle('fa-check-circle', hasValue);
+            icon.style.color = hasValue ? '#198754' : '#dc3545';
+        }
+
+        if (hasValue) {
+            field.classList.remove('is-invalid');
+            field.removeAttribute('aria-invalid');
+            var feedback = item.querySelector('.form-control-feedback, .invalid-feedback');
+            if (feedback) {
+                feedback.textContent = '';
+                feedback.style.display = 'none';
+            }
+        }
+    };
+
+    var bindField = function(field) {
+        syncRequiredMarker(field);
+        field.addEventListener('input', function() { syncRequiredMarker(field); });
+        field.addEventListener('change', function() { syncRequiredMarker(field); });
+        field.addEventListener('keyup', function() { syncRequiredMarker(field); });
+        field.addEventListener('blur', function() { syncRequiredMarker(field); });
+    };
+
+    form.querySelectorAll(
+        'input[aria-required="true"], select[aria-required="true"], textarea[aria-required="true"]'
+    ).forEach(function(field) {
+        // One listener per radio group is enough.
+        if ((field.type || '').toLowerCase() === 'radio') {
+            if (form.querySelector('input[type="radio"][name="' + field.name + '"]') !== field) {
+                return;
+            }
+        }
+        bindField(field);
+    });
+
+    // Capture bubbled events too (intl-tel-input / Moodle may replace nodes).
+    form.addEventListener('input', function(e) {
+        if (e.target && e.target.matches && e.target.matches('input, select, textarea')) {
+            syncRequiredMarker(e.target);
+        }
+    }, true);
+    form.addEventListener('change', function(e) {
+        if (e.target && e.target.matches && e.target.matches('input, select, textarea')) {
+            syncRequiredMarker(e.target);
+        }
+    }, true);
+})();
+{{/js}}
+
 </body>
 </html>

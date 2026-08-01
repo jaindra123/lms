@@ -88,7 +88,18 @@ class service_provider implements \core_payment\local\callback\service_provider 
             $timeend   = 0;
         }
 
-        $plugin->enrol_user($instance, $userid, $instance->roleid, $timestart, $timeend);
+        // A registration flow may pre-create this fee enrolment as suspended
+        // while payment is pending. Explicitly activate it after successful
+        // payment; a null status only creates new enrolments as active and
+        // leaves existing suspended enrolments unchanged.
+        $plugin->enrol_user(
+            $instance,
+            $userid,
+            $instance->roleid,
+            $timestart,
+            $timeend,
+            ENROL_USER_ACTIVE
+        );
 
         return true;
     }

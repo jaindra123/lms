@@ -2,11 +2,27 @@
     @template theme_iiidem2/courses
 
     Front page course cards. Expects: courses[] with fullname, summary, viewurl, courseimage.
+    When singlecourse is true, image and content display side by side.
 }}
-<div class="iiidem-course-grid row g-4">
+<div class="iiidem-course-grid row g-4{{#singlecourse}} iiidem-course-grid--single{{/singlecourse}}">
     {{#courses}}
-    <div class="col-sm-6 col-lg-4">
-        <article class="iiidem-course-card card h-100 border-0 shadow-sm">
+    <div class="{{#singlecourse}}col-12{{/singlecourse}}{{^singlecourse}}col-sm-6 col-lg-4{{/singlecourse}}">
+        <article class="iiidem-course-card card h-100 border-0 shadow-sm{{#singlecourse}} iiidem-course-card--horizontal{{/singlecourse}}">
+            {{#singlecourse}}
+            <div class="iiidem-course-card__split">
+                <div class="iiidem-course-card__split-media">
+                    <img src="{{courseimage}}" class="iiidem-course-card__split-image" alt="">
+                </div>
+                <div class="iiidem-course-card__split-body">
+                    <h3 class="iiidem-course-card__title iiidem-course-card__title--featured">{{fullname}}</h3>
+                    <p class="iiidem-course-card__summary iiidem-course-card__summary--featured text-muted">{{summary}}</p>
+                    <a href="{{viewurl}}" class="btn btn-primary iiidem-course-card__btn">
+                        View course
+                    </a>
+                </div>
+            </div>
+            {{/singlecourse}}
+            {{^singlecourse}}
             <div class="iiidem-course-card__media">
                 <img src="{{courseimage}}" class="iiidem-course-card__image" alt="">
             </div>
@@ -17,6 +33,7 @@
                     View course
                 </a>
             </div>
+            {{/singlecourse}}
         </article>
     </div>
     {{/courses}}

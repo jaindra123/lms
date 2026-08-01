@@ -17,6 +17,35 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
+ * Called by Moodle after an activity is created/updated via the activity form.
+ *
+ * This is more reliable than event observers alone: observer MUC cache can stay
+ * stale on production after uploading events.php, while this callback is always
+ * discovered from theme lib.php.
+ *
+ * @param stdClass $moduleinfo
+ * @param stdClass $course
+ * @return stdClass
+ */
+function theme_iiidem2_coursemodule_edit_post_actions($moduleinfo, $course) {
+    $cmid = (int) ($moduleinfo->coursemodule ?? 0);
+    if ($cmid <= 0) {
+        return $moduleinfo;
+    }
+
+    $action = !empty($moduleinfo->add) ? 'created' : 'updated';
+
+    try {
+        \theme_iiidem2\assign_notifier::maybe_notify($cmid, $action);
+        \theme_iiidem2\liveclass_notifier::maybe_notify($cmid, $action);
+    } catch (\Throwable $e) {
+        error_log('theme_iiidem2 coursemodule_edit_post_actions: ' . $e->getMessage());
+    }
+
+    return $moduleinfo;
+}
+
+/**
  * Inject additional SCSS.
  *
  * @param theme_config $theme The theme config object.
@@ -134,7 +163,14 @@ function theme_iiidem2_get_precompiled_css() {
  * @return string
  */
 function theme_iiidem2_get_pre_scss($theme) {
+    global $CFG;
+
     $scss = '';
+    $breakpoints = $CFG->dirroot . '/theme/iiidem2/scss/iiidem/_breakpoints.scss';
+    if (is_readable($breakpoints)) {
+        $scss .= file_get_contents($breakpoints) . "\n";
+    }
+
     $configurable = [
         'brandcolor' => ['primary'],
     ];
@@ -234,6 +270,7 @@ function theme_iiidem2_get_footer_context(): array {
         'navbarlogo' => $navbarlogo,
         'headerlogo' => $navbarlogo,
         'footerlogo' => $theme->setting_file_url('footerlogo', 'footerlogo'),
+        'registerurl' => theme_iiidem2_get_register_url(),
     ]);
 }
 
@@ -306,8 +343,31 @@ function theme_iiidem2_get_resource_preview_html(cm_info $cm): string {
     if (file_mimetype_in_typegroup($mimetype, 'web_image')) {
         $code = resourcelib_embed_image($fileurl->out(false), $title);
     } else if ($mimetype === 'application/pdf') {
+        // Lazy-load PDF when the curriculum collapse opens. Loading inside a
+        // hidden panel makes browser PDF viewers pick a tiny default zoom.
         $clicktoopen = resource_get_clicktoopen($file, $resource->revision);
-        $code = resourcelib_embed_pdf($fileurl->out(false), $title, $clicktoopen);
+        $iframeid = 'iiidem-resource-pdf-' . (int) $cm->id;
+        $pdfurl = $fileurl->out(false);
+        if (strpos($pdfurl, '#') === false) {
+            $pdfurl .= '#view=FitH';
+        }
+        $code = html_writer::div(
+            html_writer::tag(
+                'iframe',
+                $clicktoopen,
+                [
+                    'id' => $iframeid,
+                    'class' => 'iiidem-curriculum-pdf',
+                    'src' => 'about:blank',
+                    'data-pdf-src' => $pdfurl,
+                    'title' => $title,
+                    'width' => '100%',
+                    'height' => '800',
+                    'allowfullscreen' => 'allowfullscreen',
+                ]
+            ),
+            'resourcecontent resourcepdf iiidem-curriculum-pdf-wrap'
+        );
     } else if ($mediamanager->can_embed_url($fileurl, $embedoptions)) {
         $code = $mediamanager->embed_url($fileurl, $title, 0, 400, $embedoptions);
     } else if (file_mimetype_in_typegroup($mimetype, 'web_video') || file_mimetype_in_typegroup($mimetype, 'web_audio')) {
@@ -934,6 +994,45 @@ function theme_iiidem2_get_visible_course_ids_for_calendar(): array {
 }
 
 /**
+ * Course or site log report URL when the user may view logs.
+ *
+ * @param int|null $userid
+ * @param array|null $courses Optional courses to check first (e.g. teaching courses).
+ * @return string|null
+ */
+function theme_iiidem2_get_report_log_url(?int $userid = null, ?array $courses = null): ?string {
+    global $USER, $CFG;
+
+    if ($userid === null) {
+        $userid = (int) $USER->id;
+    }
+
+    $systemcontext = context_system::instance();
+    if (has_capability('report/log:view', $systemcontext, $userid)) {
+        return (new moodle_url('/report/log/index.php'))->out(false);
+    }
+
+    $checkcourses = $courses ?? [];
+    if (empty($checkcourses)) {
+        require_once($CFG->libdir . '/enrollib.php');
+        $checkcourses = enrol_get_users_courses($userid, true, 'id', 'sortorder ASC');
+    }
+
+    foreach ($checkcourses as $course) {
+        $courseid = is_object($course) ? (int) $course->id : (int) $course;
+        if ($courseid <= 0 || $courseid === SITEID) {
+            continue;
+        }
+        $coursecontext = context_course::instance($courseid);
+        if (has_capability('report/log:view', $coursecontext, $userid)) {
+            return (new moodle_url('/report/log/index.php', ['id' => $courseid]))->out(false);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Template context for role dashboards.
  *
  * @param int|null $userid
@@ -948,6 +1047,7 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
 
     $user = core_user::get_user($userid, '*', MUST_EXIST);
     $role = theme_iiidem2_get_user_dashboard_role($userid);
+    $reportsurl = theme_iiidem2_get_report_log_url($userid);
 
     $context = [
         'fullname' => fullname($user),
@@ -960,7 +1060,8 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
         'mycoursesurl' => (new moodle_url('/my/courses.php'))->out(false),
         'profileurl' => (new moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
         'coursesurl' => (new moodle_url('/course/management.php'))->out(false),
-        'reportsurl' => (new moodle_url('/report/log/index.php'))->out(false),
+        'hasreports' => $reportsurl !== null,
+        'reportsurl' => $reportsurl ?? '',
         'usersurl' => (new moodle_url('/admin/user.php'))->out(false),
         'siteadminurl' => (new moodle_url('/admin/search.php'))->out(false),
     ];
@@ -1094,12 +1195,15 @@ function theme_iiidem2_get_program_governance_context(): array {
             continue;
         }
 
+        $role1 = trim((string) get_config('theme_iiidem2', 'advisorrole1' . $i));
+        $role2 = trim((string) get_config('theme_iiidem2', 'advisorrole2' . $i));
+
         $roles = [];
-        foreach (['advisorrole1', 'advisorrole2'] as $rolekey) {
-            $line = trim((string) get_config('theme_iiidem2', $rolekey . $i));
-            if ($line !== '') {
-                $roles[] = ['text' => $line];
-            }
+        if ($role1 !== '') {
+            $roles[] = ['text' => $role1];
+        }
+        if ($role2 !== '') {
+            $roles[] = ['text' => $role2];
         }
         // Legacy: old textarea / comma-separated advisorroles setting.
         $rolesraw = trim((string) get_config('theme_iiidem2', 'advisorroles' . $i));
@@ -1109,6 +1213,12 @@ function theme_iiidem2_get_program_governance_context(): array {
                 if ($line !== '') {
                     $roles[] = ['text' => $line];
                 }
+            }
+            if (isset($roles[0])) {
+                $role1 = $roles[0]['text'];
+            }
+            if (isset($roles[1])) {
+                $role2 = $roles[1]['text'];
             }
         }
 
@@ -1135,6 +1245,10 @@ function theme_iiidem2_get_program_governance_context(): array {
 
         $advisors[] = [
             'name' => $name,
+            'role1' => $role1,
+            'role2' => $role2,
+            'hasrole1' => $role1 !== '',
+            'hasrole2' => $role2 !== '',
             'roles' => $roles,
             'hasroles' => !empty($roles),
             'imageurl' => $imageurl,
@@ -1336,6 +1450,27 @@ function theme_iiidem2_get_course_image_url(stdClass $course): string {
 }
 
 /**
+ * Truncate plain text to a maximum number of words.
+ *
+ * @param string $text
+ * @param int $maxwords
+ * @return string
+ */
+function theme_iiidem2_truncate_words(string $text, int $maxwords = 350): string {
+    $text = trim(preg_replace('/\s+/u', ' ', $text));
+    if ($text === '') {
+        return '';
+    }
+
+    $words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+    if (count($words) <= $maxwords) {
+        return $text;
+    }
+
+    return implode(' ', array_slice($words, 0, $maxwords)) . '…';
+}
+
+/**
  * Visible courses for the front page listing.
  *
  * @return array
@@ -1351,14 +1486,25 @@ function theme_iiidem2_get_frontpage_courses(): array {
             continue;
         }
 
+        $summaryplain = trim(html_to_text($course->summary, 0));
+
         $coursedata[] = [
             'id' => $course->id,
             'fullname' => format_string($course->fullname),
-            'summary' => shorten_text(strip_tags($course->summary), 120),
+            'summaryplain' => $summaryplain,
             'viewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             'courseimage' => theme_iiidem2_get_course_image_url($course),
         ];
     }
+
+    $singlecourse = count($coursedata) === 1;
+    foreach ($coursedata as &$courseitem) {
+        $courseitem['summary'] = $singlecourse
+            ? theme_iiidem2_truncate_words($courseitem['summaryplain'], 55)
+            : shorten_text($courseitem['summaryplain'], 120);
+        unset($courseitem['summaryplain']);
+    }
+    unset($courseitem);
 
     return $coursedata;
 }
@@ -1450,6 +1596,9 @@ function theme_iiidem2_render_public_page(
         $extracontext
     ));
 
+    $PAGE->set_cacheable(false);
+
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -1459,11 +1608,13 @@ function theme_iiidem2_render_public_page(
 <body <?php echo $OUTPUT->body_attributes([$bodyclass]); ?>>
 <?php echo $OUTPUT->standard_top_of_body_html(); ?>
 <?php
+    // Page templates (about-us, contact-us, etc.) already include theme_iiidem2/page_end.
     echo $OUTPUT->render_from_template($template, $templatecontext);
 ?>
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 /**
@@ -1551,6 +1702,12 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
         $from = core_user::get_noreply_user();
     }
 
+    $usersender = clone core_user::get_support_user();
+    if (!empty($themeemail) && validate_email($themeemail)) {
+        $usersender->email = $themeemail;
+    }
+    $usersender->maildisplay = true;
+
     $subject = get_string('contactusemailsubject', 'theme_iiidem2', [
         'site' => format_string($SITE->fullname),
         'subject' => $data->subject,
@@ -1563,16 +1720,42 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
         'message' => $data->message,
     ]);
 
-    return email_to_user(
+    $adminsent = email_to_user(
         $recipient,
         $from,
         $subject,
         $body,
-        '',
-        '',
-        true,
-        $data->email,
-        $data->name
+        ''
+    );
+
+    if (!$adminsent) {
+        return false;
+    }
+
+    $userrecipient = clone core_user::get_noreply_user();
+    $userrecipient->email = trim((string) ($data->email ?? ''));
+    $userrecipient->firstname = trim((string) ($data->name ?? ''));
+    $userrecipient->lastname = '';
+    $userrecipient->maildisplay = true;
+
+    if (!validate_email($userrecipient->email)) {
+        return true;
+    }
+
+    $sitename = format_string($SITE->fullname);
+    $username = $userrecipient->firstname !== '' ? $userrecipient->firstname : 'Participant';
+    $useracksubject = '[' . $sitename . '] We received your message';
+    $userackbody = "Dear {$username},\n\n"
+        . "Thank you for contacting {$sitename}. We have received your message and will get back to you soon.\n\n"
+        . "Subject: {$data->subject}\n\n"
+        . "Your message:\n{$data->message}";
+
+    return email_to_user(
+        $userrecipient,
+        $usersender,
+        $useracksubject,
+        $userackbody,
+        ''
     );
 }
 
@@ -2279,9 +2462,10 @@ function theme_iiidem2_get_login_page_context(): array {
  * @return array
  */
 function theme_iiidem2_filter_register_from_nav_items(array $items): array {
+    $hiddenkeys = ['register', 'home'];
     $filtered = [];
     foreach ($items as $item) {
-        if (!empty($item['key']) && $item['key'] === 'register') {
+        if (!empty($item['key']) && in_array($item['key'], $hiddenkeys, true)) {
             continue;
         }
         if (!empty($item['children']) && is_array($item['children'])) {
@@ -2412,7 +2596,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     $user->middlename = $data->middlename ?? '';
     $user->lastname = $data->lastname;
     $user->email = $data->email;
-    $user->phone1 = $data->phone1;
+    $user->phone1 = \theme_iiidem2\form\register_form::normalize_phone(
+        (string) $data->phone1,
+        (string) ($data->country ?? '')
+    );
     $user->country = $data->country;
     $user->city = $data->city;
     $user->auth = $auth;
@@ -2425,6 +2612,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
         $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'organization');
         $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobprofile');
         $user->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobpostingcountry');
+    } else if ($occupation === 'workingemb') {
+        $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_organization');
+        $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_designation');
+        $user->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_country');
     } else if ($occupation === 'student') {
         $user->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'university');
         $user->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'position');
@@ -2443,6 +2634,10 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
             $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'organization');
             $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobprofile');
             $profileupdate->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'jobpostingcountry');
+        } else if ($occupation === 'workingemb') {
+            $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_organization');
+            $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_designation');
+            $profileupdate->address = \theme_iiidem2\registration_profile::get_submitted_value($data, 'emb_country');
         } else if ($occupation === 'student') {
             $profileupdate->institution = \theme_iiidem2\registration_profile::get_submitted_value($data, 'university');
             $profileupdate->department = \theme_iiidem2\registration_profile::get_submitted_value($data, 'position');
@@ -2460,8 +2655,205 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     }
 
     \theme_iiidem2\registration_profile::save_user_data($userid, $data);
+    \theme_iiidem2\registration_enrolment::enrol_user($userid);
 
     return $userid;
+}
+
+/**
+ * Email the new user (with password and reset link) and site administrators after registration.
+ *
+ * @param stdClass $user Newly created user record.
+ * @param stdClass|null $formdata Original registration submission (optional; used for plain password).
+ * @return void
+ */
+function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formdata = null): void {
+    global $CFG, $SITE;
+
+    require_once($CFG->dirroot . '/login/lib.php');
+
+    $supportuser = \core_user::get_support_user();
+    $sitename = format_string($SITE->fullname);
+    $resetminutes = isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30;
+
+    // One-time password reset token (same mechanism as forgot password).
+    $resetrecord = core_login_generate_password_reset($user);
+    $resetlink = (new moodle_url('/login/forgot_password.php', ['token' => $resetrecord->token]))->out(false);
+    $loginurl = (new moodle_url('/login/'))->out(false);
+
+    $occupation = '';
+    // Plain password exists only on the registration submission (DB stores a hash).
+    $password = '';
+    if ($formdata) {
+        $occupation = \theme_iiidem2\registration_profile::get_occupation_type($formdata);
+        $password = (string) ($formdata->password ?? '');
+    }
+
+    $userdata = (object) [
+        'firstname' => $user->firstname,
+        'fullname' => fullname($user),
+        'username' => $user->username,
+        'email' => $user->email,
+        'password' => $password !== '' ? $password : get_string('none'),
+        'phone' => $user->phone1 ?? '',
+        'country' => $user->country ?? '',
+        'city' => $user->city ?? '',
+        'occupation' => $occupation !== '' ? $occupation : get_string('none'),
+        'sitename' => $sitename,
+        'resetlink' => $resetlink,
+        'resetminutes' => $resetminutes,
+        'loginurl' => $loginurl,
+        'profileurl' => (new moodle_url('/user/profile.php', ['id' => $user->id]))->out(false),
+        'admin' => generate_email_signoff(),
+    ];
+
+    // Email to the registered user (branded HTML template).
+    $usersubject = get_string('registeremailusersubject', 'theme_iiidem2', $userdata);
+    $usertext = get_string('registeremailuserbody', 'theme_iiidem2', $userdata);
+    $userhtml = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $user->firstname,
+        'title' => get_string('registeremailusertitle', 'theme_iiidem2', $userdata),
+        'intro' => get_string('registeremailuserintro', 'theme_iiidem2', $userdata),
+        'rows' => [
+            [
+                'label' => get_string('registeremailuserlabel_username', 'theme_iiidem2'),
+                'value' => $userdata->username,
+            ],
+            [
+                'label' => get_string('registeremailuserlabel_email', 'theme_iiidem2'),
+                'valuehtml' => '<a href="mailto:' . s($userdata->email) . '" style="color:#0b3d91;text-decoration:underline;">'
+                    . s($userdata->email) . '</a>',
+            ],
+            [
+                'label' => get_string('registeremailuserlabel_password', 'theme_iiidem2'),
+                'value' => $userdata->password,
+            ],
+        ],
+        'note' => get_string('registeremailusernote', 'theme_iiidem2', $userdata) . ' '
+            . get_string('registeremailuserhelp', 'theme_iiidem2', $userdata),
+        'ctaurl' => $loginurl,
+        'ctalabel' => get_string('registeremailusercta', 'theme_iiidem2'),
+        'secondaryurl' => $resetlink,
+        'secondarylabel' => get_string('registeremailuserreset', 'theme_iiidem2'),
+        'signoff' => get_string('registeremailusersignoff', 'theme_iiidem2', $userdata),
+    ]);
+    $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+    error_log('IIIDEM register mail to=' . $user->email . ' sent=' . var_export($sent, true));
+
+    // Email to each site administrator.
+    $adminsubject = get_string('registeremailadminsubject', 'theme_iiidem2', $userdata);
+    $admintext = get_string('registeremailadminbody', 'theme_iiidem2', $userdata);
+    $adminhtml = get_string('registeremailadminhtml', 'theme_iiidem2', $userdata);
+    foreach (get_admins() as $admin) {
+        if (empty($admin->email) || !validate_email($admin->email)) {
+            continue;
+        }
+        email_to_user($admin, $supportuser, $adminsubject, $admintext, $adminhtml);
+    }
+
+    // Optional SMS + WhatsApp to the user's contact number (same reset link).
+    $messaging = \theme_iiidem2\registration_messaging::notify_user($user, $userdata);
+    if (!empty($messaging['provider']) && $messaging['provider'] === 'log' && (!empty($messaging['sms']) || !empty($messaging['whatsapp']))) {
+        \core\notification::info(get_string('registrationmessagingtestok', 'theme_iiidem2', (object) [
+            'phone' => $messaging['phone'],
+            'logfile' => $messaging['logfile'],
+        ]));
+    }
+}
+
+/**
+ * Send branded HTML password-reset confirmation email (forgot password flow).
+ *
+ * @param stdClass $user
+ * @param stdClass $resetrecord
+ * @return bool
+ */
+function theme_iiidem2_send_password_reset_email(stdClass $user, stdClass $resetrecord): bool {
+    global $CFG, $SITE;
+
+    $supportuser = \core_user::get_support_user();
+    $sitename = format_string($SITE->fullname);
+    $resetminutes = isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30;
+    $resetlink = $CFG->wwwroot . '/login/forgot_password.php?token=' . $resetrecord->token;
+    $firstname = !empty($user->firstname) ? $user->firstname : 'Student';
+    $email = (string) $user->email;
+    $emailsafe = s($email);
+
+    // Prefer lang strings when the language cache has them; fall back so mail still sends.
+    $str = static function (string $key, $a = null, string $fallback = '') {
+        if (get_string_manager()->string_exists($key, 'theme_iiidem2')) {
+            return get_string($key, 'theme_iiidem2', $a);
+        }
+        return $fallback;
+    };
+
+    $maildata = (object) [
+        'firstname' => $firstname,
+        'email' => $email,
+        'sitename' => $sitename,
+        'resetlink' => $resetlink,
+        'resetminutes' => $resetminutes,
+    ];
+
+    $subject = $str('passwordresetemailsubject', $maildata, $sitename . ': Password reset request');
+    $text = $str(
+        'passwordresetemailbody',
+        $maildata,
+        "Dear {$firstname},\n\n"
+        . "We received a request to reset the password for your {$sitename} account associated with {$email}.\n\n"
+        . "To create a new password, please click the link below:\n\n{$resetlink}\n\n"
+        . "For your security, this password reset link is valid for {$resetminutes} minutes "
+        . "from the time the request was made.\n\n"
+        . "If you did not request a password reset, you can safely ignore this email. "
+        . "Your account will remain secure, and no further action is required.\n\n"
+        . "If you need any assistance, please contact the {$sitename} Site Administrator.\n\n"
+        . "Kind regards,\nIIIDEM Support Team\nSite Administrator\n"
+    );
+
+    $introhtml = $str(
+        'passwordresetemailintrohtml',
+        (object) [
+            'sitename' => s($sitename),
+            'emailhtml' => '<a href="mailto:' . $emailsafe
+                . '" style="color:#0b3d91;text-decoration:underline;font-weight:700;">'
+                . $emailsafe . '</a>',
+        ],
+        '<p style="margin:0 0 12px;">We received a request to reset the password for your '
+        . s($sitename) . ' account associated with <a href="mailto:' . $emailsafe
+        . '" style="color:#0b3d91;text-decoration:underline;font-weight:700;">'
+        . $emailsafe . '</a>.</p>'
+        . '<p style="margin:0;">To create a new password, please click the link below:</p>'
+    );
+    $notehtml = $str(
+        'passwordresetemailnotehtml',
+        (object) [
+            'resetminutes' => '<strong>' . (int) $resetminutes . ' minutes</strong>',
+            'sitename' => s($sitename),
+        ],
+        '<p style="margin:0 0 12px;">For your security, this password reset link is valid for <strong>'
+        . (int) $resetminutes . ' minutes</strong> from the time the request was made.</p>'
+        . '<p style="margin:0 0 12px;">If you did not request a password reset, you can safely ignore this email. '
+        . 'Your account will remain secure, and no further action is required.</p>'
+        . '<p style="margin:0;">If you need any assistance, please contact the '
+        . s($sitename) . ' Site Administrator.</p>'
+    );
+
+    $html = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $firstname,
+        'title' => $str('passwordresetemailtitle', $maildata, 'Password reset request'),
+        'introhtml' => $introhtml,
+        'rows' => [],
+        'notehtml' => $notehtml,
+        'ctaurl' => $resetlink,
+        'ctalabel' => $str('passwordresetemailcta', null, 'Reset Password'),
+        'regards' => $str('passwordresetemailregards', null, 'Kind regards'),
+        'signoff' => $str('passwordresetemailsignoff', null, 'IIIDEM Support Team'),
+        'signoffextra' => $str('passwordresetemailsignoffextra', null, 'Site Administrator'),
+    ]);
+
+    return email_to_user($user, $supportuser, $subject, $text, $html);
 }
 
 /**
@@ -2492,6 +2884,61 @@ function theme_iiidem2_is_student_dashboard_page(?moodle_page $page = null): boo
 }
 
 /**
+ * Send HTTP headers for pages that bypass $OUTPUT->header().
+ *
+ * @return void
+ */
+function theme_iiidem2_send_page_headers(): void {
+    global $PAGE;
+
+    if (headers_sent()) {
+        return;
+    }
+
+    if ($PAGE->state === moodle_page::STATE_BEFORE_HEADER) {
+        $PAGE->set_state(moodle_page::STATE_PRINTING_HEADER);
+    }
+
+    send_headers('text/html', $PAGE->cacheable);
+}
+
+/**
+ * Finish a buffered custom page: send headers, echo HTML, advance page state safely.
+ *
+ * @param string $html
+ * @return void
+ */
+function theme_iiidem2_finish_buffered_page(string $html): void {
+    global $PAGE;
+
+    theme_iiidem2_send_page_headers();
+    echo theme_iiidem2_finalize_page_html($html);
+
+    while ($PAGE->state < moodle_page::STATE_DONE) {
+        $PAGE->set_state($PAGE->state + 1);
+    }
+}
+
+/**
+ * Register plugin CSS for custom full-page renders that bypass $OUTPUT->header().
+ *
+ * @param moodle_page $page
+ * @return void
+ */
+function theme_iiidem2_register_course_page_assets(moodle_page $page): void {
+    global $CFG;
+
+    if (!$page->context || $page->context->contextlevel !== CONTEXT_COURSE) {
+        return;
+    }
+
+    $calendarcss = $CFG->dirroot . '/local/iiidem_coursecalendar/styles.css';
+    if (is_readable($calendarcss)) {
+        $page->requires->css('/local/iiidem_coursecalendar/styles.css');
+    }
+}
+
+/**
  * Replace Moodle footer placeholders (%%PERFORMANCEINFO%%, %%ENDHTML%%) with real output.
  *
  * Full-page Mustache templates that bypass $OUTPUT->footer() leave these tokens visible.
@@ -2508,6 +2955,13 @@ function theme_iiidem2_finalize_page_html(string $html): string {
     $perfprop = $reflection->getProperty('unique_performance_info_token');
     $perfprop->setAccessible(true);
     $html = str_replace((string) $perfprop->getValue($renderer), '', $html);
+
+    if (!empty($PAGE->context->id)) {
+        $PAGE->requires->js_call_amd('core/notification', 'init', [
+            $PAGE->context->id,
+            \core\notification::fetch_as_array($renderer),
+        ]);
+    }
 
     $endprop = $reflection->getProperty('unique_end_html_token');
     $endprop->setAccessible(true);
@@ -2539,6 +2993,7 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
     $done = true;
     $page->add_body_class('iiidem-course-hero-layout');
     $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
+    $page->requires->css(new moodle_url('/theme/iiidem2/style/live-class.css'));
 
     $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
     $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
@@ -2548,6 +3003,8 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
     if (is_readable($bs5js)) {
         $page->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
     }
+
+    $page->requires->js_call_amd('theme_iiidem2/course_enrol_sidebar', 'init');
 }
 
 /**
@@ -2558,6 +3015,52 @@ function theme_iiidem2_apply_course_view_page_assets(moodle_page $page): void {
  */
 function theme_iiidem2_is_admin_index_page(moodle_page $page): bool {
     return (bool) preg_match('#/admin/index\.php$#', $page->url->get_path(false));
+}
+
+/**
+ * Inline head script: redirect /admin/index.php#link* to /admin/search.php#link*.
+ *
+ * Runs before themed CSS/JS so admin settings tabs open immediately.
+ *
+ * @return string
+ */
+function theme_iiidem2_admin_index_head_script(): string {
+    return <<<'HTML'
+<script>
+(function(){if(!/\/admin\/index\.php$/i.test(location.pathname)){return;}
+function toSearch(href){if(!href){return null;}
+if(href.indexOf('/admin/search.php')!==-1&&href.indexOf('#link')!==-1){
+return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'/')+href);}
+var hash=href.indexOf('#link')===0?href:null;
+if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));
+if(c.indexOf('#link')===0){hash=c;}}
+return hash?(location.origin+'/admin/search.php'+hash):null;}
+function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){
+location.replace(location.origin+'/admin/search.php'+h);}}
+redirectHash();window.addEventListener('hashchange',redirectHash);
+document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');
+if(!link){return;}var target=toSearch(link.getAttribute('href')||'');if(!target){return;}
+e.preventDefault();e.stopImmediatePropagation();location.assign(target);},true);})();
+</script>
+HTML;
+}
+
+/**
+ * Inline head script for /admin/search.php — full-page admin tabs (Payment, Support).
+ *
+ * @return string
+ */
+function theme_iiidem2_admin_search_head_script(): string {
+    return <<<'HTML'
+<script>
+(function(){if(!/\/admin\/search\.php$/i.test(location.pathname)){return;}
+document.addEventListener('click',function(e){
+var link=e.target.closest('.secondary-navigation a[data-toggle="tab"][href],.secondary-navigation a[data-bs-toggle="tab"][href]');
+if(!link){return;}var href=link.getAttribute('href')||'';
+if(!href||href.charAt(0)==='#'||href.indexOf('/admin/search.php')!==-1){return;}
+e.preventDefault();e.stopImmediatePropagation();location.assign(href);},true);})();
+</script>
+HTML;
 }
 
 /**
@@ -2647,8 +3150,14 @@ function theme_iiidem2_extend_admin_secondary_nav(moodle_page $page): void {
  * @return void
  */
 function theme_iiidem2_echo_page_template(string $templatename, $context): void {
-    global $OUTPUT;
+    global $OUTPUT, $PAGE;
+
+    theme_iiidem2_send_page_headers();
     echo theme_iiidem2_finalize_page_html($OUTPUT->render_from_template($templatename, $context));
+
+    while ($PAGE->state < moodle_page::STATE_DONE) {
+        $PAGE->set_state($PAGE->state + 1);
+    }
 }
 
 /**
@@ -2666,7 +3175,8 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $PAGE->set_url(new moodle_url('/course/view.php', ['id' => $course->id]));
     $PAGE->set_pagelayout('course');
     $PAGE->set_pagetype('course-view-' . $course->format);
-    $PAGE->set_cacheable(true);
+    // Must not be cacheable: page embeds per-session M.cfg.sesskey and user-specific navbar widgets.
+    $PAGE->set_cacheable(false);
     $PAGE->set_title(format_string($course->fullname));
     $PAGE->set_heading(format_string($course->fullname));
 
@@ -2674,6 +3184,10 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     $PAGE->theme->init_page($PAGE);
     theme_iiidem2_apply_course_view_page_assets($PAGE);
     theme_iiidem2_preload_course_layout_context($course);
+
+    // This custom path bypasses $OUTPUT->header(), which normally loads the page
+    // blocks. Load them here so blocklib doesn't warn on null block regions.
+    $PAGE->blocks->load_blocks();
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
@@ -2698,6 +3212,7 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
         theme_iiidem2_get_course_payment_success_context(),
+        theme_iiidem2_get_register_success_context(),
         [
             'sitename' => format_string($SITE->shortname, true, [
                 'context' => context_course::instance(SITEID),
@@ -2746,10 +3261,40 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
     if ($cm->modname === 'page') {
         $page = $DB->get_record('page', ['id' => $cm->instance], '*', IGNORE_MISSING);
         if ($page && !empty($page->content)) {
-            return format_text($page->content, $page->contentformat, [
+            $formatted = format_text($page->content, $page->contentformat, [
                 'overflowdiv' => true,
                 'noclean' => true,
             ]);
+
+            // Live-class Pages: Join button opens Webex in the theme popup.
+            // Meeting details (number/password) remain visible under the button.
+            $joinurl = theme_iiidem2_extract_join_url_from_page_html($formatted);
+            $islivepage = theme_iiidem2_page_name_matches_live_class((string) $page->name)
+                || ($joinurl !== '' && preg_match('#https?://[^/\s]*webex\.com/#i', $joinurl));
+            if ($islivepage && $joinurl !== '') {
+                $detailshtml = preg_replace(
+                    '/<a\b[^>]*>.*?<\/a>/is',
+                    '',
+                    $formatted
+                );
+                $detailshtml = trim(preg_replace('/(<p>\s*<\/p>\s*)+/i', '', (string) $detailshtml));
+
+                $button = html_writer::tag('button', get_string('liveclassjoin', 'theme_iiidem2'), [
+                    'type' => 'button',
+                    'class' => 'btn btn-primary iiidem-liveclass-open-btn',
+                    'data-action' => 'open-liveclass-modal',
+                    'data-join-url' => $joinurl,
+                ]);
+
+                $parts = [html_writer::div($button, 'iiidem-liveclass-preview__actions mb-2')];
+                if ($detailshtml !== '') {
+                    $parts[] = html_writer::div($detailshtml, 'iiidem-liveclass-preview__details text-muted');
+                }
+
+                return html_writer::div(implode('', $parts), 'iiidem-liveclass-preview');
+            }
+
+            return $formatted;
         }
         return '';
     }
@@ -2767,7 +3312,24 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
                 return '<iframe width="100%" height="400" src="' . s($embedurl) . '" frameborder="0" allowfullscreen></iframe>';
             }
         }
-        return '<a href="' . s($videourl) . '" target="_blank" rel="noopener">Open external link</a>';
+
+        // Webex / live meeting links: open in theme modal instead of a new tab.
+        if (preg_match('#https?://[^/\s]*webex\.com/#i', $videourl)
+                || preg_match('#\b(webex|live\s*class|online\s*class)\b#i', (string) $url->name)) {
+            return html_writer::tag('button', get_string('liveclassjoin', 'theme_iiidem2'), [
+                'type' => 'button',
+                'class' => 'btn btn-primary btn-sm iiidem-liveclass-open-btn',
+                'data-action' => 'open-liveclass-modal',
+                'data-join-url' => $videourl,
+            ]);
+        }
+
+        return html_writer::tag('button', get_string('liveclassmodalopenexternal', 'theme_iiidem2'), [
+            'type' => 'button',
+            'class' => 'btn btn-outline-primary btn-sm iiidem-liveclass-open-btn',
+            'data-action' => 'open-liveclass-modal',
+            'data-join-url' => $videourl,
+        ]);
     }
 
     if ($cm->modname === 'quiz') {
@@ -2788,10 +3350,153 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
     }
 
     if ($cm->modname === 'assign') {
-        return '<div class="assignment-preview">Assignment activity</div>';
+        return theme_iiidem2_get_assign_preview_html($cm);
     }
 
     return '';
+}
+
+/**
+ * Curriculum accordion preview HTML for an Assignment activity.
+ *
+ * Embeds a short summary and a button that opens the real assignment page
+ * (upload / submit / view status). The full Moodle assign UI is not inlined.
+ *
+ * @param cm_info $cm Course module (modname must be assign).
+ * @return string Safe HTML.
+ */
+function theme_iiidem2_get_assign_preview_html(cm_info $cm): string {
+    global $CFG, $DB, $USER;
+
+    if ($cm->modname !== 'assign') {
+        return '';
+    }
+
+    $assign = $DB->get_record('assign', ['id' => $cm->instance], '*', IGNORE_MISSING);
+    if (!$assign) {
+        return '';
+    }
+
+    $context = context_module::instance($cm->id);
+    $viewurl = (new moodle_url('/mod/assign/view.php', ['id' => $cm->id]))->out(false);
+
+    $parts = [];
+
+    if (!empty($assign->intro)) {
+        $parts[] = html_writer::div(
+            format_text($assign->intro, $assign->introformat, ['context' => $context, 'overflowdiv' => true]),
+            'iiidem-assign-preview__intro mb-2'
+        );
+    }
+
+    $meta = [];
+    if (!empty($assign->allowsubmissionsfromdate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('allowsubmissionsfromdate', 'assign') . ': ' .
+                userdate($assign->allowsubmissionsfromdate)
+        );
+    }
+    if (!empty($assign->duedate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('duedate', 'assign') . ': ' . userdate($assign->duedate)
+        );
+    }
+    if (!empty($assign->cutoffdate)) {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('cutoffdate', 'assign') . ': ' . userdate($assign->cutoffdate)
+        );
+    }
+
+    $filetypes = $DB->get_field('assign_plugin_config', 'value', [
+        'assignment' => $assign->id,
+        'plugin' => 'file',
+        'subtype' => 'assignsubmission',
+        'name' => 'filetypeslist',
+    ]);
+    if (is_string($filetypes) && trim($filetypes) !== '') {
+        $meta[] = html_writer::tag(
+            'li',
+            get_string('curriculumassignfiletypes', 'theme_iiidem2', s($filetypes))
+        );
+    }
+
+    if ($meta) {
+        $parts[] = html_writer::tag('ul', implode('', $meta), ['class' => 'iiidem-assign-preview__meta list-unstyled mb-3']);
+    }
+
+    // Submission status for the current user (when enrolled / logged in).
+    if (isloggedin() && !isguestuser()) {
+        $submission = $DB->get_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $USER->id,
+            'latest' => 1,
+        ], 'id, status, attemptnumber', IGNORE_MISSING);
+
+        $maxattempts = (int) ($assign->maxattempts ?? 1);
+        $usedattempts = $submission ? ((int) $submission->attemptnumber + 1) : 0;
+        if ($maxattempts < 0) {
+            // Unlimited attempts (-1 in Moodle).
+            $parts[] = html_writer::div(
+                get_string('curriculumassignattemptsunlimited', 'theme_iiidem2', $usedattempts),
+                'iiidem-assign-preview__attempts text-muted mb-1'
+            );
+        } else if ($maxattempts > 1) {
+            $parts[] = html_writer::div(
+                get_string('curriculumassignattempts', 'theme_iiidem2', (object) [
+                    'used' => $usedattempts,
+                    'max' => $maxattempts,
+                ]),
+                'iiidem-assign-preview__attempts text-muted mb-1'
+            );
+        }
+
+        $canedit = false;
+        try {
+            require_once($CFG->dirroot . '/mod/assign/locallib.php');
+            $assignment = new assign($context, $cm, $cm->get_course());
+            $canedit = $assignment->can_edit_submission($USER->id, $USER->id);
+        } catch (Throwable $e) {
+            $canedit = false;
+        }
+
+        if ($submission && $submission->status === 'submitted') {
+            if ($canedit) {
+                $btnlabel = get_string('curriculumassigncontinuesubmit', 'theme_iiidem2');
+                $status = get_string('curriculumassigncanretry', 'theme_iiidem2');
+            } else {
+                $btnlabel = get_string('curriculumassignviewsubmission', 'theme_iiidem2');
+                $status = get_string('submissionstatus_submitted', 'assign');
+                // Explain why attempt 2 is not open yet (common with "until pass").
+                if ($maxattempts > 1 || $maxattempts < 0) {
+                    $parts[] = html_writer::div(
+                        get_string('curriculumassignawaitingreopen', 'theme_iiidem2'),
+                        'iiidem-assign-preview__hint alert alert-secondary py-2 px-3 mb-2'
+                    );
+                }
+            }
+        } else if ($submission && $submission->status === 'draft') {
+            $btnlabel = get_string('curriculumassigncontinuesubmit', 'theme_iiidem2');
+            $status = get_string('submissionstatus_draft', 'assign');
+        } else {
+            $btnlabel = get_string('curriculumassignsubmit', 'theme_iiidem2');
+            $status = get_string('submissionstatus_', 'assign');
+        }
+        $parts[] = html_writer::div(
+            get_string('curriculumassignstatus', 'theme_iiidem2', $status),
+            'iiidem-assign-preview__status text-muted mb-2'
+        );
+    } else {
+        $btnlabel = get_string('curriculumassignopen', 'theme_iiidem2');
+    }
+
+    $parts[] = html_writer::link($viewurl, $btnlabel, [
+        'class' => 'btn btn-primary btn-sm',
+    ]);
+
+    return html_writer::div(implode('', $parts), 'iiidem-assign-preview assignment-preview');
 }
 
 /**
@@ -2832,7 +3537,7 @@ function theme_iiidem2_get_course_fee_enrol_instance(int $courseid): ?stdClass {
 }
 
 /**
- * Logged-in university student who must pay the course fee before accessing curriculum previews.
+ * Logged-in student or non-EMB professional who must pay before accessing curriculum previews.
  *
  * @param stdClass $course
  * @param int|null $userid
@@ -2866,8 +3571,8 @@ function theme_iiidem2_user_needs_course_fee_for_preview(stdClass $course, ?int 
 /**
  * Whether the current user may expand curriculum activity previews.
  *
- * University students on a paid course must complete fee enrolment. Staff who manage the course
- * and other actively enrolled users may preview without the fee check.
+ * Students and non-EMB professionals on a paid course must complete fee enrolment.
+ * Staff who manage the course and other actively enrolled users may preview without the fee check.
  *
  * @param stdClass $course
  * @param int|null $userid
@@ -3088,6 +3793,10 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     $totalactivities = 0;
     $canpreview = theme_iiidem2_user_can_preview_curriculum($course);
     $needspaymentforpreview = theme_iiidem2_user_needs_course_fee_for_preview($course);
+    $isloggedinuser = isloggedin() && !isguestuser();
+    // Logged-in users who cannot preview must enrol/pay — never send them to login.
+    $needenrolforpreview = $isloggedinuser && !$canpreview && !$needspaymentforpreview;
+    $showpreviewblockedmodal = $needspaymentforpreview || $needenrolforpreview;
     $completion = $canpreview ? new completion_info($course) : null;
 
     $loginurl = new moodle_url('/login/index.php');
@@ -3114,16 +3823,29 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
                 $trackcompletion = $canpreview && $completion && $completion->is_enabled($cm)
                     && in_array($cm->modname, ['page', 'url', 'resource'], true);
 
+                $iconmap = [
+                    'quiz' => 'fa-clipboard-check',
+                    'assign' => 'fa-clipboard-check',
+                    'webexactivity' => 'fa-video',
+                    'url' => 'fa-video',
+                    'page' => 'fa-play-circle',
+                    'resource' => 'fa-file-lines',
+                    'book' => 'fa-book-open',
+                ];
+
                 $activities[] = [
                     'id' => $cm->id,
                     'title' => $cm->name,
                     'type' => $cm->modname,
+                    'iconclass' => $iconmap[$cm->modname] ?? 'fa-play-circle',
                     'preview' => $haspreviewcontent,
                     'duration' => '5min',
                     'previewcontent' => $canpreview ? $previewcontentraw : '',
                     'haspreviewcontent' => $haspreviewcontent,
                     'canpreviewcurriculum' => $canpreview,
                     'curriculumpreviewneedspayment' => $needspaymentforpreview,
+                    'curriculumpreviewneedenrol' => $needenrolforpreview,
+                    'curriculumpreviewblocked' => $showpreviewblockedmodal,
                     'hasloginmodal' => $hasloginmodal,
                     'trackcompletion' => $trackcompletion,
                     'previewlabel' => 'Preview',
@@ -3135,21 +3857,30 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
             }
         }
 
+        $sectionsummary = '';
+        if (!empty($section->summary)) {
+            $sectionsummary = trim(html_to_text($section->summary, 0));
+            $sectionsummary = shorten_text($sectionsummary, 90);
+        }
+
         $sectionsdata[] = [
             'id' => $section->id,
             'name' => get_section_name($course, $section),
+            'summary' => $sectionsummary,
+            'hassummary' => $sectionsummary !== '',
             'activitycount' => count($activities),
             'activities' => $activities,
         ];
     }
 
     $paymentmodal = ['hascurriculumpaymentmodal' => false];
-    if ($needspaymentforpreview) {
+    if ($showpreviewblockedmodal) {
         $feeinstance = theme_iiidem2_get_course_fee_enrol_instance((int) $course->id);
-        if ($feeinstance) {
-            $currency = $feeinstance->currency ?: 'INR';
+        if ($feeinstance && $needspaymentforpreview) {
             $paymentmodal = [
                 'hascurriculumpaymentmodal' => true,
+                'curriculumpreviewneedspayment' => true,
+                'curriculumpreviewneedenrol' => false,
                 'coursefeecost' => theme_iiidem2_get_course_fee_cost_display($feeinstance),
                 'coursefeeinstanceid' => (int) $feeinstance->id,
                 'showcoursepayment' => !empty(\core_payment\helper::get_available_gateways(
@@ -3161,21 +3892,30 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         } else {
             $paymentmodal = [
                 'hascurriculumpaymentmodal' => true,
-                'coursefeecost' => '',
+                'curriculumpreviewneedspayment' => $needspaymentforpreview,
+                'curriculumpreviewneedenrol' => $needenrolforpreview,
+                'coursefeecost' => $feeinstance ? theme_iiidem2_get_course_fee_cost_display($feeinstance) : '',
                 'showcoursepayment' => false,
             ];
         }
     }
 
+    $curriculumduration = count($sectionsdata) > 0
+        ? get_string('coursestatdurationweeks', 'theme_iiidem2', count($sectionsdata))
+        : '—';
+
     return array_merge($loginmodal, $paymentmodal, [
         'sections' => $sectionsdata,
         'totalsections' => count($sectionsdata),
         'totalactivities' => $totalactivities,
+        'curriculumduration' => $curriculumduration,
         'canpreviewcurriculum' => $canpreview,
         'curriculumpreviewneedspayment' => $needspaymentforpreview,
+        'curriculumpreviewneedenrol' => $needenrolforpreview,
+        'curriculumpreviewblocked' => $showpreviewblockedmodal,
         'curriculumtrackcompletion' => $canpreview,
         'curriculumcompletionajaxurl' => (new moodle_url('/theme/iiidem2/ajax/mark_activity_viewed.php'))->out(false),
-        'previewredirectlogin' => !$canpreview && !$needspaymentforpreview,
+        'previewredirectlogin' => !$canpreview && !$showpreviewblockedmodal,
         'loginurl' => $loginurl->out(false),
         'previewlabel' => 'Preview',
     ]);
@@ -3257,8 +3997,16 @@ function theme_iiidem2_mark_curriculum_activity_viewed(int $cmid, ?int $userid =
         }
     }
 
-    // page_view/url_view may record "viewed" without marking complete — always finish completion.
+    // The module view callback normally marks view-based completion itself.
+    // Do not update it a second time, which creates duplicate completion log
+    // entries for one user action.
     $data = $completion->get_data($cm, false, $userid);
+    if (in_array((int) $data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
+        return ['success' => true];
+    }
+
+    // Fallback for unusual completion configurations where the module view
+    // event was recorded but completion was not advanced.
     if (empty($data->viewed)) {
         $data->viewed = COMPLETION_VIEWED;
         $completion->internal_set_data($cm, $data);
@@ -3723,6 +4471,58 @@ function theme_iiidem2_get_course_payment_success_context(): array {
 }
 
 /**
+ * Success modal context after custom registration redirect.
+ *
+ * @return array{registersuccess: bool}
+ */
+function theme_iiidem2_get_register_success_context(): array {
+    return [
+        'registersuccess' => optional_param('registered', 0, PARAM_INT) === 1,
+    ];
+}
+
+/**
+ * Quick stats and included items for the course enrolment sidebar.
+ *
+ * @param stdClass $course
+ * @return array
+ */
+function theme_iiidem2_get_course_enrol_sidebar_context(stdClass $course): array {
+    $modinfo = get_fast_modinfo($course);
+    $sections = 0;
+    $activities = 0;
+
+    foreach ($modinfo->get_section_info_all() as $section) {
+        if ((int) $section->section === 0) {
+            continue;
+        }
+        $sections++;
+        if (!empty($modinfo->sections[$section->section])) {
+            foreach ($modinfo->sections[$section->section] as $cmid) {
+                if ($modinfo->cms[$cmid]->uservisible) {
+                    $activities++;
+                }
+            }
+        }
+    }
+
+    return [
+        'coursestatduration' => $sections > 0
+            ? get_string('coursestatdurationweeks', 'theme_iiidem2', $sections)
+            : '—',
+        'coursestatmode' => get_string('coursestatmodelive', 'theme_iiidem2'),
+        'coursestatlectures' => (string) $activities,
+        'coursestatcertificate' => get_string('yes'),
+        'courseincludeditems' => [
+            ['text' => get_string('courseincludeditem1', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem2', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem3', 'theme_iiidem2')],
+            ['text' => get_string('courseincludeditem4', 'theme_iiidem2')],
+        ],
+    ];
+}
+
+/**
  * Course fee / PNB payment context for the course view marketing layout.
  *
  * @param stdClass $course
@@ -3754,16 +4554,19 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
     ]))->out(false);
 
     if (!isloggedin() || isguestuser()) {
-        return [
-            'hascoursefee' => true,
-            'showcoursepayment' => false,
-            'coursefeecost' => $costdisplay,
-            'coursefeeloginrequired' => true,
-            'coursefeeloginurl' => $loginurl,
-        ];
+        return array_merge(
+            theme_iiidem2_get_course_enrol_sidebar_context($course),
+            [
+                'hascoursefee' => true,
+                'showcoursepayment' => false,
+                'coursefeecost' => $costdisplay,
+                'coursefeeloginrequired' => true,
+                'coursefeeloginurl' => $loginurl,
+            ]
+        );
     }
 
-    // Fee payment is for registered university students only (not EMB / working / instructor).
+    // Students and non-EMB working professionals pay; EMB users and instructors are exempt.
     if (!\theme_iiidem2\registration_profile::user_requires_course_fee_payment((int) $USER->id)) {
         return $defaults;
     }
@@ -3775,18 +4578,21 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
 
     $gateways = \core_payment\helper::get_available_gateways('enrol_fee', 'fee', (int) $feeinstance->id);
 
-    return [
-        'hascoursefee' => true,
-        'showcoursepayment' => !empty($gateways),
-        'coursefeecost' => $costdisplay,
-        'coursefeeinstanceid' => (int) $feeinstance->id,
-        'coursefeedescription' => $description,
-        'coursefeesuccessurl' => $successurl,
-        'coursefeeloginrequired' => false,
-        'haspnbgateway' => in_array('pnb', $gateways, true),
-        'hasicicigateway' => in_array('icici', $gateways, true),
-        'hasrazorpaygateway' => in_array('razorpay', $gateways, true),
-    ];
+    return array_merge(
+        theme_iiidem2_get_course_enrol_sidebar_context($course),
+        [
+            'hascoursefee' => true,
+            'showcoursepayment' => in_array('razorpay', $gateways, true),
+            'coursefeecost' => $costdisplay,
+            'coursefeeinstanceid' => (int) $feeinstance->id,
+            'coursefeedescription' => $description,
+            'coursefeesuccessurl' => $successurl,
+            'coursefeeloginrequired' => false,
+            'haspnbgateway' => false,
+            'hasicicigateway' => false,
+            'hasrazorpaygateway' => in_array('razorpay', $gateways, true),
+        ]
+    );
 }
 
 /**
@@ -3841,7 +4647,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
     $PAGE->set_course($course);
     $PAGE->set_url(new moodle_url('/enrol/index.php', ['id' => $course->id]));
     $PAGE->set_pagelayout('marketing');
-    $PAGE->set_cacheable(true);
+    $PAGE->set_cacheable(false);
     $PAGE->set_title(format_string($course->fullname));
     $PAGE->set_heading(format_string($course->fullname));
 
@@ -3849,7 +4655,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
 
     $display = theme_iiidem2_get_course_display_context($course);
     $loginurl = new moodle_url('/login/index.php');
-    $loginurl->param('wantsurl', (new moodle_url('/enrol/index.php', ['id' => $course->id]))->out(false));
+    $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
     $templatecontext = theme_iiidem2_merge_footer_context(array_merge($display, [
         'sitename' => format_string($SITE->fullname),
@@ -3863,6 +4669,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
         'config' => ['wwwroot' => $CFG->wwwroot],
     ]));
 
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -3877,10 +4684,15 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 function theme_iiidem2_render_course_detail_page(stdClass $course): void {
     global $OUTPUT, $PAGE, $SITE;
+
+    $PAGE->set_cacheable(false);
+    $PAGE->theme->init_page($PAGE);
+    theme_iiidem2_register_course_page_assets($PAGE);
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
@@ -3904,6 +4716,7 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
         ]
     ));
 
+    ob_start();
     echo $OUTPUT->doctype();
     ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -3918,6 +4731,7 @@ function theme_iiidem2_render_course_detail_page(stdClass $course): void {
 </body>
 </html>
     <?php
+    theme_iiidem2_finish_buffered_page((string) ob_get_clean());
 }
 
 /**
@@ -3963,13 +4777,22 @@ function theme_iiidem2_page_init($page) {
 
     $page->requires->js_call_amd('theme_iiidem2/footer-popover', 'init');
 
+    // Teacher Submissions page: default Status filter to "Submitted"
+    // so the list is not cluttered with non-submitters (Status → All still available).
+    theme_iiidem2_maybe_default_assign_submitted_filter($page);
+    theme_iiidem2_enhance_assign_grading_ui($page);
+
     if ($page->pagelayout === 'admin' || str_starts_with($page->pagetype ?? '', 'admin-')) {
-        $page->requires->js_call_amd('theme_iiidem2/admin_nav_fix', 'init');
+        if (theme_iiidem2_is_admin_index_page($page)) {
+            $page->requires->js_init_code(
+                'if(/^#link/.test(location.hash)){location.replace(location.origin+"/admin/search.php"+location.hash);}'
+            );
+        }
     }
 
     if (isloggedin() && !isguestuser() && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {
-        $path = $page->url->get_path(false);
-        if ($path === '/my' || $path === '/my/index.php') {
+        $pagepath = $page->url->get_path(false);
+        if ($pagepath === '/my' || $pagepath === '/my/index.php') {
             redirect(theme_iiidem2_get_dashboard_url());
         }
     }
@@ -3990,10 +4813,14 @@ function theme_iiidem2_page_init($page) {
         $page->requires->css(new moodle_url('/theme/iiidem2/style/course-quiz-mcq.css'));
     }
 
-    // BS5 accordions/tabs only where templates use data-bs-* (not site home — avoids slow CDN on every visit).
-    if (in_array($page->pagelayout, ['marketing', 'incourse'], true)
+    // BS5 only on marketing / custom course templates that use data-bs-*.
+    // Do NOT load on pagelayout=incourse (mod/assign, forum, etc.): Bootstrap 5
+    // sets `.row > * { width: 100% }`, which stacks Moodle tertiary-nav filters
+    // and breaks the Submissions grading layout.
+    if (in_array($page->pagelayout, ['marketing'], true)
         || strpos($page->bodyclasses, 'iiidem-course-detail') !== false
-        || strpos($page->bodyclasses, 'iiidem-enrol-preview') !== false) {
+        || strpos($page->bodyclasses, 'iiidem-enrol-preview') !== false
+        || strpos($page->bodyclasses, 'iiidem-course-hero-layout') !== false) {
         $bs5css = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.min.css';
         $bs5js = $CFG->dirroot . '/theme/iiidem2/style/bootstrap5.bundle.min.js';
         if (is_readable($bs5css)) {
@@ -4003,4 +4830,99 @@ function theme_iiidem2_page_init($page) {
             $page->requires->js(new moodle_url('/theme/iiidem2/style/bootstrap5.bundle.min.js'), true);
         }
     }
+}
+
+/**
+ * On assignment grading/submissions page, default the Status filter to "Submitted".
+ *
+ * Moodle core defaults to "All" (every enrolled student). Teachers can still
+ * choose Status → All / Not submitted / etc. When they leave the filter on All,
+ * the next visit without an explicit status param returns to Submitted.
+ *
+ * @param moodle_page $page
+ */
+function theme_iiidem2_maybe_default_assign_submitted_filter(moodle_page $page): void {
+    if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER || !isloggedin() || isguestuser()) {
+        return;
+    }
+    if (($page->pagetype ?? '') !== 'mod-assign-view') {
+        return;
+    }
+    if (optional_param('action', '', PARAM_ALPHA) !== 'grading') {
+        return;
+    }
+    // Respect an explicit Status choice in the URL (including All as status=).
+    if (array_key_exists('status', $_GET)) {
+        return;
+    }
+    // Only override the Moodle default ("All" / empty preference).
+    if (get_user_preferences('assign_filter', '') !== '') {
+        return;
+    }
+
+    $cmid = optional_param('id', 0, PARAM_INT);
+    if ($cmid <= 0) {
+        return;
+    }
+
+    set_user_preference('assign_filter', 'submitted');
+    redirect(new moodle_url('/mod/assign/view.php', [
+        'id' => $cmid,
+        'action' => 'grading',
+        'status' => 'submitted',
+    ]));
+}
+
+/**
+ * Add a short tip above the assignment grading table (Status filter).
+ *
+ * @param moodle_page $page
+ */
+function theme_iiidem2_enhance_assign_grading_ui(moodle_page $page): void {
+    if (($page->pagetype ?? '') !== 'mod-assign-view') {
+        return;
+    }
+    if (optional_param('action', '', PARAM_ALPHA) !== 'grading') {
+        return;
+    }
+
+    $page->add_body_class('iiidem-assign-grading');
+    $tip = json_encode(get_string('assigngradingfiltertip', 'theme_iiidem2'), JSON_UNESCAPED_UNICODE);
+    $page->requires->js_init_code(<<<JS
+(function() {
+    var tip = {$tip};
+    if (!tip) {
+        return;
+    }
+    var insertTip = function() {
+        if (document.querySelector('.iiidem-assign-grading-tip')) {
+            return true;
+        }
+        var heading = document.querySelector('#region-main h2, #region-main h3, .tertiary-navigation');
+        var table = document.querySelector('.gradingtable, #region-main .generaltable');
+        var anchor = document.querySelector('[data-region="grading-actions"], .tertiary-navigation, #region-main .mb-3')
+            || heading
+            || table;
+        if (!anchor) {
+            return false;
+        }
+        var note = document.createElement('div');
+        note.className = 'alert alert-info iiidem-assign-grading-tip';
+        note.setAttribute('role', 'status');
+        note.textContent = tip;
+        if (table && table.parentNode) {
+            table.parentNode.insertBefore(note, table);
+        } else if (anchor.parentNode) {
+            anchor.parentNode.insertBefore(note, anchor.nextSibling);
+        } else {
+            return false;
+        }
+        return true;
+    };
+    if (!insertTip()) {
+        document.addEventListener('DOMContentLoaded', insertTip);
+    }
+})();
+JS
+    );
 }

@@ -46,11 +46,31 @@
                 </a>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-5 footer-col footer-col--about">
                 {{#footerdescription}}
                     <p>{{{footerdescription}}}</p>
                 {{/footerdescription}}
-                {{#address}}
+                
+            </div>
+
+            <div class="col-md-3 footer-col footer-col--links">
+                <h5>Quick Links</h5>
+                <ul class="footer-quick-links list-unstyled">
+                    <li><a href="{{{ config.wwwroot }}}">{{#str}}home{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
+                    <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
+                    <!-- {{#isloggedin}}
+                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
+                    {{/isloggedin}}
+                    {{^isloggedin}}
+                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
+                    {{/isloggedin}} -->
+                </ul>
+            </div>
+
+            <div class="col-md-4 footer-col footer-col--contact">
+               {{#address}}
                     <div class="loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> {{{address}}}</div>
                 {{/address}}
                 {{#phone}}
@@ -59,22 +79,6 @@
                 {{#email}}
                     <div class="mail"><i class="fa-regular fa-envelope" aria-hidden="true"></i> {{{email}}}</div>
                 {{/email}}
-            </div>
-
-            <div class="col-md-6">
-                <h5>Quick Links</h5>
-                <ul class="footer-quick-links list-unstyled">
-                    <li><a href="{{{ config.wwwroot }}}">{{#str}}home{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
-                    <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
-                    {{#isloggedin}}
-                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
-                    {{/isloggedin}}
-                    {{^isloggedin}}
-                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
-                    {{/isloggedin}}
-                </ul>
             </div>
         </div>
 
@@ -94,46 +98,29 @@
                     <li><a href="{{youtubeurl}}" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a></li>
                 {{/youtubeurl}}
             </ul>
-            <span class="footer-version">V 1.2 22042026</span>
+          <!--   <span class="footer-version">V 1.2 22042026</span> -->
         </div>
     </div>
 </footer>
 
-<footer id="page-footer" class="footer-popover bg-white">
-    <div data-region="footer-container-popover">
+<footer id="page-footer" class="footer-popover bg-white d-none" aria-hidden="true">
+    <div data-region="footer-container-popover" class="d-none">
         {{#output.has_communication_links}}
             <button type="button" onclick="window.open('{{output.communication_url}}', '_blank', 'noreferrer')" class="btn btn-icon bg-primary text-white icon-no-margin btn-footer-communication" aria-label="{{#str}}communicationroomlink, course{{/str}}">
                 {{#pix}}t/messages-o, core{{/pix}}
             </button>
         {{/output.has_communication_links}}
-        <button type="button" class="btn btn-icon bg-secondary icon-no-margin btn-footer-popover" data-action="footer-popover" aria-label="{{#str}}showfooter, theme_iiidem2{{/str}}">
-            {{#pix}}e/question, core{{/pix}}
-        </button>
     </div>
-    <div class="footer-content-popover container" data-region="footer-content-popover">
-        {{#output.has_communication_links}}
-            <div class="footer-section p-3 border-bottom footer-link-communication">
-                <div class="footer-support-link">{{{ output.communication_link }}}</div>
-            </div>
-        {{/output.has_communication_links}}
-        {{#output.has_popover_links}}
-            <div class="footer-section p-3 border-bottom">
-                {{#output.page_doc_link}}
-                    <div class="footer-support-link">{{{ output.page_doc_link }}}</div>
-                {{/output.page_doc_link}}
-                {{#output.services_support_link}}
-                    <div class="footer-support-link">{{{ output.services_support_link }}}</div>
-                {{/output.services_support_link}}
-                {{#output.supportemail}}
-                    <div class="footer-support-link">{{{ output.supportemail }}}</div>
-                {{/output.supportemail}}
-            </div>
-        {{/output.has_popover_links}}
+    {{!
+        Moodle system footer (login info, data retention, mobile app,
+        switch theme, powered by Moodle) — hidden from the public UI.
+        Keep standard_end_of_body_html for required Moodle JS.
+    }}
+    <div class="footer-content-popover container d-none" data-region="footer-content-popover" hidden>
         <div class="footer-section p-3 border-bottom">
             <div class="logininfo">{{{ output.login_info }}}</div>
             <div class="tool_usertours-resettourcontainer"></div>
             {{{ output.standard_footer_html }}}
-            {{{ output.standard_end_of_body_html }}}
         </div>
         <div class="footer-section p-3">
             <div>{{#str}}poweredbymoodle, core{{/str}}</div>
@@ -142,6 +129,7 @@
             {{/output.moodle_release}}
         </div>
     </div>
+    {{{ output.standard_end_of_body_html }}}
 </footer>
 
 {{#js}}

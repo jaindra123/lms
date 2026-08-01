@@ -43,9 +43,14 @@
 
                 <div class="iiidem-live-class__actions">
                     {{#hasliveclassjoinurl}}
-                    <a href="{{liveclassjoinurl}}" class="iiidem-live-class__join-btn" target="_blank" rel="noopener noreferrer">
+                    <button type="button"
+                            class="iiidem-live-class__join-btn"
+                            data-action="open-liveclass-modal"
+                            data-join-url="{{liveclassjoinurl}}"
+                            aria-haspopup="dialog"
+                            aria-controls="iiidem-liveclass-modal">
                         {{#str}}liveclassjoin, theme_iiidem2{{/str}}
-                    </a>
+                    </button>
                     {{/hasliveclassjoinurl}}
                     {{^hasliveclassjoinurl}}
                     <p class="iiidem-live-class__no-link">{{#str}}liveclassnojoin, theme_iiidem2{{/str}}</p>
@@ -90,4 +95,152 @@
             </div>
         </div>
     </div>
+
+    {{#hasliveclassjoinurl}}
+    <div class="iiidem-liveclass-modal"
+         id="iiidem-liveclass-modal"
+         hidden
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="iiidem-liveclass-modal-title">
+        <div class="iiidem-liveclass-modal__backdrop" data-action="close-liveclass-modal"></div>
+        <div class="iiidem-liveclass-modal__dialog" role="document">
+            <div class="iiidem-liveclass-modal__header">
+                <h2 id="iiidem-liveclass-modal-title" class="iiidem-liveclass-modal__title">
+                    {{#str}}liveclassmodaltitle, theme_iiidem2{{/str}}
+                </h2>
+                <button type="button"
+                        class="iiidem-liveclass-modal__close"
+                        data-action="close-liveclass-modal"
+                        aria-label="{{#str}}closebuttontitle, core{{/str}}">
+                    &times;
+                </button>
+            </div>
+            <div class="iiidem-liveclass-modal__body">
+                <div class="iiidem-liveclass-modal__frame-wrap">
+                    <iframe class="iiidem-liveclass-modal__frame"
+                            title="{{#str}}liveclassmodaltitle, theme_iiidem2{{/str}}"
+                            allow="camera; microphone; display-capture; autoplay; fullscreen"
+                            allowfullscreen></iframe>
+                    <div class="iiidem-liveclass-modal__fallback" hidden>
+                        <p class="iiidem-liveclass-modal__fallback-text">
+                            {{#str}}liveclassmodalblocked, theme_iiidem2{{/str}}
+                        </p>
+                        <button type="button"
+                                class="iiidem-live-class__join-btn iiidem-liveclass-modal__fallback-btn"
+                                data-action="open-liveclass-window">
+                            {{#str}}liveclassmodalopenexternal, theme_iiidem2{{/str}}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/hasliveclassjoinurl}}
 </div>
+{{#js}}
+(function() {
+    if (window.iiidemLiveClassModalBound) {
+        return;
+    }
+    window.iiidemLiveClassModalBound = true;
+
+    var activeUrl = '';
+    var lastFocus = null;
+    var fallbackTimer = null;
+
+    function getModal() {
+        return document.getElementById('iiidem-liveclass-modal');
+    }
+
+    function openWindow(url) {
+        var width = Math.min(1200, window.screen.availWidth - 40);
+        var height = Math.min(800, window.screen.availHeight - 80);
+        var left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
+        var top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
+        window.open(url, 'iiidemLiveClass',
+            'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top +
+            ',resizable=yes,scrollbars=yes,noopener,noreferrer');
+    }
+
+    function closeModal() {
+        var modal = getModal();
+        if (!modal) {
+            return;
+        }
+        if (fallbackTimer) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+        modal.hidden = true;
+        document.body.classList.remove('iiidem-liveclass-modal-open');
+        var frame = modal.querySelector('.iiidem-liveclass-modal__frame');
+        if (frame) {
+            frame.removeAttribute('src');
+        }
+        var fallback = modal.querySelector('.iiidem-liveclass-modal__fallback');
+        if (fallback) {
+            fallback.hidden = true;
+        }
+        activeUrl = '';
+        if (lastFocus && typeof lastFocus.focus === 'function') {
+            lastFocus.focus();
+        }
+    }
+
+    function openModal(url) {
+        var modal = getModal();
+        var frame = modal ? modal.querySelector('.iiidem-liveclass-modal__frame') : null;
+        if (!modal || !frame || !url) {
+            if (url) {
+                openWindow(url);
+            }
+            return;
+        }
+        lastFocus = document.activeElement;
+        activeUrl = url;
+        var fallback = modal.querySelector('.iiidem-liveclass-modal__fallback');
+        if (fallback) {
+            fallback.hidden = true;
+        }
+        frame.src = url;
+        modal.hidden = false;
+        document.body.classList.add('iiidem-liveclass-modal-open');
+        var closeButton = modal.querySelector('[data-action="close-liveclass-modal"]');
+        if (closeButton) {
+            closeButton.focus();
+        }
+        fallbackTimer = window.setTimeout(function() {
+            if (fallback) {
+                fallback.hidden = false;
+            }
+        }, 1800);
+    }
+
+    document.addEventListener('click', function(event) {
+        var openButton = event.target.closest('[data-action="open-liveclass-modal"]');
+        if (openButton) {
+            event.preventDefault();
+            openModal(openButton.getAttribute('data-join-url') || '');
+            return;
+        }
+        if (event.target.closest('[data-action="close-liveclass-modal"]')) {
+            event.preventDefault();
+            closeModal();
+            return;
+        }
+        if (event.target.closest('[data-action="open-liveclass-window"]')) {
+            event.preventDefault();
+            if (activeUrl) {
+                openWindow(activeUrl);
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+}());
+{{/js}}

@@ -1,7 +1,7 @@
 {{!
     @template theme_iiidem2/payment_required_modal
 
-    Alert modal when a logged-in student must pay the course fee before curriculum preview.
+    Alert modal when a logged-in user must enrol/pay before curriculum preview.
 }}
 <div class="modal fade iiidem-payment-required-modal" id="iiidemPaymentRequiredModal" tabindex="-1"
      aria-labelledby="iiidemPaymentRequiredModalLabel" aria-hidden="true">
@@ -9,7 +9,12 @@
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title" id="iiidemPaymentRequiredModalLabel">
+                    {{#curriculumpreviewneedspayment}}
                     {{#str}}curriculumpaymentrequiredtitle, theme_iiidem2{{/str}}
+                    {{/curriculumpreviewneedspayment}}
+                    {{^curriculumpreviewneedspayment}}
+                    {{#str}}curriculumenrolrequiredtitle, theme_iiidem2{{/str}}
+                    {{/curriculumpreviewneedspayment}}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"
                         aria-label="{{#str}}closebuttontitle, core{{/str}}"></button>
@@ -18,18 +23,34 @@
                 <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
                     <span class="fa fa-exclamation-triangle mt-1" aria-hidden="true"></span>
                     <div>
+                        {{#curriculumpreviewneedspayment}}
                         <strong>{{#str}}curriculumpaymentrequiredalertheading, theme_iiidem2{{/str}}</strong>
                         <p class="mb-0 mt-1">{{#str}}curriculumpaymentrequiredalertbody, theme_iiidem2, {{coursefeecost}} {{/str}}</p>
+                        {{/curriculumpreviewneedspayment}}
+                        {{^curriculumpreviewneedspayment}}
+                        <strong>{{#str}}curriculumenrolrequiredalertheading, theme_iiidem2{{/str}}</strong>
+                        <p class="mb-0 mt-1">{{#str}}curriculumenrolrequiredalertbody, theme_iiidem2{{/str}}</p>
+                        {{/curriculumpreviewneedspayment}}
                     </div>
                 </div>
+                {{#curriculumpreviewneedspayment}}
                 <p class="text-muted small mb-0">{{#str}}curriculumpaymentrequiredhint, theme_iiidem2{{/str}}</p>
+                {{/curriculumpreviewneedspayment}}
+                {{^curriculumpreviewneedspayment}}
+                <p class="text-muted small mb-0">{{#str}}curriculumenrolrequiredhint, theme_iiidem2{{/str}}</p>
+                {{/curriculumpreviewneedspayment}}
             </div>
             <div class="modal-footer border-0 pt-0">
                 <button type="button"
                         class="btn btn-primary w-100 iiidem-payment-required-ok"
                         data-scroll-target="#iiidem-course-fee"
                         {{#showcoursepayment}}data-payment-trigger="#gateways-modal-trigger-{{coursefeeinstanceid}}"{{/showcoursepayment}}>
+                    {{#curriculumpreviewneedspayment}}
                     {{#str}}curriculumpaymentrequiredunderstood, theme_iiidem2{{/str}}
+                    {{/curriculumpreviewneedspayment}}
+                    {{^curriculumpreviewneedspayment}}
+                    {{#str}}curriculumenrolrequiredunderstood, theme_iiidem2{{/str}}
+                    {{/curriculumpreviewneedspayment}}
                 </button>
             </div>
         </div>

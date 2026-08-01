@@ -164,29 +164,6 @@
                         {{{ maincontentplaceholder }}}
                         {{/courseediting}}
                         {{^courseediting}}
-                        {{#ispubliccourseview}}
-                        <section class="iiidem-course-detail-cta py-4">
-                            <div class="container">
-                                <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
-                                    <p class="mb-0 text-muted">{{#str}}coursedetailintro, theme_iiidem2{{/str}}</p>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        {{#hasloginmodal}}
-                                        <button type="button" class="btn btn-primary"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#iiidemLoginModal">
-                                            {{#str}}coursedetaillogin, theme_iiidem2{{/str}}
-                                        </button>
-                                        {{/hasloginmodal}}
-                                        {{^hasloginmodal}}
-                                        <a href="{{loginurl}}" class="btn btn-primary">{{#str}}coursedetaillogin, theme_iiidem2{{/str}}</a>
-                                        {{/hasloginmodal}}
-                                        <a href="{{{ config.wwwroot }}}" class="btn btn-outline-secondary">{{#str}}home{{/str}}</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                        {{/ispubliccourseview}}
-
                         {{> theme_iiidem2/course/curriculum }}
 
                         {{#schedule.has_calendar}}
@@ -198,6 +175,11 @@
                         {{#hasinstructors}}
                         {{> theme_iiidem2/course/instructors }}
                         {{/hasinstructors}}
+
+                        {{#hasadvisors}}
+                        {{> theme_iiidem2/program_governance }}
+                        {{/hasadvisors}}
+
                         {{> theme_iiidem2/course/faq }}
 
                         {{#showstudentreviewsection}}
@@ -216,10 +198,6 @@
             </div>
         </div>
     </div>
-    {{#hasadvisors}}
-    {{> theme_iiidem2/program_governance }}
-    {{/hasadvisors}}
-
     {{#coursepaymentsuccess}}
     <div class="modal fade" id="iiidemCoursePaymentSuccessModal" tabindex="-1" aria-labelledby="iiidemCoursePaymentSuccessLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -234,6 +212,21 @@
         </div>
     </div>
     {{/coursepaymentsuccess}}
+
+    {{#registersuccess}}
+    <div class="modal fade" id="iiidemRegisterSuccessModal" tabindex="-1" aria-labelledby="iiidemRegisterSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4 p-md-5">
+                    <div class="text-success mb-3" style="font-size:3rem;">&#10003;</div>
+                    <h2 class="h4 mb-3" id="iiidemRegisterSuccessLabel">{{#str}}registersuccesstitle, theme_iiidem2{{/str}}</h2>
+                    <p class="mb-4">{{#str}}registersuccessbody, theme_iiidem2{{/str}}</p>
+                    <button type="button" class="btn btn-primary btn-lg w-100" data-bs-dismiss="modal">{{#str}}continue, core{{/str}}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/registersuccess}}
 
     {{> theme_iiidem2/page_end }}
 </div>
@@ -268,6 +261,18 @@ require(['jquery'], function() {
     }, 100);
 });
 {{/coursepaymentsuccess}}
+{{#registersuccess}}
+require(['jquery'], function() {
+    setTimeout(function() {
+        var modalEl = document.getElementById('iiidemRegisterSuccessModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (modalEl && window.jQuery) {
+            window.jQuery(modalEl).modal('show');
+        }
+    }, 150);
+});
+{{/registersuccess}}
 {{/js}}
 
 </body>

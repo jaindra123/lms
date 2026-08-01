@@ -68,8 +68,15 @@ class email_failed extends base {
      * @return string
      */
     public function get_description() {
+        // When restored from the log store, 'other' can be corrupt/non-array
+        // (e.g. json_encode failed while writing, or truncated DB value).
+        $errorinfo = '';
+        if (is_array($this->other) && array_key_exists('errorinfo', $this->other)) {
+            $errorinfo = (string) $this->other['errorinfo'];
+        }
+
         return "Failed to send an email from the user with id '$this->userid' to the user with id '$this->relateduserid'
-            due to the following error: \"{$this->other['errorinfo']}\".";
+            due to the following error: \"{$errorinfo}\".";
     }
 
     /**

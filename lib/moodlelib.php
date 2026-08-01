@@ -5976,14 +5976,17 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
         return true;
     } else {
         // Trigger event for failing to send email.
+        // Keep 'other' JSON/serialize-safe: coerce error text and truncate the body
+        // so a large/binary message cannot corrupt the logstore 'other' field.
+        $errorinfo = is_string($mail->ErrorInfo) ? $mail->ErrorInfo : (string) $mail->ErrorInfo;
         $event = \core\event\email_failed::create(array(
             'context' => context_system::instance(),
             'userid' => $from->id,
             'relateduserid' => $user->id,
             'other' => array(
-                'subject' => $subject,
-                'message' => $messagetext,
-                'errorinfo' => $mail->ErrorInfo
+                'subject' => (string) $subject,
+                'message' => core_text::substr((string) $messagetext, 0, 1000),
+                'errorinfo' => $errorinfo
             )
         ));
         $event->trigger();
@@ -6148,6 +6151,17 @@ function send_confirmation_email($user, $confirmationurl = null) {
  */
 function send_password_change_confirmation_email($user, $resetrecord) {
     global $CFG;
+
+    // IIIDEM branded HTML password-reset email (same template as registration).
+    if (!empty($CFG->theme) && $CFG->theme === 'iiidem2') {
+        $themefile = $CFG->dirroot . '/theme/iiidem2/lib.php';
+        if (is_readable($themefile)) {
+            require_once($themefile);
+            if (function_exists('theme_iiidem2_send_password_reset_email')) {
+                return theme_iiidem2_send_password_reset_email($user, $resetrecord);
+            }
+        }
+    }
 
     $site = get_site();
     $supportuser = core_user::get_support_user();

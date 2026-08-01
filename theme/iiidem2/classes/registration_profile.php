@@ -31,7 +31,23 @@ class registration_profile {
         ],
         'iiidem_emb' => [
             'datatype' => 'checkbox',
-            'name' => 'EMB',
+            'name' => 'Allow without payment course',
+        ],
+        'iiidem_policymaker' => [
+            'datatype' => 'checkbox',
+            'name' => 'Policymaker',
+        ],
+        'iiidem_journalist' => [
+            'datatype' => 'checkbox',
+            'name' => 'Journalist',
+        ],
+        'iiidem_electoral_practitioner' => [
+            'datatype' => 'checkbox',
+            'name' => 'Electoral practitioner',
+        ],
+        'iiidem_researcher' => [
+            'datatype' => 'checkbox',
+            'name' => 'Researcher',
         ],
         'iiidem_organization' => [
             'datatype' => 'text',
@@ -132,13 +148,72 @@ class registration_profile {
     }
 
     /**
-     * User registered as Election Management Body (EMB) official.
+     * Working professional category options (form field => profile shortname).
+     * Form uses a single radio group `workingcategory` with these values.
+     *
+     * @return array<string, string>
+     */
+    public static function working_category_fields(): array {
+        return [
+            'emb' => 'iiidem_emb',
+            'policymaker' => 'iiidem_policymaker',
+            'journalist' => 'iiidem_journalist',
+            'researcher' => 'iiidem_researcher',
+        ];
+    }
+
+    /**
+     * Selected working category from radio (or legacy checkboxes).
+     *
+     * @param \stdClass $data
+     * @return string emb|policymaker|journalist|researcher|''
+     */
+    public static function get_working_category(\stdClass $data): string {
+        $allowed = array_keys(self::working_category_fields());
+
+        $value = strtolower(trim(self::get_submitted_value($data, 'workingcategory')));
+        if (in_array($value, $allowed, true)) {
+            return $value;
+        }
+
+        // Legacy checkbox fallback (older form submissions).
+        foreach ($allowed as $field) {
+            if (self::is_checked_raw($data, $field)) {
+                return $field;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Whether the submitted working profile selected a category.
+     *
+     * @param \stdClass $data
+     * @return bool
+     */
+    public static function has_working_category(\stdClass $data): bool {
+        return self::get_working_category($data) !== '';
+    }
+
+    /**
+     * Whether the user is fee-exempt via "Allow without payment course"
+     * (profile field iiidem_emb, set by admin or legacy EMB registration).
      *
      * @param int $userid
      * @return bool
      */
     public static function user_is_emb(int $userid): bool {
         return self::get_profile_value($userid, 'iiidem_emb') === '1';
+    }
+
+    /**
+     * Alias: admin marked the user as allowed without course fee payment.
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_allowed_without_course_payment(int $userid): bool {
+        return self::user_is_emb($userid);
     }
 
     /**
@@ -152,13 +227,20 @@ class registration_profile {
     }
 
     /**
-     * Whether the user must pay the course fee (students only; EMB/working/instructor exempt).
+     * Whether the user must pay the course fee.
+     *
+     * Students and working professionals (Policymaker / Journalist /
+     * Researcher) pay, unless an administrator has checked
+     * "Allow without payment course". Instructors remain exempt.
      *
      * @param int $userid
      * @return bool
      */
     public static function user_requires_course_fee_payment(int $userid): bool {
-        return self::user_is_university_student($userid) && !self::user_is_emb($userid);
+        $occupation = self::get_profile_value($userid, 'iiidem_occupation');
+        $ispayingoccupation = $occupation === 'student' || $occupation === 'working';
+
+        return $ispayingoccupation && !self::user_allowed_without_course_payment($userid);
     }
 
     /**
@@ -180,7 +262,12 @@ class registration_profile {
         }
 
         foreach (self::FIELDS as $shortname => $config) {
-            if ($DB->record_exists('user_info_field', ['shortname' => $shortname])) {
+            $existing = $DB->get_record('user_info_field', ['shortname' => $shortname], 'id, name');
+            if ($existing) {
+                // Keep the visible label in sync (e.g. Allow without payment course).
+                if (!empty($config['name']) && $existing->name !== $config['name']) {
+                    $DB->set_field('user_info_field', 'name', $config['name'], ['id' => $existing->id]);
+                }
                 continue;
             }
 
@@ -194,6 +281,10 @@ class registration_profile {
                 'description' => '',
                 'descriptionformat' => FORMAT_HTML,
                 'categoryid' => $category->id,
+                'sortorder' => ((int) $DB->get_field_sql(
+                    'SELECT MAX(sortorder) FROM {user_info_field} WHERE categoryid = ?',
+                    [$category->id]
+                )) + 1,
                 'required' => 0,
                 'locked' => 0,
                 'forceunique' => 0,
@@ -204,6 +295,56 @@ class registration_profile {
             ], $config);
 
             (new $defineclass())->define_save($data);
+        }
+
+        // Keep working-category checkboxes grouped after Occupation / EMB.
+        self::reorder_fields((int) $category->id);
+    }
+
+    /**
+     * Keep IIIDEM registration fields in a stable display order.
+     *
+     * @param int $categoryid
+     */
+    public static function reorder_fields(int $categoryid = 0): void {
+        global $DB;
+
+        $desired = [
+            'iiidem_occupation',
+            'iiidem_emb',
+            'iiidem_policymaker',
+            'iiidem_journalist',
+            'iiidem_electoral_practitioner',
+            'iiidem_researcher',
+            'iiidem_organization',
+            'iiidem_jobprofile',
+            'iiidem_jobpostingcountry',
+            'iiidem_university',
+            'iiidem_position',
+            'iiidem_specialization',
+            'iiidem_instructor_university',
+            'iiidem_instructor_course',
+            'iiidem_presentcountry',
+        ];
+
+        if ($categoryid <= 0) {
+            $categoryid = (int) $DB->get_field('user_info_category', 'id', ['name' => self::CATEGORY]);
+        }
+        if ($categoryid <= 0) {
+            return;
+        }
+
+        $sort = 1;
+        foreach ($desired as $shortname) {
+            $field = $DB->get_record('user_info_field', [
+                'shortname' => $shortname,
+                'categoryid' => $categoryid,
+            ], 'id');
+            if (!$field) {
+                continue;
+            }
+            $DB->set_field('user_info_field', 'sortorder', $sort, ['id' => $field->id]);
+            $sort++;
         }
     }
 
@@ -229,13 +370,34 @@ class registration_profile {
     }
 
     /**
-     * Whether a checkbox field was ticked.
+     * Whether a checkbox/category field was selected.
+     *
+     * Working categories use a radio group (`workingcategory`); legacy per-field
+     * checkboxes are still accepted.
      *
      * @param \stdClass $data
      * @param string $field
      * @return bool
      */
     public static function is_checked(\stdClass $data, string $field): bool {
+        $categories = array_keys(self::working_category_fields());
+        if (in_array($field, $categories, true)) {
+            $selected = self::get_working_category($data);
+            if ($selected !== '') {
+                return $selected === $field;
+            }
+        }
+        return self::is_checked_raw($data, $field);
+    }
+
+    /**
+     * Whether a checkbox field was ticked in POST/form data (no radio mapping).
+     *
+     * @param \stdClass $data
+     * @param string $field
+     * @return bool
+     */
+    private static function is_checked_raw(\stdClass $data, string $field): bool {
         if (isset($_POST[$field])) {
             $value = $_POST[$field];
             if (is_array($value)) {
@@ -255,9 +417,25 @@ class registration_profile {
      * Resolve selected occupation from form data.
      *
      * @param \stdClass $data
-     * @return string working|student|instructor|''
+     * @return string working|workingemb|student|instructor|''
      */
     public static function get_occupation_type(\stdClass $data): string {
+        $allowed = ['working', 'workingemb', 'student', 'instructor'];
+
+        $value = '';
+        if (isset($_POST['occupation'])) {
+            $raw = $_POST['occupation'];
+            $value = is_array($raw) ? (string) end($raw) : (string) $raw;
+        } else if (isset($data->occupation)) {
+            $value = (string) $data->occupation;
+        }
+
+        $value = strtolower(trim($value));
+        if (in_array($value, $allowed, true)) {
+            return $value;
+        }
+
+        // Legacy checkbox fallback (older form submissions).
         if (self::is_checked($data, 'occupation_working')) {
             return 'working';
         }
@@ -284,13 +462,31 @@ class registration_profile {
         self::ensure_fields();
 
         $occupation = self::get_occupation_type($data);
+        // Reuse the existing "working" menu value and identify EMB users through
+        // the dedicated profile flag, avoiding a profile-field schema migration.
+        $storedoccupation = $occupation === 'workingemb' ? 'working' : $occupation;
+        $isemb = $occupation === 'workingemb' || self::is_checked($data, 'emb');
+
+        $organization = self::get_submitted_value($data, 'organization');
+        $jobprofile = self::get_submitted_value($data, 'jobprofile');
+        $jobcountry = self::get_submitted_value($data, 'jobpostingcountry');
+        if ($occupation === 'workingemb') {
+            $organization = self::get_submitted_value($data, 'emb_organization');
+            $jobprofile = self::get_submitted_value($data, 'emb_designation');
+            $jobcountry = self::get_submitted_value($data, 'emb_country');
+        }
+
         $profile = (object) [
             'id' => $userid,
-            'profile_field_iiidem_occupation' => $occupation,
-            'profile_field_iiidem_emb' => self::is_checked($data, 'emb') ? '1' : '0',
-            'profile_field_iiidem_organization' => self::get_submitted_value($data, 'organization'),
-            'profile_field_iiidem_jobprofile' => self::get_submitted_value($data, 'jobprofile'),
-            'profile_field_iiidem_jobpostingcountry' => self::get_submitted_value($data, 'jobpostingcountry'),
+            'profile_field_iiidem_occupation' => $storedoccupation,
+            'profile_field_iiidem_emb' => $isemb ? '1' : '0',
+            'profile_field_iiidem_policymaker' => self::is_checked($data, 'policymaker') ? '1' : '0',
+            'profile_field_iiidem_journalist' => self::is_checked($data, 'journalist') ? '1' : '0',
+            'profile_field_iiidem_electoral_practitioner' => self::is_checked($data, 'electoralpractitioner') ? '1' : '0',
+            'profile_field_iiidem_researcher' => self::is_checked($data, 'researcher') ? '1' : '0',
+            'profile_field_iiidem_organization' => $organization,
+            'profile_field_iiidem_jobprofile' => $jobprofile,
+            'profile_field_iiidem_jobpostingcountry' => $jobcountry,
             'profile_field_iiidem_university' => self::get_submitted_value($data, 'university'),
             'profile_field_iiidem_position' => self::get_submitted_value($data, 'position'),
             'profile_field_iiidem_specialization' => self::get_submitted_value($data, 'specialization'),

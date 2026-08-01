@@ -317,9 +317,18 @@ class core_renderer extends \core_renderer {
             ]);
         }
         return $html;
-    } 
+    }
 
-
+    /**
+     * Override to inject registerurl into the unauthenticated user menu context.
+     */
+    public function get_user_menu(\renderer_base $output): array {
+        $menu = parent::get_user_menu($output);
+        if (!empty($menu['unauthenticateduser'])) {
+            $menu['unauthenticateduser']['registerurl'] = theme_iiidem2_get_register_url();
+        }
+        return $menu;
+    }
 
 
 

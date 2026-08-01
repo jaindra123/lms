@@ -26,7 +26,20 @@ $PAGE->set_title(get_string('dashboard', 'theme_iiidem2'));
 $PAGE->set_heading('');
 $PAGE->activityheader->disable();
 
-$templatecontext = theme_iiidem2_get_dashboard_context();
+try {
+    $templatecontext = theme_iiidem2_get_dashboard_context();
+} catch (\Throwable $e) {
+    // Do not expose implementation details, paths, or class names to end users.
+    // Keep the complete diagnostic in the PHP/web-server error log for admins.
+    error_log('theme_iiidem2 dashboard failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+    $templatecontext = [
+        'isstudent' => false,
+        'isteacher' => false,
+        'isadmin' => false,
+        'dashboardloaderror' => true,
+        'dashboardretryurl' => (new moodle_url('/theme/iiidem2/dashboard/index.php'))->out(false),
+    ];
+}
 if (!empty($templatecontext['isstudent'])) {
     $PAGE->add_body_class('iiidem-student-dashboard-page');
     $PAGE->requires->js_call_amd('theme_iiidem2/student_dashboard', 'init');

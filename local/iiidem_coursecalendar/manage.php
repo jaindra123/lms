@@ -43,6 +43,14 @@ if ($data = $form->get_data()) {
 
 echo $OUTPUT->header();
 
+$scheduleurl = new moodle_url('/local/iiidem_coursecalendar/schedule_event.php', ['courseid' => $courseid]);
+echo html_writer::div(
+    html_writer::link($scheduleurl, get_string('scheduleliveclass', 'local_iiidem_coursecalendar'), ['class' => 'btn btn-primary mb-3'])
+    . ' '
+    . html_writer::tag('span', get_string('scheduleliveclasshelp', 'local_iiidem_coursecalendar'), ['class' => 'text-muted']),
+    'local-iiidem-coursecalendar-manage-actions'
+);
+
 if ($existing) {
     $deleteurl = new moodle_url('/local/iiidem_coursecalendar/manage.php', [
         'courseid' => $courseid,

@@ -56,9 +56,18 @@ if (!empty($name)) {
 
 $course = $DB->get_record('course', $params, '*', MUST_EXIST);
 
-// Public course browse for visitors (theme_iiidem2) — before require_login().
-if (!isloggedin() || isguestuser()) {
-    if ((int) $course->id !== SITEID && $course->visible) {
+// Public / unenrolled course browse (theme_iiidem2) — before require_login().
+// Logged-in users who are not yet enrolled must stay on /course/view.php (marketing layout)
+// instead of being redirected to /enrol/index.php.
+if ((int) $course->id !== SITEID && $course->visible) {
+    $showpublicbrowse = !isloggedin() || isguestuser();
+    if (!$showpublicbrowse) {
+        require_once($CFG->libdir . '/enrollib.php');
+        if (!can_access_course($course, null, '', true)) {
+            $showpublicbrowse = true;
+        }
+    }
+    if ($showpublicbrowse) {
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
         theme_iiidem2_render_public_course_view($course);
         exit;

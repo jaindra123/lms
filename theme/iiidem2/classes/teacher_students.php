@@ -252,6 +252,26 @@ class teacher_students {
      * @param int $teacherid
      * @return array<int,\stdClass>
      */
+    /**
+     * User fields for get_enrolled_users() so fullname() has all name parts.
+     *
+     * @return string
+     */
+    public static function get_enrolled_user_fieldlist(): string {
+        $fields = array_unique(array_merge(
+            \core_user\fields::get_picture_fields(),
+            \core_user\fields::get_name_fields(),
+            ['lastaccess', 'deleted', 'suspended']
+        ));
+
+        $prefixed = array_map(
+            static fn(string $field): string => 'u.' . $field,
+            $fields
+        );
+
+        return implode(', ', $prefixed);
+    }
+
     public static function get_course_students(\stdClass $course, int $teacherid): array {
         $coursecontext = \context_course::instance($course->id);
 
@@ -263,7 +283,7 @@ class teacher_students {
             $coursecontext,
             '',
             0,
-            'u.id, u.firstname, u.lastname, u.email, u.lastaccess, u.deleted, u.suspended',
+            self::get_enrolled_user_fieldlist(),
             'u.lastname ASC, u.firstname ASC'
         );
 

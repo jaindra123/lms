@@ -1,66 +1,100 @@
 {{!
     @template theme_iiidem2/course/payment_sidebar
 
-    Course fee with PNB (test), ICICI (live), and Razorpay payment buttons.
+    Course enrolment sidebar (stats, fee, Razorpay pay button).
 }}
 <div class="course-sidebar" id="iiidem-course-fee">
-    <div class="iiidem-course-payment-card card shadow-sm border-0">
-        <div class="card-body p-4">
-            <div class="iiidem-course-payment-card__price">{{coursefeecost}}</div>
-            <p class="iiidem-course-payment-card__label">{{#str}}coursefeepaymentlabel, theme_iiidem2{{/str}}</p>
-
-            {{#showcoursepayment}}
-            <div class="d-grid gap-2 iiidem-course-payment-card__actions">
-                {{#haspnbgateway}}
-                <button type="button"
-                        class="btn btn-primary btn-lg w-100 iiidem-course-payment-card__btn"
-                        data-action="theme_iiidem2/triggerCoursePayment"
-                        data-gateway="pnb"
-                        data-component="enrol_fee"
-                        data-paymentarea="fee"
-                        data-itemid="{{coursefeeinstanceid}}"
-                        data-description="{{coursefeedescription}}">
-                    {{#str}}paywithpnb, theme_iiidem2{{/str}}
-                </button>
-                {{/haspnbgateway}}
-                {{#hasicicigateway}}
-                <button type="button"
-                        class="btn btn-outline-primary btn-lg w-100 iiidem-course-payment-card__btn"
-                        data-action="theme_iiidem2/triggerCoursePayment"
-                        data-gateway="icici"
-                        data-component="enrol_fee"
-                        data-paymentarea="fee"
-                        data-itemid="{{coursefeeinstanceid}}"
-                        data-description="{{coursefeedescription}}">
-                    {{#str}}paywithicici, theme_iiidem2{{/str}}
-                </button>
-                {{/hasicicigateway}}
-                {{#hasrazorpaygateway}}
-                <button type="button"
-                        class="btn btn-success btn-lg w-100 iiidem-course-payment-card__btn"
-                        data-action="theme_iiidem2/triggerCoursePayment"
-                        data-gateway="razorpay"
-                        data-component="enrol_fee"
-                        data-paymentarea="fee"
-                        data-itemid="{{coursefeeinstanceid}}"
-                        data-description="{{coursefeedescription}}">
-                    {{#str}}paywithrazorpay, theme_iiidem2{{/str}}
-                </button>
-                {{/hasrazorpaygateway}}
+    <div class="iiidem-course-enrol-card card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="iiidem-course-enrol-card__stats">
+                <div class="iiidem-course-enrol-card__stat">
+                    <span class="iiidem-course-enrol-card__stat-icon fa fa-calendar" aria-hidden="true"></span>
+                    <span class="iiidem-course-enrol-card__stat-label">{{#str}}coursestatduration, theme_iiidem2{{/str}}</span>
+                    <span class="iiidem-course-enrol-card__stat-value">{{coursestatduration}}</span>
+                </div>
+                <div class="iiidem-course-enrol-card__stat">
+                    <span class="iiidem-course-enrol-card__stat-icon fa fa-video-camera" aria-hidden="true"></span>
+                    <span class="iiidem-course-enrol-card__stat-label">{{#str}}coursestatmode, theme_iiidem2{{/str}}</span>
+                    <span class="iiidem-course-enrol-card__stat-value">{{coursestatmode}}</span>
+                </div>
+                {{! Lectures stat hidden for now. }}
+                <div class="iiidem-course-enrol-card__stat">
+                    <span class="iiidem-course-enrol-card__stat-icon fa fa-certificate" aria-hidden="true"></span>
+                    <span class="iiidem-course-enrol-card__stat-label">{{#str}}coursestatcertificate, theme_iiidem2{{/str}}</span>
+                    <span class="iiidem-course-enrol-card__stat-value">{{coursestatcertificate}}</span>
+                </div>
             </div>
-            <p class="iiidem-course-payment-card__note small text-muted mt-3 mb-0">
-                {{#str}}coursefeepaymentnote, theme_iiidem2{{/str}}
-            </p>
-            {{#js}}
-            require(['theme_iiidem2/course_payment'], function(mod) {
-                mod.init();
-            });
-            {{/js}}
-            {{/showcoursepayment}}
 
-            {{^showcoursepayment}}
-            <p class="small text-muted mb-0">{{#str}}coursefeepaymentpending, theme_iiidem2{{/str}}</p>
-            {{/showcoursepayment}}
+            <div class="iiidem-course-enrol-card__section px-4 py-3">
+                <p class="iiidem-course-enrol-card__label mb-1">{{#str}}coursefeepaymentlabel, theme_iiidem2{{/str}}</p>
+                <div class="iiidem-course-enrol-card__price">{{coursefeecost}}</div>
+                <p class="iiidem-course-enrol-card__tax text-muted small mb-0">{{#str}}coursefeeinclusive, theme_iiidem2{{/str}}</p>
+            </div>
+
+            <div class="iiidem-course-enrol-card__section px-4 py-3 border-top">
+                <p class="iiidem-course-enrol-card__included-title mb-2">{{#str}}coursewhatsincluded, theme_iiidem2{{/str}}</p>
+                <ul class="iiidem-course-enrol-card__included list-unstyled mb-0">
+                    {{#courseincludeditems}}
+                    <li><span class="fa fa-check text-success me-2" aria-hidden="true"></span>{{text}}</li>
+                    {{/courseincludeditems}}
+                </ul>
+            </div>
+
+            <div class="iiidem-course-enrol-card__section px-4 py-4 border-top">
+                {{#coursefeeloginrequired}}
+                <p class="iiidem-course-enrol-card__secure small text-muted mb-2">{{#str}}coursesecurepayment, theme_iiidem2{{/str}}</p>
+                <div class="d-grid gap-2">
+                    {{#hasloginmodal}}
+                    <button type="button"
+                            class="btn btn-primary btn-lg w-100 iiidem-course-enrol-card__paybtn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#iiidemLoginModal">
+                        {{#str}}login, core{{/str}} {{#str}}paynow, theme_iiidem2{{/str}}
+                    </button>
+                    {{/hasloginmodal}}
+                    {{^hasloginmodal}}
+                    <a href="{{coursefeeloginurl}}" class="btn btn-primary btn-lg w-100 iiidem-course-enrol-card__paybtn">
+                        {{#str}}login, core{{/str}} {{#str}}paynow, theme_iiidem2{{/str}}
+                    </a>
+                    {{/hasloginmodal}}
+                </div>
+                <p class="iiidem-course-enrol-card__encrypted small text-muted mt-3 mb-0">
+                    <span class="fa fa-shield text-success me-1" aria-hidden="true"></span>{{#str}}coursepaymentencrypted, theme_iiidem2{{/str}}
+                </p>
+                {{/coursefeeloginrequired}}
+
+                {{^coursefeeloginrequired}}
+                {{#showcoursepayment}}
+                <p class="iiidem-course-enrol-card__secure small text-muted mb-2">{{#str}}coursesecurepayment, theme_iiidem2{{/str}}</p>
+                <div class="d-grid gap-2">
+                    {{#hasrazorpaygateway}}
+                    <button type="button"
+                            class="btn btn-primary btn-lg w-100 iiidem-course-enrol-card__paybtn"
+                            data-action="theme_iiidem2/triggerCoursePayment"
+                            data-gateway="razorpay"
+                            data-component="enrol_fee"
+                            data-paymentarea="fee"
+                            data-itemid="{{coursefeeinstanceid}}"
+                            data-description="{{coursefeedescription}}">
+                        <span class="fa fa-lock me-2" aria-hidden="true"></span>{{#str}}paynow, theme_iiidem2{{/str}}
+                    </button>
+                    {{/hasrazorpaygateway}}
+                </div>
+                <p class="iiidem-course-enrol-card__encrypted small text-muted mt-3 mb-0">
+                    <span class="fa fa-shield text-success me-1" aria-hidden="true"></span>{{#str}}coursepaymentencrypted, theme_iiidem2{{/str}}
+                </p>
+                {{#js}}
+                require(['theme_iiidem2/course_payment'], function(mod) {
+                    mod.init();
+                });
+                {{/js}}
+                {{/showcoursepayment}}
+
+                {{^showcoursepayment}}
+                <p class="small text-muted mb-0">{{#str}}coursefeepaymentpending, theme_iiidem2{{/str}}</p>
+                {{/showcoursepayment}}
+                {{/coursefeeloginrequired}}
+            </div>
         </div>
     </div>
 </div>

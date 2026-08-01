@@ -13,13 +13,10 @@
 
     {{> theme_iiidem2/slider }}
 
+    {{! Feature cards hidden for now. }}
+    <!--
     <section class="iiidem-features iiidem-page-section" aria-labelledby="iiidem-features-heading">
         <div class="container">
-           <!--  <header class="iiidem-section-header text-center mb-4">
-                <span class="iiidem-section-header__eyebrow">Platform</span>
-                <h2 id="iiidem-features-heading" class="iiidem-section-header__title">Why choose IIIDEM LMS</h2>
-                <p class="iiidem-section-header__lead mb-0">Certification, live learning, and progress tracking in one place.</p>
-            </header> -->
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="iiidem-feature-card">
@@ -51,10 +48,15 @@
             </div>
         </div>
     </section>
+    -->
 
     <section class="iiidem-about-section iiidem-page-section" id="about-iiidem">
         {{> theme_iiidem2/about }}
     </section>
+
+    {{> theme_iiidem2/programme_audience }}
+
+    {{> theme_iiidem2/programme_tenets }}
 
     {{! Program Governance — hidden on front page (re-enable when needed).
     {{! {{#hasadvisors}}
@@ -78,15 +80,20 @@
         <div class="container">
             <div class="iiidem-cta__inner text-center">
                 <h2 class="iiidem-cta__title">Ready to start learning?</h2>
-                <p class="iiidem-cta__text">Sign in to access your courses, live classes, and certificates.</p>
+                {{#isrealuser}}
+                <p class="iiidem-cta__text">{{#str}}frontpagectaloggedin, theme_iiidem2{{/str}}</p>
+                {{/isrealuser}}
+                {{^isrealuser}}
+                <p class="iiidem-cta__text">{{#str}}frontpagectaguest, theme_iiidem2{{/str}}</p>
+                {{/isrealuser}}
                 <div class="iiidem-cta__actions">
                     {{#isrealuser}}
                         <a href="{{coursesurl}}" class="btn btn-light btn-lg iiidem-btn">My courses</a>
                     {{/isrealuser}}
                     {{^isrealuser}}
-                        <a href="{{registerurl}}" class="btn btn-light btn-lg iiidem-btn">Create account</a>
-                        <a href="{{loginurl}}" class="btn btn-outline-light btn-lg iiidem-btn iiidem-btn--outline">Login to portal</a>
-                        <a href="{{coursesurl}}" class="btn btn-outline-light btn-lg iiidem-btn iiidem-btn--outline">Browse courses</a>
+                        <a href="{{registerurl}}" class="btn btn-light btn-lg iiidem-btn">Sign up</a>
+                        <a href="{{loginurl}}" class="btn btn-outline-light btn-lg iiidem-btn iiidem-btn--outline">Login</a>
+                       <!--  <a href="{{coursesurl}}" class="btn btn-lg iiidem-btn iiidem-cta__btn-browse">Browse courses</a> -->
                     {{/isrealuser}}
                 </div>
             </div>

@@ -86,7 +86,40 @@
                     </div>
                 </article>
             </div>
+            <div class="col-lg-6">
+                <article class="iiidem-teacher-panel" id="upcoming-live-classes">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-calendar-check" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}dashboardteacherupcominglive, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasupcominglives}}
+                        <ul class="iiidem-teacher-dash-list list-unstyled mb-0">
+                            {{#upcominglives}}
+                            <li class="iiidem-teacher-dash-list__item iiidem-teacher-dash-list__item--stack">
+                                <div>
+                                    <div class="iiidem-teacher-queue__title">
+                                        {{#hasurl}}<a href="{{{url}}}" class="iiidem-teacher-queue__link">{{title}}</a>{{/hasurl}}
+                                        {{^hasurl}}{{title}}{{/hasurl}}
+                                    </div>
+                                    <div class="iiidem-teacher-queue__meta">{{coursename}}</div>
+                                    <div class="iiidem-teacher-queue__meta"><strong>{{datetime}}</strong> · {{meta}}</div>
+                                </div>
+                            </li>
+                            {{/upcominglives}}
+                        </ul>
+                        {{/hasupcominglives}}
+                        {{^hasupcominglives}}
+                        <p class="iiidem-teacher-empty mb-0">{{#str}}dashboardteachernolive, theme_iiidem2{{/str}}</p>
+                        {{/hasupcominglives}}
+                    </div>
+                </article>
+            </div>
+        </section>
 
+        <section class="row g-4">
             <div class="col-lg-6">
                 <article class="iiidem-teacher-panel">
                     <header class="iiidem-teacher-panel__header">

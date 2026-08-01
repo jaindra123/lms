@@ -627,7 +627,7 @@ body.iiidem-student-dashboard-page #page-navbar {
     padding: 1rem 0.75rem;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
     .iiidem-student-dashboard-v2 {
         flex-direction: column;
     }
@@ -947,13 +947,232 @@ body.iiidem-student-dashboard-page #page-navbar {
     color: #fff;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 991px) {
     .iiidem-dashboard-tabs__btn span:not(.fa) {
         display: none;
     }
 
     .iiidem-dashboard-tabs__btn {
         padding: 0.65rem 0.85rem;
+    }
+}
+
+/* Student-only colour identity.
+ * Keep the institute navbar blue while distinguishing the learner workspace
+ * from the admin and teacher dashboards. */
+body.iiidem-student-dashboard-page .iiidem-student-dashboard-v2 {
+    background: #f2f8f7;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar {
+    background: linear-gradient(180deg, #0d4f56 0%, #126b68 100%);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__brand .fa {
+    color: #ffd166;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__item a:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-sidebar__item.is-active a {
+    background: rgba(255, 255, 255, 0.16);
+    border-left-color: #ffd166;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-topbar__title,
+body.iiidem-student-dashboard-page .iiidem-student-section__title,
+body.iiidem-student-dashboard-page .iiidem-student-panel__title,
+body.iiidem-student-dashboard-page .iiidem-student-course-card__title {
+    color: #123f46;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn.is-active {
+    background: #126b68;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn:hover,
+body.iiidem-student-dashboard-page .iiidem-dashboard-tabs__btn:focus {
+    background: #e1f2ef;
+    color: #0d4f56;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-btn-continue,
+body.iiidem-student-dashboard-page .iiidem-student-btn-join {
+    background: #126b68;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-btn-continue:hover,
+body.iiidem-student-dashboard-page .iiidem-student-btn-join:hover {
+    background: #0d4f56;
+    color: #fff;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-course-card__progress-bar,
+body.iiidem-student-dashboard-page .iiidem-weekend-progress__bar-fill {
+    background: linear-gradient(90deg, #19a392, #ffd166);
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-section__link,
+body.iiidem-student-dashboard-page .iiidem-student-list__link,
+body.iiidem-student-dashboard-page .iiidem-dashboard-lmslinks__item {
+    color: #126b68;
+}
+
+body.iiidem-student-dashboard-page .iiidem-dashboard-lmslinks__item:hover {
+    border-color: #126b68;
+    color: #0d4f56;
+}
+
+body.iiidem-student-dashboard-page .iiidem-student-stat {
+    box-shadow: 0 4px 16px rgba(13, 79, 86, 0.08);
+}
+
+.iiidem-livequiz-results__intro {
+    margin-top: 0.2rem;
+    color: #60727a;
+    font-size: 0.88rem;
+}
+
+.iiidem-livequiz-result {
+    border: 1px solid #dce8e8;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.iiidem-livequiz-result + .iiidem-livequiz-result {
+    margin-top: 0.85rem;
+}
+
+.iiidem-livequiz-result__summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    list-style-position: outside;
+}
+
+.iiidem-livequiz-result__identity {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.iiidem-livequiz-result__identity strong {
+    color: #123f46;
+}
+
+.iiidem-livequiz-result__identity span {
+    color: #6a7d83;
+    font-size: 0.84rem;
+}
+
+.iiidem-livequiz-result__score {
+    color: #123f46;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.iiidem-livequiz-result__counts {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.iiidem-livequiz-result__count,
+.iiidem-livequiz-result__status {
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.iiidem-livequiz-result__count--correct,
+.iiidem-livequiz-result__status--success {
+    color: #146c43;
+    background: #dff5e9;
+}
+
+.iiidem-livequiz-result__count--wrong,
+.iiidem-livequiz-result__status--danger {
+    color: #a12631;
+    background: #fde5e7;
+}
+
+.iiidem-livequiz-result__status--muted {
+    color: #5f6b70;
+    background: #edf1f2;
+}
+
+.iiidem-livequiz-result__questions {
+    padding: 0 1.1rem 1.1rem;
+}
+
+.iiidem-livequiz-result__question {
+    padding: 0.9rem;
+    border-radius: 10px;
+    background: #f7faf9;
+}
+
+.iiidem-livequiz-result__question + .iiidem-livequiz-result__question {
+    margin-top: 0.7rem;
+}
+
+.iiidem-livequiz-result__question-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.iiidem-livequiz-result__number {
+    display: inline-grid;
+    place-items: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 50%;
+    color: #fff;
+    background: #126b68;
+    font-weight: 800;
+}
+
+.iiidem-livequiz-result__answers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.7rem;
+    padding-left: 2.3rem;
+}
+
+.iiidem-livequiz-result__answers dt {
+    color: #60727a;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.iiidem-livequiz-result__answers dd {
+    margin: 0.15rem 0 0;
+    color: #21383e;
+    font-weight: 600;
+}
+
+@media (max-width: 767px) {
+    .iiidem-livequiz-result__summary {
+        grid-template-columns: 1fr auto;
+    }
+
+    .iiidem-livequiz-result__counts {
+        grid-column: 1 / -1;
+    }
+
+    .iiidem-livequiz-result__answers {
+        grid-template-columns: 1fr;
+        padding-left: 0;
     }
 }
 

@@ -38,7 +38,10 @@ class student_dashboard {
         $user = \core_user::get_user($userid, '*', MUST_EXIST);
         $courses = self::get_enrolled_courses($userid);
         $liveclasses = self::get_live_classes($courses, $userid);
-        $joinnowurl = !empty($liveclasses[0]['joinurl']) ? $liveclasses[0]['joinurl'] : '';
+        $livepanel = \theme_iiidem2\liveclass_sessions::split_today_upcoming($liveclasses);
+        $joinnowurl = $livepanel['joinnowurl'] !== ''
+            ? $livepanel['joinnowurl']
+            : (!empty($liveclasses[0]['joinurl']) ? $liveclasses[0]['joinurl'] : '');
 
         $announcements = self::get_announcement_items($userid);
         $notifications = self::get_notifications($userid);
@@ -50,13 +53,14 @@ class student_dashboard {
         $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
         $learningstats = self::get_learning_statistics($userid, $courses);
         $supportcontext = self::get_support_context($userid);
+        $livequizcontext = self::get_livequiz_results_context($userid);
         $notificationmeta = self::get_notification_meta($userid);
 
         return array_merge([
             'firstname' => $user->firstname,
             'dashboardurl' => \theme_iiidem2_get_dashboard_url()->out(false),
             'sidenav' => self::get_sidebar_nav($courses, $userid),
-            'dashboardtabs' => self::get_dashboard_tabs(),
+            'dashboardtabs' => self::get_dashboard_tabs(!empty($livequizcontext['haslivequizresults'])),
             'progresscards' => self::get_learning_progress_cards($courses, $userid),
             'coursecards' => $coursecards,
             'hascoursecards' => !empty($coursecards),
@@ -65,6 +69,11 @@ class student_dashboard {
             'mycoursesurl' => (new \moodle_url('/my/courses.php'))->out(false),
             'upcomingactivities' => $upcomingactivities,
             'hasupcomingactivities' => !empty($upcomingactivities),
+            'liveclassestoday' => $livepanel['today'],
+            'hasliveclassestoday' => !empty($livepanel['today']),
+            'liveclassesupcoming' => $livepanel['upcoming'],
+            'hasliveclassesupcoming' => !empty($livepanel['upcoming']),
+            'hasliveclasses' => !empty($livepanel['today']) || !empty($livepanel['upcoming']),
             'announcements' => $announcements,
             'hasannouncements' => !empty($announcements),
             'notifications' => $notifications,
@@ -87,7 +96,7 @@ class student_dashboard {
             'hasunreadnotifications' => $notificationmeta['unreadcount'] > 0,
             'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
-        ], $calendarcontext, $supportcontext);
+        ], $calendarcontext, $supportcontext, $livequizcontext);
     }
 
     /**
@@ -114,6 +123,28 @@ class student_dashboard {
         $context['sesskey'] = sesskey();
 
         return $context;
+    }
+
+    /**
+     * Closed live-quiz results for the current student.
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_livequiz_results_context(int $userid): array {
+        global $CFG;
+
+        $pluginlib = $CFG->dirroot . '/local/iiidem_livequiz/lib.php';
+        if (!is_readable($pluginlib)) {
+            return ['haslivequizresults' => false, 'livequizresults' => []];
+        }
+
+        require_once($pluginlib);
+        if (!function_exists('local_iiidem_livequiz_get_dashboard_context')) {
+            return ['haslivequizresults' => false, 'livequizresults' => []];
+        }
+
+        return local_iiidem_livequiz_get_dashboard_context($userid);
     }
 
     /**
@@ -151,16 +182,6 @@ class student_dashboard {
         $courses = enrol_get_users_courses($userid, true, '*', 'visible DESC, fullname ASC');
         unset($courses[SITEID]);
 
-        if (empty($courses)) {
-            $fallback = enrol_get_users_courses($userid, false, '*', 'visible DESC, fullname ASC');
-            unset($fallback[SITEID]);
-            foreach ($fallback as $course) {
-                if (self::user_can_access_enrolled_course($course, $userid)) {
-                    $courses[$course->id] = $course;
-                }
-            }
-        }
-
         return array_values($courses);
     }
 
@@ -179,11 +200,9 @@ class student_dashboard {
             return false;
         }
 
-        if (is_enrolled($context, $userid, '', true)) {
-            return true;
-        }
-
-        return can_access_course($course, [], $userid);
+        // Pending fee enrolments are suspended until payment succeeds and must
+        // not appear as enrolled courses on the student dashboard.
+        return is_enrolled($context, $userid, '', true);
     }
 
     /**
@@ -339,10 +358,11 @@ class student_dashboard {
     /**
      * Dashboard tab panels (Moodle-style my-home sections).
      *
+     * @param bool $haslivequizresults
      * @return array
      */
-    protected static function get_dashboard_tabs(): array {
-        return [
+    protected static function get_dashboard_tabs(bool $haslivequizresults = false): array {
+        $tabs = [
             [
                 'id' => 'overview',
                 'icon' => 'fa-gauge-high',
@@ -374,6 +394,17 @@ class student_dashboard {
                 'active' => false,
             ],
         ];
+
+        if ($haslivequizresults) {
+            $tabs[] = [
+                'id' => 'livequiz',
+                'icon' => 'fa-question-circle',
+                'label' => get_string('resultshistory', 'local_iiidem_livequiz'),
+                'active' => false,
+            ];
+        }
+
+        return $tabs;
     }
 
     /**
@@ -420,7 +451,7 @@ class student_dashboard {
             $items[] = [
                 'typelabel' => get_string('dashboardtypelive', 'theme_iiidem2'),
                 'title' => $session['title'],
-                'meta' => trim($session['date'] . ' · ' . $session['time']),
+                'meta' => ($session['coursename'] ?? $session['coursefullname'] ?? '') . ' · ' . trim($session['date'] . ' · ' . $session['time']),
                 'url' => $session['joinurl'] ?? '',
                 'status' => $status['label'],
                 'statusclass' => $status['class'],
@@ -877,15 +908,6 @@ class student_dashboard {
                 'active' => true,
             ],
             [
-                'key' => 'livesessions',
-                'icon' => 'fa-video',
-                'label' => get_string('dashboardnavlivesessions', 'theme_iiidem2'),
-                'url' => self::get_live_class_page_url($userid)->out(false),
-                'panel' => 'learning',
-                'isinpage' => false,
-                'active' => false,
-            ],
-            [
                 'key' => 'curriculum',
                 'icon' => 'fa-book-open',
                 'label' => get_string('dashboardnavcurriculum', 'theme_iiidem2'),
@@ -1227,72 +1249,7 @@ class student_dashboard {
      * @return array
      */
     protected static function get_live_classes(array $courses, int $userid): array {
-        global $DB;
-
-        $now = time();
-        $startofday = usergetmidnight($now);
-        $endofday = $startofday + DAYSECS;
-        $horizon = $now + (60 * 60 * 24 * 14);
-        $sessions = [];
-
-        $livemods = [
-            'bigbluebuttonbn' => ['table' => 'bigbluebuttonbn', 'start' => 'openingtime', 'end' => 'closingtime', 'label' => 'BigBlueButton'],
-            'zoom' => ['table' => 'zoom', 'start' => 'start_time', 'end' => 'duration', 'label' => 'Zoom'],
-            'webexactivity' => ['table' => 'webexactivity', 'start' => 'starttime', 'end' => 'endtime', 'label' => 'Webex'],
-        ];
-
-        foreach ($courses as $course) {
-            try {
-                $modinfo = get_fast_modinfo($course, $userid);
-            } catch (\Exception $e) {
-                continue;
-            }
-
-            $coursename = format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]);
-
-            foreach ($livemods as $modname => $meta) {
-                $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_' . $modname);
-                if (!$plugin || !$plugin->is_enabled()) {
-                    continue;
-                }
-                if (!$modinfo->get_instances_of($modname)) {
-                    continue;
-                }
-
-                foreach ($modinfo->get_instances_of($modname) as $cm) {
-                    if (!$cm->uservisible) {
-                        continue;
-                    }
-                    $instance = $DB->get_record($meta['table'], ['id' => $cm->instance], '*', IGNORE_MISSING);
-                    if (!$instance) {
-                        continue;
-                    }
-
-                    $startfield = $meta['start'];
-                    $start = !empty($instance->$startfield) ? (int) $instance->$startfield : 0;
-                    if ($start <= 0 || $start < $now - DAYSECS || $start > $horizon) {
-                        continue;
-                    }
-
-                    $sessions[] = [
-                        'title' => format_string($cm->name, true, ['context' => \context_module::instance($cm->id)]),
-                        'coursefullname' => $coursename,
-                        'modlabel' => $meta['label'],
-                        'date' => userdate($start, get_string('strftimedatefullshort', 'core_langconfig')),
-                        'time' => userdate($start, get_string('strftimetime', 'core_langconfig')),
-                        'istoday' => ($start >= $startofday && $start < $endofday),
-                        'joinurl' => (new \moodle_url('/mod/' . $modname . '/view.php', ['id' => $cm->id]))->out(false),
-                        'sorttime' => $start,
-                    ];
-                }
-            }
-        }
-
-        usort($sessions, static function(array $a, array $b): int {
-            return $a['sorttime'] <=> $b['sorttime'];
-        });
-
-        return array_slice($sessions, 0, 6);
+        return liveclass_sessions::get_upcoming($courses, $userid, 30 * DAYSECS, 8);
     }
 
     /**
