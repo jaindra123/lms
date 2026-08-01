@@ -19,6 +19,9 @@ defined('MOODLE_INTERNAL') || die();
  */
 class liveclass_notifier {
 
+    /** @var array<string,bool> Prevent duplicate sends in the same request. */
+    private static $queued = [];
+
     /**
      * Handle course module created/updated events.
      *
@@ -31,6 +34,7 @@ class liveclass_notifier {
                 return;
             }
             $action = ($event->action === 'created') ? 'created' : 'updated';
+            error_log('theme_iiidem2 liveclass_notifier event: cmid=' . $cmid . ' action=' . $action);
             self::maybe_notify($cmid, $action);
         } catch (\Throwable $e) {
             error_log('theme_iiidem2 liveclass_notifier: ' . $e->getMessage());
@@ -42,10 +46,9 @@ class liveclass_notifier {
      *
      * @param int $cmid
      * @param string $action created|updated
+     * @param bool $immediate Send now (CLI / diagnostics).
      */
-    public static function maybe_notify(int $cmid, string $action): void {
-        global $DB;
-
+    public static function maybe_notify(int $cmid, string $action, bool $immediate = false): void {
         $cm = get_coursemodule_from_id(null, $cmid, 0, false, IGNORE_MISSING);
         if (!$cm || empty($cm->course) || (int) $cm->course === SITEID) {
             return;
@@ -68,10 +71,56 @@ class liveclass_notifier {
         $hashkey = 'liveclassnotifyhash_' . $cmid;
         $previous = get_config('theme_iiidem2', $hashkey);
         if ($action === 'updated' && $previous === $hash) {
+            error_log('theme_iiidem2 liveclass_notifier: skip unchanged cmid=' . $cmid);
             return;
         }
-        set_config($hashkey, $hash, 'theme_iiidem2');
 
+        $queuekey = $cmid . ':' . $action . ':' . $hash;
+        if (!empty(self::$queued[$queuekey])) {
+            return;
+        }
+        self::$queued[$queuekey] = true;
+        set_config($hashkey, $hash, 'theme_iiidem2');
+        error_log('theme_iiidem2 liveclass_notifier: queue cmid=' . $cmid . ' action=' . $action);
+
+        if ($immediate || (defined('CLI_SCRIPT') && CLI_SCRIPT)) {
+            self::send_emails($cm, $details, $action);
+            return;
+        }
+
+        // Send after the HTTP response so LMS/AJAX is not blocked by SMTP.
+        $cmcaptured = $cm;
+        $detailscaptured = $details;
+        $actioncaptured = $action;
+        register_shutdown_function(static function() use ($cmcaptured, $detailscaptured, $actioncaptured) {
+            try {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+                \core_php_time_limit::raise(180);
+                ignore_user_abort(true);
+                self::send_emails($cmcaptured, $detailscaptured, $actioncaptured);
+            } catch (\Throwable $e) {
+                error_log('theme_iiidem2 liveclass_notifier shutdown: ' . $e->getMessage());
+            }
+        });
+    }
+
+    /**
+     * Send from an adhoc/CLI helper (details reloaded from DB).
+     *
+     * @param int $cmid
+     * @param string $action
+     */
+    public static function send_queued(int $cmid, string $action): void {
+        $cm = get_coursemodule_from_id(null, $cmid, 0, false, IGNORE_MISSING);
+        if (!$cm) {
+            return;
+        }
+        $details = self::extract_session_details($cm);
+        if ($details === null) {
+            return;
+        }
         self::send_emails($cm, $details, $action);
     }
 
@@ -360,9 +409,11 @@ class liveclass_notifier {
 
         $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
         $context = \context_course::instance((int) $course->id);
-        // Prefer enrolled users who cannot manage the course (students / participants).
-        $students = get_enrolled_users($context, '', 0, 'u.*', null, 0, 0, true);
+        // Include suspended fee enrolments so unpaid registered students still
+        // receive live-class notices (onlyactive=false).
+        $students = get_enrolled_users($context, '', 0, 'u.*', null, 0, 0, false);
         if (empty($students)) {
+            error_log('theme_iiidem2 liveclass_notifier: no enrolled users for course ' . (int) $course->id);
             return;
         }
         $recipients = [];
@@ -401,12 +452,16 @@ class liveclass_notifier {
         $CFG->debug = 0;
         $CFG->debugdisplay = false;
 
+        $sent = 0;
+        $skipped = 0;
         try {
             foreach ($recipients as $student) {
                 if (empty($student->email) || !validate_email($student->email)) {
+                    $skipped++;
                     continue;
                 }
                 if (!empty($student->suspended)) {
+                    $skipped++;
                     continue;
                 }
                 $persona = (object) array_merge((array) $a, [
@@ -416,15 +471,52 @@ class liveclass_notifier {
                 if ($action === 'created') {
                     $usersubject = get_string('liveclassnotify_createdsubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('liveclassnotify_createdbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'created';
                 } else if ($action === 'reminder') {
                     $usersubject = get_string('liveclassnotify_remindersubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('liveclassnotify_reminderbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'reminder';
                 } else {
                     $usersubject = get_string('liveclassnotify_updatedsubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('liveclassnotify_updatedbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'updated';
                 }
-                email_to_user($student, $sender, $usersubject, $userbody);
+
+                $joinurl = $details['joinurl'] !== '' ? $details['joinurl'] : $activityurl;
+                $userhtml = notify_email::render([
+                    'sitename' => $sitename,
+                    'firstname' => $student->firstname,
+                    'badge' => get_string('liveclassnotify_badge_' . $badgekey, 'theme_iiidem2'),
+                    'title' => get_string('liveclassnotify_title_' . $badgekey, 'theme_iiidem2'),
+                    'intro' => get_string('liveclassnotify_intro_' . $badgekey, 'theme_iiidem2', $persona),
+                    'rows' => [
+                        ['label' => get_string('liveclassnotify_label_session', 'theme_iiidem2'), 'value' => $details['name']],
+                        ['label' => get_string('liveclassnotify_label_course', 'theme_iiidem2'), 'value' => $coursename],
+                        ['label' => get_string('liveclassnotify_label_time', 'theme_iiidem2'), 'value' => $a->sessiontime],
+                        ['label' => get_string('liveclassnotify_label_join', 'theme_iiidem2'), 'value' => $joinurl],
+                        ['label' => get_string('liveclassnotify_label_meeting', 'theme_iiidem2'), 'value' => $a->meetingnumber],
+                        ['label' => get_string('liveclassnotify_label_password', 'theme_iiidem2'), 'value' => $a->password],
+                    ],
+                    'ctaurl' => $joinurl,
+                    'ctalabel' => get_string('liveclassnotify_cta', 'theme_iiidem2'),
+                    'secondaryurl' => $activityurl,
+                    'secondarylabel' => get_string('liveclassnotify_secondary', 'theme_iiidem2'),
+                ]);
+
+                if (email_to_user($student, $sender, $usersubject, $userbody, $userhtml)) {
+                    $sent++;
+                } else {
+                    $skipped++;
+                    error_log('theme_iiidem2 liveclass_notifier: email_to_user failed for user ' . (int) $student->id);
+                }
             }
+            error_log(sprintf(
+                'theme_iiidem2 liveclass_notifier: cm=%d action=%s sent=%d skipped=%d',
+                (int) $cm->id,
+                $action,
+                $sent,
+                $skipped
+            ));
         } catch (\Throwable $e) {
             error_log('theme_iiidem2 liveclass email failed: ' . $e->getMessage());
         } finally {

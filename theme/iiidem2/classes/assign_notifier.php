@@ -20,6 +20,9 @@ defined('MOODLE_INTERNAL') || die();
  */
 class assign_notifier {
 
+    /** @var array<string,bool> Prevent duplicate sends in the same request. */
+    private static $queued = [];
+
     /**
      * Handle course module created/updated events for assignments.
      *
@@ -32,6 +35,7 @@ class assign_notifier {
                 return;
             }
             $action = ($event->action === 'created') ? 'created' : 'updated';
+            error_log('theme_iiidem2 assign_notifier event: cmid=' . $cmid . ' action=' . $action);
             self::maybe_notify($cmid, $action);
         } catch (\Throwable $e) {
             error_log('theme_iiidem2 assign_notifier: ' . $e->getMessage());
@@ -41,10 +45,14 @@ class assign_notifier {
     /**
      * Notify students if this CM is an assignment with a due date.
      *
+     * On web requests, emails are sent after the response is flushed so the
+     * LMS page / AJAX JSON is not blocked or corrupted by SMTP work.
+     *
      * @param int $cmid
      * @param string $action created|updated
+     * @param bool $immediate Send now (CLI / diagnostics).
      */
-    public static function maybe_notify(int $cmid, string $action): void {
+    public static function maybe_notify(int $cmid, string $action, bool $immediate = false): void {
         $cm = get_coursemodule_from_id('assign', $cmid, 0, false, IGNORE_MISSING);
         if (!$cm || empty($cm->course) || (int) $cm->course === SITEID) {
             return;
@@ -64,10 +72,56 @@ class assign_notifier {
         $hashkey = 'assignnotifyhash_' . $cmid;
         $previous = get_config('theme_iiidem2', $hashkey);
         if ($action === 'updated' && $previous === $hash) {
+            error_log('theme_iiidem2 assign_notifier: skip unchanged cmid=' . $cmid);
             return;
         }
-        set_config($hashkey, $hash, 'theme_iiidem2');
 
+        $queuekey = $cmid . ':' . $action . ':' . $hash;
+        if (!empty(self::$queued[$queuekey])) {
+            return;
+        }
+        self::$queued[$queuekey] = true;
+        set_config($hashkey, $hash, 'theme_iiidem2');
+        error_log('theme_iiidem2 assign_notifier: queue cmid=' . $cmid . ' action=' . $action);
+
+        if ($immediate || (defined('CLI_SCRIPT') && CLI_SCRIPT)) {
+            self::send_emails($cm, $details, $action);
+            return;
+        }
+
+        // Send after the HTTP response so LMS/AJAX is not blocked by SMTP.
+        $cmcaptured = $cm;
+        $detailscaptured = $details;
+        $actioncaptured = $action;
+        register_shutdown_function(static function() use ($cmcaptured, $detailscaptured, $actioncaptured) {
+            try {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+                \core_php_time_limit::raise(180);
+                ignore_user_abort(true);
+                self::send_emails($cmcaptured, $detailscaptured, $actioncaptured);
+            } catch (\Throwable $e) {
+                error_log('theme_iiidem2 assign_notifier shutdown: ' . $e->getMessage());
+            }
+        });
+    }
+
+    /**
+     * Send from an adhoc/CLI helper (details reloaded from DB).
+     *
+     * @param int $cmid
+     * @param string $action
+     */
+    public static function send_queued(int $cmid, string $action): void {
+        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, IGNORE_MISSING);
+        if (!$cm) {
+            return;
+        }
+        $details = self::extract_details($cm);
+        if ($details === null) {
+            return;
+        }
         self::send_emails($cm, $details, $action);
     }
 
@@ -173,8 +227,11 @@ class assign_notifier {
 
         $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
         $context = \context_course::instance((int) $course->id);
-        $students = get_enrolled_users($context, '', 0, 'u.*', null, 0, 0, true);
+        // Include suspended fee enrolments: students registered but not yet paid
+        // must still receive assignment notices (onlyactive=false).
+        $students = get_enrolled_users($context, '', 0, 'u.*', null, 0, 0, false);
         if (empty($students)) {
+            error_log('theme_iiidem2 assign_notifier: no enrolled users for course ' . (int) $course->id);
             return;
         }
 
@@ -212,12 +269,16 @@ class assign_notifier {
         $CFG->debug = 0;
         $CFG->debugdisplay = false;
 
+        $sent = 0;
+        $skipped = 0;
         try {
             foreach ($recipients as $student) {
                 if (empty($student->email) || !validate_email($student->email)) {
+                    $skipped++;
                     continue;
                 }
                 if (!empty($student->suspended)) {
+                    $skipped++;
                     continue;
                 }
                 $persona = (object) array_merge((array) $a, [
@@ -227,15 +288,51 @@ class assign_notifier {
                 if ($action === 'created') {
                     $usersubject = get_string('assignnotify_createdsubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('assignnotify_createdbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'created';
                 } else if ($action === 'reminder') {
                     $usersubject = get_string('assignnotify_remindersubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('assignnotify_reminderbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'reminder';
                 } else {
                     $usersubject = get_string('assignnotify_updatedsubject', 'theme_iiidem2', $persona);
                     $userbody = get_string('assignnotify_updatedbody', 'theme_iiidem2', $persona);
+                    $badgekey = 'updated';
                 }
-                email_to_user($student, $sender, $usersubject, $userbody);
+
+                $userhtml = notify_email::render([
+                    'sitename' => $sitename,
+                    'firstname' => $student->firstname,
+                    'badge' => get_string('assignnotify_badge_' . $badgekey, 'theme_iiidem2'),
+                    'title' => get_string('assignnotify_title_' . $badgekey, 'theme_iiidem2'),
+                    'intro' => get_string('assignnotify_intro_' . $badgekey, 'theme_iiidem2', $persona),
+                    'rows' => [
+                        ['label' => get_string('assignnotify_label_assignment', 'theme_iiidem2'), 'value' => $details['name']],
+                        ['label' => get_string('assignnotify_label_course', 'theme_iiidem2'), 'value' => $coursename],
+                        ['label' => get_string('assignnotify_label_available', 'theme_iiidem2'), 'value' => $a->allowfrom],
+                        ['label' => get_string('assignnotify_label_due', 'theme_iiidem2'), 'value' => $details['duedate']],
+                    ],
+                    'note' => get_string('assignnotify_note', 'theme_iiidem2') . ' '
+                        . get_string('assignnotify_help', 'theme_iiidem2'),
+                    'ctaurl' => $activityurl,
+                    'ctalabel' => get_string('assignnotify_cta', 'theme_iiidem2'),
+                    'secondaryurl' => $courseurl,
+                    'secondarylabel' => get_string('assignnotify_secondary', 'theme_iiidem2'),
+                ]);
+
+                if (email_to_user($student, $sender, $usersubject, $userbody, $userhtml)) {
+                    $sent++;
+                } else {
+                    $skipped++;
+                    error_log('theme_iiidem2 assign_notifier: email_to_user failed for user ' . (int) $student->id);
+                }
             }
+            error_log(sprintf(
+                'theme_iiidem2 assign_notifier: cm=%d action=%s sent=%d skipped=%d',
+                (int) $cm->id,
+                $action,
+                $sent,
+                $skipped
+            ));
         } catch (\Throwable $e) {
             error_log('theme_iiidem2 assign email failed: ' . $e->getMessage());
         } finally {

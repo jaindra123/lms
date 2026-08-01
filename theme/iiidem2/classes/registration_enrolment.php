@@ -70,6 +70,9 @@ final class registration_enrolment {
                     self::suspend_manual_enrolment($userid, $course);
                     $results[$courseid] = self::create_pending_fee_enrolment($userid, $course);
                 } else {
+                    // Admin "Allow without payment course" (or EMB/instructor):
+                    // grant active access and drop any pending fee enrolment.
+                    self::remove_pending_fee_enrolment($userid, $course);
                     $results[$courseid] = self::create_active_manual_enrolment($userid, $course);
                 }
             } catch (\Throwable $exception) {
@@ -184,6 +187,46 @@ final class registration_enrolment {
 
         $manualplugin->enrol_user($manualinstance, $userid, $roleid, 0, 0, ENROL_USER_ACTIVE);
         return 'active';
+    }
+
+    /**
+     * Remove a suspended (unpaid) fee enrolment when the user becomes fee-exempt.
+     *
+     * Already-active paid fee enrolments are left in place.
+     *
+     * @param int $userid
+     * @param \stdClass $course
+     */
+    private static function remove_pending_fee_enrolment(int $userid, \stdClass $course): void {
+        global $DB;
+
+        $feeinstance = $DB->get_record_select(
+            'enrol',
+            'courseid = :courseid AND enrol = :enrol AND status = :status AND cost > 0',
+            [
+                'courseid' => $course->id,
+                'enrol' => 'fee',
+                'status' => ENROL_INSTANCE_ENABLED,
+            ],
+            '*',
+            IGNORE_MULTIPLE
+        );
+        if (!$feeinstance) {
+            return;
+        }
+
+        $existing = $DB->get_record('user_enrolments', [
+            'enrolid' => $feeinstance->id,
+            'userid' => $userid,
+        ]);
+        if (!$existing || (int) $existing->status !== ENROL_USER_SUSPENDED) {
+            return;
+        }
+
+        $feeplugin = enrol_get_plugin('fee');
+        if ($feeplugin) {
+            $feeplugin->unenrol_user($feeinstance, $userid);
+        }
     }
 
     /**

@@ -1,5 +1,7 @@
 /**
  * Record activity completion when a student opens a curriculum preview.
+ * Also lazy-loads PDF iframes after the collapse panel is visible so the
+ * browser PDF viewer can size/zoom against the real panel dimensions.
  *
  * @module theme_iiidem2/curriculum_completion
  */
@@ -9,26 +11,46 @@ define([], function() {
     var pending = {};
 
     /**
-     * @param {object} config
-     * @param {string} config.ajaxurl
-     * @param {string} config.sesskey
+     * Load PDF iframes that were deferred with data-pdf-src.
+     *
+     * @param {HTMLElement} panel
      */
-    function init(config) {
-        if (!config || !config.ajaxurl || !config.sesskey) {
+    function activatePdfPreviews(panel) {
+        if (!panel || !panel.querySelectorAll) {
             return;
         }
 
+        panel.querySelectorAll('iframe.iiidem-curriculum-pdf[data-pdf-src]').forEach(function(iframe) {
+            var url = iframe.getAttribute('data-pdf-src');
+            if (!url) {
+                return;
+            }
+            if (iframe.getAttribute('src') === url) {
+                return;
+            }
+            iframe.setAttribute('src', url);
+        });
+    }
+
+    /**
+     * @param {object} config
+     * @param {string} [config.ajaxurl]
+     * @param {string} [config.sesskey]
+     */
+    function init(config) {
         var curriculum = document.querySelector('.iiidem-curriculum');
         if (!curriculum) {
             return;
         }
+
+        config = config || {};
 
         /**
          * @param {string} cmid
          * @param {HTMLElement|null} source
          */
         function markViewed(cmid, source) {
-            if (!cmid || pending[cmid]) {
+            if (!config.ajaxurl || !config.sesskey || !cmid || pending[cmid]) {
                 return;
             }
 
@@ -79,10 +101,12 @@ define([], function() {
             if (!panel || !panel.id || panel.id.indexOf('preview') !== 0) {
                 return;
             }
-            if (panel.getAttribute('data-trackcompletion') !== '1') {
-                return;
+
+            activatePdfPreviews(panel);
+
+            if (panel.getAttribute('data-trackcompletion') === '1') {
+                markViewed(panel.getAttribute('data-cmid'), null);
             }
-            markViewed(panel.getAttribute('data-cmid'), null);
         });
     }
 

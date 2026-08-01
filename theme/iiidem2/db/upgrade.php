@@ -135,5 +135,37 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100868, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024100882) {
+        \theme_iiidem2\registration_profile::ensure_fields();
+
+        // Reconcile enrolments for users already marked allow-without-payment.
+        $embfieldid = (int) $DB->get_field('user_info_field', 'id', ['shortname' => 'iiidem_emb']);
+        if ($embfieldid > 0) {
+            $exemptuserids = $DB->get_fieldset_select(
+                'user_info_data',
+                'userid',
+                'fieldid = ? AND data = ?',
+                [$embfieldid, '1']
+            );
+            foreach ($exemptuserids as $userid) {
+                \theme_iiidem2\registration_enrolment::enrol_user((int) $userid);
+            }
+        }
+
+        upgrade_plugin_savepoint(true, 2024100882, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100886) {
+        // Force rebuild of event observer cache after notifier files were uploaded.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100886, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100892) {
+        // Branded password-reset email strings + template support.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100892, 'theme', 'iiidem2');
+    }
+
     return true;
 }

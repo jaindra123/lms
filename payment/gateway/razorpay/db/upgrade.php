@@ -35,5 +35,12 @@ function xmldb_paygw_razorpay_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025062908, 'paygw', 'razorpay');
     }
 
+    if ($oldversion < 2025062910) {
+        // Force language string reload for branded payment success emails.
+        get_string_manager()->reset_caches();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2025062910, 'paygw', 'razorpay');
+    }
+
     return true;
 }

@@ -554,36 +554,68 @@ $string['registersuccess'] = 'Your account has been created. Welcome!';
 $string['registersuccesstitle'] = 'Registration successful';
 $string['registersuccessbody'] = 'Your account has been created successfully. You can now explore the course and complete enrolment when you are ready.';
 $string['registeremailusersubject'] = '{$a->sitename}: Account created';
-$string['registeremailuserbody'] = 'Hi {$a->firstname},
+$string['registeremailusertitle'] = 'Welcome to {$a->sitename}!';
+$string['registeremailuserintro'] = 'Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:';
+$string['registeremailusercta'] = 'Sign in';
+$string['registeremailuserreset'] = 'Password reset link';
+$string['registeremailusernote'] = 'Note: This password reset link is valid for approximately {$a->resetminutes} minutes.';
+$string['registeremailuserhelp'] = 'For any assistance, please contact the {$a->sitename} support team.';
+$string['registeremailusersignoff'] = '{$a->sitename} Administrator';
+$string['registeremailuserlabel_username'] = 'Username';
+$string['registeremailuserlabel_email'] = 'Email';
+$string['registeremailuserlabel_password'] = 'Password';
+$string['passwordresetemailsubject'] = '{$a->sitename}: Password reset request';
+$string['passwordresetemailtitle'] = 'Password reset request';
+$string['passwordresetemailcta'] = 'Reset Password';
+$string['passwordresetemailregards'] = 'Kind regards';
+$string['passwordresetemailsignoff'] = 'IIIDEM Support Team';
+$string['passwordresetemailsignoffextra'] = 'Site Administrator';
+$string['passwordresetemailintrohtml'] = '<p style="margin:0 0 12px;">We received a request to reset the password for your {$a->sitename} account associated with {$a->emailhtml}.</p>
+<p style="margin:0;">To create a new password, please click the link below:</p>';
+$string['passwordresetemailnotehtml'] = '<p style="margin:0 0 12px;">For your security, this password reset link is valid for {$a->resetminutes} from the time the request was made.</p>
+<p style="margin:0 0 12px;">If you did not request a password reset, you can safely ignore this email. Your account will remain secure, and no further action is required.</p>
+<p style="margin:0;">If you need any assistance, please contact the {$a->sitename} Site Administrator.</p>';
+$string['passwordresetemailbody'] = 'Dear {$a->firstname},
 
-Your account on {$a->sitename} has been created successfully.
+We received a request to reset the password for your {$a->sitename} account associated with {$a->email}.
+
+To create a new password, please click the link below:
+
+{$a->resetlink}
+
+For your security, this password reset link is valid for {$a->resetminutes} minutes from the time the request was made.
+
+If you did not request a password reset, you can safely ignore this email. Your account will remain secure, and no further action is required.
+
+If you need any assistance, please contact the {$a->sitename} Site Administrator.
+
+Kind regards,
+IIIDEM Support Team
+Site Administrator
+';
+$string['registeremailuserbody'] = 'Dear {$a->firstname},
+
+Welcome to {$a->sitename}!
+
+Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:
 
 Username: {$a->username}
 Email: {$a->email}
 Password: {$a->password}
 
-You can sign in here:
+You can sign in using the following link:
 {$a->loginurl}
 
-If you need to reset your password later, use this secure link:
+If you need to reset your password at any time, please use the secure password reset link below:
 {$a->resetlink}
 
-This link is valid for about {$a->resetminutes} minutes.
+Note: This password reset link is valid for approximately {$a->resetminutes} minutes.
 
-{$a->admin}
+For any assistance, please contact the {$a->sitename} support team.
+
+Regards,
+{$a->sitename} Administrator
 ';
-$string['registeremailuserhtml'] = '<p>Hi {$a->firstname},</p>
-<p>Your account on <strong>{$a->sitename}</strong> has been created successfully.</p>
-<ul>
-<li><strong>Username:</strong> {$a->username}</li>
-<li><strong>Email:</strong> {$a->email}</li>
-<li><strong>Password:</strong> {$a->password}</li>
-</ul>
-<p>You can <a href="{$a->loginurl}">sign in here</a>.</p>
-<p>If you need to reset your password later, use this secure link:</p>
-<p><a href="{$a->resetlink}">{$a->resetlink}</a></p>
-<p>This link is valid for about {$a->resetminutes} minutes.</p>
-<p>{$a->admin}</p>';
 $string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
 $string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
 
@@ -747,49 +779,91 @@ $string['assignnotify_opennow'] = 'Already open';
 $string['assignnotify_createdsubject'] = 'New assignment: {$a->assignmentname} (due {$a->duedate})';
 $string['assignnotify_updatedsubject'] = 'Assignment updated: {$a->assignmentname} (due {$a->duedate})';
 $string['assignnotify_remindersubject'] = 'Reminder: {$a->assignmentname} is due soon ({$a->duedate})';
+$string['assignnotify_badge_created'] = 'New assignment';
+$string['assignnotify_badge_updated'] = 'Assignment updated';
+$string['assignnotify_badge_reminder'] = 'Due soon';
+$string['assignnotify_title_created'] = 'New assignment posted';
+$string['assignnotify_title_updated'] = 'Assignment updated';
+$string['assignnotify_title_reminder'] = 'Assignment due soon';
+$string['assignnotify_intro_created'] = 'This is to inform you that a new assignment has been posted in the course {$a->coursename} on the {$a->sitename} Learning Management System.';
+$string['assignnotify_intro_updated'] = 'This is to inform you that an assignment has been updated in the course {$a->coursename} on the {$a->sitename} Learning Management System.';
+$string['assignnotify_intro_reminder'] = 'This is to remind you that an assignment in the course {$a->coursename} on the {$a->sitename} Learning Management System is due within 24 hours.';
+$string['assignnotify_note'] = 'Kindly complete and submit the assignment on or before the due date.';
+$string['assignnotify_help'] = 'If you have any questions or require assistance, please contact the course administrator.';
+$string['assignnotify_cta'] = 'Assignment Link';
+$string['assignnotify_secondary'] = 'Course Page';
+$string['assignnotify_label_assignment'] = 'Assignment';
+$string['assignnotify_label_course'] = 'Course';
+$string['assignnotify_label_available'] = 'Available From';
+$string['assignnotify_label_due'] = 'Due Date';
 $string['assignnotify_createdbody'] = 'Dear {$a->firstname},
 
-A new assignment has been posted in {$a->coursename} on {$a->sitename}.
+This is to inform you that a new assignment has been posted in the course {$a->coursename} on the {$a->sitename} Learning Management System.
 
 Assignment: {$a->assignmentname}
-Available from: {$a->allowfrom}
-Due date: {$a->duedate}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
 
-Please complete and submit the assignment before the due date.
+Kindly complete and submit the assignment on or before the due date.
 
-Open the assignment: {$a->activityurl}
-Course page: {$a->courseurl}
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
 
 Regards,
 {$a->sitename}';
 $string['assignnotify_updatedbody'] = 'Dear {$a->firstname},
 
-An assignment has been updated in {$a->coursename} on {$a->sitename}.
+This is to inform you that an assignment has been updated in the course {$a->coursename} on the {$a->sitename} Learning Management System.
 
 Assignment: {$a->assignmentname}
-Available from: {$a->allowfrom}
-Due date: {$a->duedate}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
 
-Please complete and submit the assignment before the due date.
+Kindly complete and submit the assignment on or before the due date.
 
-Open the assignment: {$a->activityurl}
-Course page: {$a->courseurl}
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
 
 Regards,
 {$a->sitename}';
 $string['assignnotify_reminderbody'] = 'Dear {$a->firstname},
 
-This is a reminder that your assignment is due within 24 hours.
+This is to remind you that an assignment in the course {$a->coursename} on the {$a->sitename} Learning Management System is due within 24 hours.
 
 Assignment: {$a->assignmentname}
-Course: {$a->coursename}
-Due date: {$a->duedate}
+Available From: {$a->allowfrom}
+Due Date: {$a->duedate}
 
-Please complete and submit it before the deadline.
+Kindly complete and submit the assignment on or before the due date.
 
-Open the assignment: {$a->activityurl}
-Course page: {$a->courseurl}
+Assignment Link: {$a->activityurl}
+Course Page: {$a->courseurl}
+
+If you have any questions or require assistance, please contact the course administrator.
 
 Regards,
 {$a->sitename}';
 $string['tasksendassignreminders'] = 'Send assignment due-date reminder emails (24 hours before)';
+
+// Live class HTML email labels.
+$string['liveclassnotify_badge_created'] = 'New live class';
+$string['liveclassnotify_badge_updated'] = 'Live class updated';
+$string['liveclassnotify_badge_reminder'] = 'Starts in 1 hour';
+$string['liveclassnotify_title_created'] = 'A live class has been scheduled';
+$string['liveclassnotify_title_updated'] = 'Live class details have changed';
+$string['liveclassnotify_title_reminder'] = 'Your live class starts soon';
+$string['liveclassnotify_intro_created'] = 'A new live class has been scheduled in {$a->coursename} on {$a->sitename}.';
+$string['liveclassnotify_intro_updated'] = 'Live class details have been updated in {$a->coursename} on {$a->sitename}.';
+$string['liveclassnotify_intro_reminder'] = 'This is a reminder that your live class starts in about 1 hour.';
+$string['liveclassnotify_cta'] = 'Join live class';
+$string['liveclassnotify_secondary'] = 'Open activity page';
+$string['liveclassnotify_label_session'] = 'Session';
+$string['liveclassnotify_label_course'] = 'Course';
+$string['liveclassnotify_label_time'] = 'Date / time';
+$string['liveclassnotify_label_join'] = 'Join link';
+$string['liveclassnotify_label_meeting'] = 'Meeting number';
+$string['liveclassnotify_label_password'] = 'Password';

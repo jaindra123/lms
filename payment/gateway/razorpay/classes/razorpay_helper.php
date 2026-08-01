@@ -412,13 +412,62 @@ class razorpay_helper {
         }
 
         if ($success) {
-            $usersubject = get_string('paymentsuccessemailusersubject', 'paygw_razorpay', $a);
-            $userbody = get_string('paymentsuccessemailuserbody', 'paygw_razorpay', $a);
+            $usersubject = self::email_string('paymentsuccessemailusersubject', $a);
+            $userbody = self::email_string('paymentsuccessemailuserbody', $a);
+            $userhtml = '';
+            if (class_exists('\\theme_iiidem2\\notify_email')) {
+                $userhtml = \theme_iiidem2\notify_email::render([
+                    'sitename' => $sitename,
+                    'firstname' => self::email_string('paymentsuccessemailusergreeting'),
+                    'title' => self::email_string('paymentsuccessemailusertitle'),
+                    'intro' => self::email_string('paymentsuccessemailuserintro'),
+                    'rows' => [
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_student'),
+                            'value' => $a->fullname,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_email'),
+                            'valuehtml' => '<a href="mailto:' . s($a->email) . '" style="color:#0b3d91;text-decoration:underline;">'
+                                . s($a->email) . '</a>',
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_course'),
+                            'value' => $a->coursename,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_amount'),
+                            'value' => $a->amount,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_invoice'),
+                            'value' => $a->invoicenumber,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_reference'),
+                            'value' => $a->txnref,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_orderid'),
+                            'value' => $a->orderid,
+                        ],
+                        [
+                            'label' => self::email_string('paymentsuccessemailuserlabel_paymentid'),
+                            'value' => $a->paymentid,
+                        ],
+                    ],
+                    'note' => self::email_string('paymentsuccessemailusernote', $a),
+                    'ctaurl' => $courseurl,
+                    'ctalabel' => self::email_string('paymentsuccessemailusercta'),
+                    'signoff' => self::email_string('paymentsuccessemailusersignoff', $a),
+                ]);
+            }
             $adminsubject = get_string('paymentsuccessemailadminsubject', 'paygw_razorpay', $a);
             $adminbody = get_string('paymentsuccessemailadminbody', 'paygw_razorpay', $a);
         } else {
             $usersubject = get_string('paymentfailedemailusersubject', 'paygw_razorpay', $a);
             $userbody = get_string('paymentfailedemailuserbody', 'paygw_razorpay', $a);
+            $userhtml = '';
             $adminsubject = get_string('paymentfailedemailadminsubject', 'paygw_razorpay', $a);
             $adminbody = get_string('paymentfailedemailadminbody', 'paygw_razorpay', $a);
         }
@@ -430,7 +479,7 @@ class razorpay_helper {
         $CFG->debugdisplay = false;
 
         try {
-            email_to_user($user, $sender, $usersubject, $userbody, '', $attachment, $attachname);
+            email_to_user($user, $sender, $usersubject, $userbody, $userhtml, $attachment, $attachname);
             foreach (get_admins() as $admin) {
                 if (empty($admin->email) || !validate_email($admin->email)) {
                     continue;
@@ -450,5 +499,79 @@ class razorpay_helper {
                 @unlink($attachment);
             }
         }
+    }
+
+    /**
+     * Language string with English fallback (avoids [[identifier]] when lang cache is stale).
+     *
+     * @param string $identifier
+     * @param mixed $a
+     * @return string
+     */
+    protected static function email_string(string $identifier, $a = null): string {
+        $fallbacks = [
+            'paymentsuccessemailusergreeting' => 'Student',
+            'paymentsuccessemailusersubject' => '{$a->sitename}: Payment successful — {$a->coursename}',
+            'paymentsuccessemailusertitle' => 'Payment received successfully',
+            'paymentsuccessemailuserintro' => 'This is to confirm that your course fee payment has been received successfully.',
+            'paymentsuccessemailusernote' => 'Thank you for your payment. We wish you a rewarding learning experience with {$a->sitename}.',
+            'paymentsuccessemailusercta' => 'Open course',
+            'paymentsuccessemailusersignoff' => '{$a->sitename} Administrator',
+            'paymentsuccessemailuserlabel_student' => 'Student Name',
+            'paymentsuccessemailuserlabel_email' => 'Email',
+            'paymentsuccessemailuserlabel_course' => 'Course',
+            'paymentsuccessemailuserlabel_amount' => 'Amount Paid',
+            'paymentsuccessemailuserlabel_invoice' => 'Invoice Number',
+            'paymentsuccessemailuserlabel_reference' => 'Payment Reference',
+            'paymentsuccessemailuserlabel_orderid' => 'Razorpay Order ID',
+            'paymentsuccessemailuserlabel_paymentid' => 'Razorpay Payment ID',
+            'paymentsuccessemailuserbody' => 'Dear Student,
+
+This is to confirm that your course fee payment has been received successfully.
+
+Student Name: {$a->fullname}
+Email: {$a->email}
+
+Course: {$a->coursename}
+
+Payment Details:
+
+Amount Paid: {$a->amount}
+Invoice Number: {$a->invoicenumber}
+Payment Reference: {$a->txnref}
+Razorpay Order ID: {$a->orderid}
+Razorpay Payment ID: {$a->paymentid}
+
+You can access your course using the link below:
+
+Course URL: {$a->courseurl}
+
+Thank you for your payment. We wish you a rewarding learning experience with {$a->sitename}.
+
+Regards,
+{$a->sitename} Administrator
+',
+        ];
+
+        $value = get_string($identifier, 'paygw_razorpay', $a);
+        if ($value === '' || strpos($value, '[[') === 0) {
+            $value = $fallbacks[$identifier] ?? $identifier;
+            if (is_object($a) || is_array($a)) {
+                $value = strtr($value, [
+                    '{$a->sitename}' => (string) ($a->sitename ?? ''),
+                    '{$a->fullname}' => (string) ($a->fullname ?? ''),
+                    '{$a->firstname}' => (string) ($a->firstname ?? ''),
+                    '{$a->email}' => (string) ($a->email ?? ''),
+                    '{$a->coursename}' => (string) ($a->coursename ?? ''),
+                    '{$a->courseurl}' => (string) ($a->courseurl ?? ''),
+                    '{$a->amount}' => (string) ($a->amount ?? ''),
+                    '{$a->invoicenumber}' => (string) ($a->invoicenumber ?? ''),
+                    '{$a->txnref}' => (string) ($a->txnref ?? ''),
+                    '{$a->orderid}' => (string) ($a->orderid ?? ''),
+                    '{$a->paymentid}' => (string) ($a->paymentid ?? ''),
+                ]);
+            }
+        }
+        return $value;
     }
 }

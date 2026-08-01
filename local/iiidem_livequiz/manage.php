@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && confirm_sesskey()) {
                 optional_param('opt2', '', PARAM_TEXT),
                 optional_param('opt3', '', PARAM_TEXT),
             ];
-            $correctindex = optional_param('correctindex', -1, PARAM_INT);
+            $correctindex = required_param('correctindex', PARAM_INT);
             manager::add_question($sessionid, $text, $options, $correctindex);
             redirect(new moodle_url('/local/iiidem_livequiz/manage.php', [
                 'courseid' => $courseid,
@@ -206,13 +206,16 @@ if ($status === manager::STATUS_DRAFT) {
 
     echo html_writer::tag('label', get_string('correctoption', 'local_iiidem_livequiz'));
     $correctoptions = [
-        -1 => get_string('none', 'form'),
+        '' => get_string('selectcorrectoption', 'local_iiidem_livequiz'),
         0 => get_string('option', 'local_iiidem_livequiz', 1),
         1 => get_string('option', 'local_iiidem_livequiz', 2),
         2 => get_string('option', 'local_iiidem_livequiz', 3),
         3 => get_string('option', 'local_iiidem_livequiz', 4),
     ];
-    echo html_writer::select($correctoptions, 'correctindex', -1, false, ['class' => 'form-control mb-3']);
+    echo html_writer::select($correctoptions, 'correctindex', '', false, [
+        'class' => 'form-control mb-3',
+        'required' => 'required',
+    ]);
 
     echo html_writer::tag('button', get_string('addquestion', 'local_iiidem_livequiz'), [
         'type' => 'submit',
@@ -289,27 +292,31 @@ if ($status === manager::STATUS_ACTIVE || $status === manager::STATUS_CLOSED) {
     echo html_writer::tag('h3', get_string('results', 'local_iiidem_livequiz'), ['class' => 'mt-4']);
     echo html_writer::div(
         get_string('submittedcount', 'local_iiidem_livequiz', $results['submittedcount']),
-        'mb-2'
+        'mb-2',
+        ['id' => 'iiidem-livequiz-submitted-count']
     );
 
-    if (!empty($results['rows'])) {
-        $rtable = new html_table();
-        $rtable->head = [
-            get_string('student', 'local_iiidem_livequiz'),
-            get_string('status', 'local_iiidem_livequiz'),
-            get_string('score', 'local_iiidem_livequiz'),
+    $rtable = new html_table();
+    $rtable->attributes['id'] = 'iiidem-livequiz-results-table';
+    $rtable->head = [
+        get_string('student', 'local_iiidem_livequiz'),
+        get_string('status', 'local_iiidem_livequiz'),
+        get_string('score', 'local_iiidem_livequiz'),
+    ];
+    foreach ($results['rows'] as $row) {
+        $rtable->data[] = [
+            $row['studentname'] . html_writer::tag('div', $row['email'], ['class' => 'small text-muted']),
+            $row['complete'] ? get_string('active', 'local_iiidem_livequiz') : get_string('notstarted', 'local_iiidem_livequiz'),
+            $row['scorelabel'],
         ];
-        foreach ($results['rows'] as $row) {
-            $rtable->data[] = [
-                $row['studentname'] . html_writer::tag('div', $row['email'], ['class' => 'small text-muted']),
-                $row['complete'] ? get_string('active', 'local_iiidem_livequiz') : get_string('notstarted', 'local_iiidem_livequiz'),
-                $row['scorelabel'],
-            ];
-        }
-        echo html_writer::table($rtable);
-    } else {
-        echo html_writer::div(get_string('nostudents', 'local_iiidem_livequiz'), 'text-muted');
     }
+    if (empty($rtable->data)) {
+        $emptycell = new html_table_cell(get_string('nostudents', 'local_iiidem_livequiz'));
+        $emptycell->colspan = 3;
+        $emptycell->attributes['class'] = 'text-muted';
+        $rtable->data[] = [$emptycell];
+    }
+    echo html_writer::table($rtable);
 
     if ($status === manager::STATUS_ACTIVE) {
         $PAGE->requires->js(new moodle_url('/local/iiidem_livequiz/livequiz-manage.js'));
@@ -318,6 +325,7 @@ if ($status === manager::STATUS_ACTIVE || $status === manager::STATUS_CLOSED) {
             'data-sessionid' => $sessionid,
             'data-apiurl' => (new moodle_url('/local/iiidem_livequiz/api.php'))->out(false),
             'data-sesskey' => sesskey(),
+            'data-submittedlabel' => get_string('submittedcount', 'local_iiidem_livequiz', '__COUNT__'),
         ]);
     }
 }

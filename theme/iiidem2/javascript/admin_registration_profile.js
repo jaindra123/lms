@@ -13,33 +13,55 @@
             return;
         }
 
-        var obsoleteNames = ['profile_field_iiidem_electoral_practitioner'];
-        var categories = [
-            {name: 'profile_field_iiidem_policymaker', label: 'Policymaker'},
-            {name: 'profile_field_iiidem_journalist', label: 'Journalist'},
-            {name: 'profile_field_iiidem_researcher', label: 'Researcher'},
-            {
-                name: 'profile_field_iiidem_emb',
-                label: 'Allow without payment course'
-            }
-        ];
-
         function getProfileCheckbox(name) {
-            return form.querySelector(
-                'input[type="checkbox"][name="' + name + '"]'
-            );
+            return form.querySelector('input[type="checkbox"][name="' + name + '"]');
         }
 
-        obsoleteNames.forEach(function(name) {
+        function hideField(name) {
             var input = getProfileCheckbox(name);
             var item = input ? input.closest('.fitem') : document.getElementById('fitem_id_' + name);
             if (item) {
                 item.hidden = true;
                 item.style.display = 'none';
             }
-        });
+        }
 
-        var available = categories.map(function(category) {
+        function createRadio(name, value, id, labelText, checked) {
+            var wrapper = document.createElement('div');
+            wrapper.className = 'form-check mb-2';
+
+            var radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = name;
+            radio.value = value;
+            radio.id = id;
+            radio.className = 'form-check-input';
+            radio.checked = !!checked;
+
+            var label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = id;
+            label.textContent = labelText;
+
+            wrapper.appendChild(radio);
+            wrapper.appendChild(label);
+            return wrapper;
+        }
+
+        // Hide retired / internal checkboxes; rebuild cleaner UI below.
+        [
+            'profile_field_iiidem_electoral_practitioner',
+            'profile_field_iiidem_emb',
+            'profile_field_iiidem_policymaker',
+            'profile_field_iiidem_journalist',
+            'profile_field_iiidem_researcher'
+        ].forEach(hideField);
+
+        var categories = [
+            {name: 'profile_field_iiidem_policymaker', label: 'Policymaker'},
+            {name: 'profile_field_iiidem_journalist', label: 'Journalist'},
+            {name: 'profile_field_iiidem_researcher', label: 'Researcher'}
+        ].map(function(category) {
             var input = getProfileCheckbox(category.name);
             return input ? Object.assign({}, category, {
                 input: input,
@@ -47,74 +69,142 @@
             }) : null;
         }).filter(Boolean);
 
-        if (!available.length || !available[0].item) {
+        var embInput = getProfileCheckbox('profile_field_iiidem_emb');
+        var insertBefore = null;
+        if (categories.length && categories[0].item) {
+            insertBefore = categories[0].item;
+        } else if (embInput) {
+            insertBefore = embInput.closest('.fitem');
+        }
+        if (!insertBefore || !insertBefore.parentNode) {
             return;
         }
 
-        var fieldset = document.createElement('fieldset');
-        fieldset.className = 'iiidem-admin-working-category mb-3';
-        fieldset.innerHTML =
-            '<legend class="col-form-label fw-bold">Working professional category</legend>';
+        var parent = insertBefore.parentNode;
+        var lastInserted = null;
 
-        var options = [{name: '', label: 'None'}].concat(available);
-        var selected = available.find(function(category) {
-            return category.name === 'profile_field_iiidem_emb' && category.input.checked;
-        }) || available.find(function(category) {
-            return category.input.checked;
-        });
+        // Working professional category stays under IIIDEM registration.
+        if (categories.length) {
+            var categoryFieldset = document.createElement('fieldset');
+            categoryFieldset.className = 'iiidem-admin-working-category mb-3';
 
-        options.forEach(function(option) {
-            var wrapper = document.createElement('div');
-            wrapper.className = 'form-check mb-2';
+            var legend = document.createElement('legend');
+            legend.className = 'fs-6 fw-semibold';
+            legend.textContent = 'Working professional category';
+            categoryFieldset.appendChild(legend);
 
-            var radio = document.createElement('input');
-            radio.type = 'radio';
-            radio.name = 'iiidem_workingcategory_admin';
-            radio.value = option.name;
-            radio.id = 'id_iiidem_workingcategory_admin_' + (option.name || 'none');
-            radio.className = 'form-check-input';
-            radio.checked = selected ? selected.name === option.name : option.name === '';
+            var selectedCategory = categories.find(function(category) {
+                return category.input.checked;
+            });
 
-            var label = document.createElement('label');
-            label.className = 'form-check-label';
-            label.htmlFor = radio.id;
-            label.textContent = option.label;
+            categoryFieldset.appendChild(
+                createRadio(
+                    'iiidem_workingcategory_admin',
+                    '',
+                    'id_iiidem_workingcategory_admin_none',
+                    'None',
+                    !selectedCategory
+                )
+            );
 
-            wrapper.appendChild(radio);
-            wrapper.appendChild(label);
-            fieldset.appendChild(wrapper);
-        });
+            categories.forEach(function(category) {
+                categoryFieldset.appendChild(
+                    createRadio(
+                        'iiidem_workingcategory_admin',
+                        category.name,
+                        'id_iiidem_workingcategory_admin_' + category.name,
+                        category.label,
+                        !!(selectedCategory && selectedCategory.name === category.name)
+                    )
+                );
+            });
 
-        available[0].item.parentNode.insertBefore(fieldset, available[0].item);
-        available.forEach(function(category) {
-            if (category.item) {
-                category.item.hidden = true;
-                category.item.style.display = 'none';
+            parent.insertBefore(categoryFieldset, insertBefore);
+            lastInserted = categoryFieldset;
+
+            function syncCategories() {
+                var selectedRadio = categoryFieldset.querySelector(
+                    'input[name="iiidem_workingcategory_admin"]:checked'
+                );
+                var selectedName = selectedRadio ? selectedRadio.value : '';
+                categories.forEach(function(category) {
+                    category.input.checked = category.name === selectedName;
+                    category.input.value = category.input.checked ? '1' : '0';
+                });
+            }
+
+            categoryFieldset.addEventListener('change', syncCategories);
+            form.addEventListener('submit', syncCategories);
+        }
+
+        // Separate section (like "IIIDEM registration") for fee exemption.
+        if (embInput) {
+            var feeSection = document.createElement('div');
+            feeSection.className = 'iiidem-admin-profile-section mb-3';
+            feeSection.setAttribute('role', 'group');
+            feeSection.setAttribute('aria-labelledby', 'id_iiidem_allow_without_payment_heading');
+
+            var feeHeading = document.createElement('h3');
+            feeHeading.id = 'id_iiidem_allow_without_payment_heading';
+            feeHeading.className = 'iiidem-admin-profile-section__title';
+            feeHeading.textContent = 'Allow without payment course';
+            feeSection.appendChild(feeHeading);
+
+            var feeFieldset = document.createElement('fieldset');
+            feeFieldset.className = 'iiidem-admin-profile-section__body';
+            feeSection.appendChild(feeFieldset);
+
+            var allowWithoutPayment = !!embInput.checked;
+
+            feeFieldset.appendChild(
+                createRadio(
+                    'iiidem_allow_without_payment_admin',
+                    '0',
+                    'id_iiidem_allow_without_payment_no',
+                    'No — require course fee payment',
+                    !allowWithoutPayment
+                )
+            );
+            feeFieldset.appendChild(
+                createRadio(
+                    'iiidem_allow_without_payment_admin',
+                    '1',
+                    'id_iiidem_allow_without_payment_yes',
+                    'Yes — allow without payment course',
+                    allowWithoutPayment
+                )
+            );
+
+            if (lastInserted && lastInserted.nextSibling) {
+                parent.insertBefore(feeSection, lastInserted.nextSibling);
+            } else if (lastInserted) {
+                parent.insertBefore(feeSection, lastInserted.nextSibling);
+            } else {
+                parent.insertBefore(feeSection, insertBefore);
+            }
+
+            function syncFeeExemption() {
+                var selectedRadio = feeFieldset.querySelector(
+                    'input[name="iiidem_allow_without_payment_admin"]:checked'
+                );
+                var allow = selectedRadio && selectedRadio.value === '1';
+                embInput.checked = allow;
+                embInput.value = allow ? '1' : '0';
+            }
+
+            feeFieldset.addEventListener('change', syncFeeExemption);
+            form.addEventListener('submit', syncFeeExemption);
+        }
+
+        // Keep electoral practitioner cleared on save.
+        form.addEventListener('submit', function() {
+            var electoral = getProfileCheckbox('profile_field_iiidem_electoral_practitioner');
+            if (electoral) {
+                electoral.checked = false;
+                electoral.value = '0';
             }
         });
 
-        function syncProfileFields() {
-            var selectedRadio = fieldset.querySelector(
-                'input[name="iiidem_workingcategory_admin"]:checked'
-            );
-            var selectedName = selectedRadio ? selectedRadio.value : '';
-
-            available.forEach(function(category) {
-                category.input.checked = category.name === selectedName;
-                category.input.value = category.input.checked ? '1' : '0';
-            });
-
-            obsoleteNames.forEach(function(name) {
-                var input = getProfileCheckbox(name);
-                if (input) {
-                    input.checked = false;
-                    input.value = '0';
-                }
-            });
-        }
-
-        fieldset.addEventListener('change', syncProfileFields);
-        form.addEventListener('submit', syncProfileFields);
         form.dataset.iiidemRegistrationProfileReady = '1';
     }
 

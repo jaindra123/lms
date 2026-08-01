@@ -6152,6 +6152,17 @@ function send_confirmation_email($user, $confirmationurl = null) {
 function send_password_change_confirmation_email($user, $resetrecord) {
     global $CFG;
 
+    // IIIDEM branded HTML password-reset email (same template as registration).
+    if (!empty($CFG->theme) && $CFG->theme === 'iiidem2') {
+        $themefile = $CFG->dirroot . '/theme/iiidem2/lib.php';
+        if (is_readable($themefile)) {
+            require_once($themefile);
+            if (function_exists('theme_iiidem2_send_password_reset_email')) {
+                return theme_iiidem2_send_password_reset_email($user, $resetrecord);
+            }
+        }
+    }
+
     $site = get_site();
     $supportuser = core_user::get_support_user();
     $pwresetmins = isset($CFG->pwresettime) ? floor($CFG->pwresettime / MINSECS) : 30;

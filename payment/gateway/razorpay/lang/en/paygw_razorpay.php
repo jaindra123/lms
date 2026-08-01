@@ -39,22 +39,47 @@ $string['mockcancelbutton'] = 'Cancel payment (simulate failure)';
 $string['continuetocourse'] = 'Continue to course';
 $string['paymentresultsuccessheading'] = 'Payment successful';
 $string['paymentresultfailheading'] = 'Payment not completed';
+$string['paymentsuccessemailusergreeting'] = 'Student';
 $string['paymentsuccessemailusersubject'] = '{$a->sitename}: Payment successful — {$a->coursename}';
-$string['paymentsuccessemailuserbody'] = 'Hi {$a->firstname},
+$string['paymentsuccessemailusertitle'] = 'Payment received successfully';
+$string['paymentsuccessemailuserintro'] = 'This is to confirm that your course fee payment has been received successfully.';
+$string['paymentsuccessemailusernote'] = 'Thank you for your payment. We wish you a rewarding learning experience with {$a->sitename}.';
+$string['paymentsuccessemailusercta'] = 'Open course';
+$string['paymentsuccessemailusersignoff'] = '{$a->sitename} Administrator';
+$string['paymentsuccessemailuserlabel_student'] = 'Student Name';
+$string['paymentsuccessemailuserlabel_email'] = 'Email';
+$string['paymentsuccessemailuserlabel_course'] = 'Course';
+$string['paymentsuccessemailuserlabel_amount'] = 'Amount Paid';
+$string['paymentsuccessemailuserlabel_invoice'] = 'Invoice Number';
+$string['paymentsuccessemailuserlabel_reference'] = 'Payment Reference';
+$string['paymentsuccessemailuserlabel_orderid'] = 'Razorpay Order ID';
+$string['paymentsuccessemailuserlabel_paymentid'] = 'Razorpay Payment ID';
+$string['paymentsuccessemailuserbody'] = 'Dear Student,
 
-Your payment was successful. Please find your invoice attached to this email.
+This is to confirm that your course fee payment has been received successfully.
+
+Student Name: {$a->fullname}
+Email: {$a->email}
 
 Course: {$a->coursename}
-Amount: {$a->amount}
-Invoice: {$a->invoicenumber}
-Reference: {$a->txnref}
-Razorpay order: {$a->orderid}
-Razorpay payment: {$a->paymentid}
 
-You can open the course here:
-{$a->courseurl}
+Payment Details:
 
-{$a->admin}';
+Amount Paid: {$a->amount}
+Invoice Number: {$a->invoicenumber}
+Payment Reference: {$a->txnref}
+Razorpay Order ID: {$a->orderid}
+Razorpay Payment ID: {$a->paymentid}
+
+You can access your course using the link below:
+
+Course URL: {$a->courseurl}
+
+Thank you for your payment. We wish you a rewarding learning experience with {$a->sitename}.
+
+Regards,
+{$a->sitename} Administrator
+';
 $string['paymentsuccessemailadminsubject'] = '{$a->sitename}: Course fee paid — {$a->coursename}';
 $string['paymentsuccessemailadminbody'] = 'A course fee payment was completed.
 

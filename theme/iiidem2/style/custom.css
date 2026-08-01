@@ -861,6 +861,13 @@ label.me-2.mb-0 {
 .iiidem-curriculum .resourcepdf {
   width: 100%;
   max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.iiidem-curriculum .card-body:has(.iiidem-curriculum-pdf-wrap),
+.iiidem-curriculum .card-body:has(.resourcepdf) {
+  padding: 0.75rem;
 }
 
 .iiidem-curriculum .iiidem-curriculum-pdf,
@@ -869,8 +876,8 @@ label.me-2.mb-0 {
   display: block;
   width: 100% !important;
   max-width: 100%;
-  min-height: 75vh;
-  height: 75vh !important;
+  min-height: 80vh;
+  height: 80vh !important;
   border: 0;
   border-radius: 6px;
   background: #525659;
@@ -4788,8 +4795,45 @@ body#page-course-index-category .coursebox .content .summary h3 {
   margin-bottom: 0.5rem;
 }
 
+/* Separate admin profile section (matches Moodle category header look). */
+.iiidem-admin-profile-section {
+  clear: both;
+  width: 100%;
+  margin: 1.75rem 0 1rem;
+  padding-top: 0.25rem;
+}
+
+.iiidem-admin-profile-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1d2125;
+}
+
+.iiidem-admin-profile-section__title::before {
+  content: '';
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #0f6cbf url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff' d='M3.2 5.4 8 10.2l4.8-4.8.9.9L8 12 2.3 6.3z'/%3E%3C/svg%3E") center / 0.75rem no-repeat;
+}
+
+.iiidem-admin-profile-section__body {
+  margin-left: 25%;
+  padding-left: 1rem;
+  border: 0;
+  min-width: 0;
+}
+
 @media (max-width: 767px) {
-  .iiidem-admin-working-category {
+  .iiidem-admin-working-category,
+  .iiidem-admin-profile-section__body {
     margin-left: 0;
     padding-left: 0;
   }

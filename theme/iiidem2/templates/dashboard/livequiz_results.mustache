@@ -1,0 +1,66 @@
+{{!
+    @template theme_iiidem2/dashboard/livequiz_results
+
+    Closed live-question session results for a student.
+}}
+<article class="iiidem-student-panel iiidem-livequiz-results">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon">
+                <span class="fa fa-circle-question" aria-hidden="true"></span>
+            </span>
+            <div>
+                <h2 class="iiidem-student-panel__title">{{#str}}resultshistory, local_iiidem_livequiz{{/str}}</h2>
+                <p class="iiidem-livequiz-results__intro mb-0">
+                    {{#str}}resultshistorydesc, local_iiidem_livequiz{{/str}}
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <div class="iiidem-student-panel__body">
+        {{#livequizresults}}
+        <details class="iiidem-livequiz-result">
+            <summary class="iiidem-livequiz-result__summary">
+                <span class="iiidem-livequiz-result__identity">
+                    <strong>{{sessionname}}</strong>
+                    <span>{{coursename}}{{#closeddate}} · {{#str}}closedon, local_iiidem_livequiz, {{closeddate}}{{/str}}{{/closeddate}}</span>
+                </span>
+                <span class="iiidem-livequiz-result__score">{{scorelabel}}</span>
+                <span class="iiidem-livequiz-result__counts">
+                    <span class="iiidem-livequiz-result__count iiidem-livequiz-result__count--correct">
+                        {{#str}}correctanswers, local_iiidem_livequiz{{/str}}: {{correctcount}}
+                    </span>
+                    <span class="iiidem-livequiz-result__count iiidem-livequiz-result__count--wrong">
+                        {{#str}}wronganswers, local_iiidem_livequiz{{/str}}: {{wrongcount}}
+                    </span>
+                </span>
+            </summary>
+
+            <div class="iiidem-livequiz-result__questions">
+                {{#questions}}
+                <article class="iiidem-livequiz-result__question">
+                    <div class="iiidem-livequiz-result__question-head">
+                        <span class="iiidem-livequiz-result__number">{{number}}</span>
+                        <strong>{{questiontext}}</strong>
+                        <span class="iiidem-livequiz-result__status iiidem-livequiz-result__status--{{statusclass}}">
+                            {{resultlabel}}
+                        </span>
+                    </div>
+                    <dl class="iiidem-livequiz-result__answers mb-0">
+                        <div>
+                            <dt>{{#str}}youranswer, local_iiidem_livequiz{{/str}}</dt>
+                            <dd>{{studentanswer}}</dd>
+                        </div>
+                        <div>
+                            <dt>{{#str}}correctanswer, local_iiidem_livequiz{{/str}}</dt>
+                            <dd>{{correctanswer}}</dd>
+                        </div>
+                    </dl>
+                </article>
+                {{/questions}}
+            </div>
+        </details>
+        {{/livequizresults}}
+    </div>
+</article>

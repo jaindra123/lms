@@ -225,6 +225,28 @@ body.iiidem-live-class #region-main {
     transform: translateY(-1px);
 }
 
+/* Curriculum accordion: live-class Page preview. */
+.iiidem-liveclass-preview__actions .iiidem-liveclass-open-btn {
+    display: inline-block;
+    padding: 0.65rem 1.5rem;
+    border: 0;
+    border-radius: 6px;
+    background: #7f1d1d;
+    color: #fff;
+    font-weight: 600;
+}
+
+.iiidem-liveclass-preview__actions .iiidem-liveclass-open-btn:hover,
+.iiidem-liveclass-preview__actions .iiidem-liveclass-open-btn:focus {
+    background: #991b1b;
+    color: #fff;
+}
+
+.iiidem-liveclass-preview__details {
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
 body.iiidem-liveclass-modal-open {
     overflow: hidden;
 }

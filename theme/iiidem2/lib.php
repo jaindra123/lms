@@ -17,6 +17,35 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
+ * Called by Moodle after an activity is created/updated via the activity form.
+ *
+ * This is more reliable than event observers alone: observer MUC cache can stay
+ * stale on production after uploading events.php, while this callback is always
+ * discovered from theme lib.php.
+ *
+ * @param stdClass $moduleinfo
+ * @param stdClass $course
+ * @return stdClass
+ */
+function theme_iiidem2_coursemodule_edit_post_actions($moduleinfo, $course) {
+    $cmid = (int) ($moduleinfo->coursemodule ?? 0);
+    if ($cmid <= 0) {
+        return $moduleinfo;
+    }
+
+    $action = !empty($moduleinfo->add) ? 'created' : 'updated';
+
+    try {
+        \theme_iiidem2\assign_notifier::maybe_notify($cmid, $action);
+        \theme_iiidem2\liveclass_notifier::maybe_notify($cmid, $action);
+    } catch (\Throwable $e) {
+        error_log('theme_iiidem2 coursemodule_edit_post_actions: ' . $e->getMessage());
+    }
+
+    return $moduleinfo;
+}
+
+/**
  * Inject additional SCSS.
  *
  * @param theme_config $theme The theme config object.
@@ -314,11 +343,14 @@ function theme_iiidem2_get_resource_preview_html(cm_info $cm): string {
     if (file_mimetype_in_typegroup($mimetype, 'web_image')) {
         $code = resourcelib_embed_image($fileurl->out(false), $title);
     } else if ($mimetype === 'application/pdf') {
-        // Full-width embed for curriculum preview. Avoid resourcelib_embed_pdf():
-        // M.util.init_maximised_embed looks for #maincontent (missing in this theme)
-        // and falls back to a fixed 500px width.
+        // Lazy-load PDF when the curriculum collapse opens. Loading inside a
+        // hidden panel makes browser PDF viewers pick a tiny default zoom.
         $clicktoopen = resource_get_clicktoopen($file, $resource->revision);
         $iframeid = 'iiidem-resource-pdf-' . (int) $cm->id;
+        $pdfurl = $fileurl->out(false);
+        if (strpos($pdfurl, '#') === false) {
+            $pdfurl .= '#view=FitH';
+        }
         $code = html_writer::div(
             html_writer::tag(
                 'iframe',
@@ -326,7 +358,8 @@ function theme_iiidem2_get_resource_preview_html(cm_info $cm): string {
                 [
                     'id' => $iframeid,
                     'class' => 'iiidem-curriculum-pdf',
-                    'src' => $fileurl->out(false),
+                    'src' => 'about:blank',
+                    'data-pdf-src' => $pdfurl,
                     'title' => $title,
                     'width' => '100%',
                     'height' => '800',
@@ -2646,7 +2679,7 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
     // One-time password reset token (same mechanism as forgot password).
     $resetrecord = core_login_generate_password_reset($user);
     $resetlink = (new moodle_url('/login/forgot_password.php', ['token' => $resetrecord->token]))->out(false);
-    $loginurl = (new moodle_url('/login/index.php'))->out(false);
+    $loginurl = (new moodle_url('/login/'))->out(false);
 
     $occupation = '';
     // Plain password exists only on the registration submission (DB stores a hash).
@@ -2674,10 +2707,37 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
         'admin' => generate_email_signoff(),
     ];
 
-    // Email to the registered user.
+    // Email to the registered user (branded HTML template).
     $usersubject = get_string('registeremailusersubject', 'theme_iiidem2', $userdata);
     $usertext = get_string('registeremailuserbody', 'theme_iiidem2', $userdata);
-    $userhtml = get_string('registeremailuserhtml', 'theme_iiidem2', $userdata);
+    $userhtml = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $user->firstname,
+        'title' => get_string('registeremailusertitle', 'theme_iiidem2', $userdata),
+        'intro' => get_string('registeremailuserintro', 'theme_iiidem2', $userdata),
+        'rows' => [
+            [
+                'label' => get_string('registeremailuserlabel_username', 'theme_iiidem2'),
+                'value' => $userdata->username,
+            ],
+            [
+                'label' => get_string('registeremailuserlabel_email', 'theme_iiidem2'),
+                'valuehtml' => '<a href="mailto:' . s($userdata->email) . '" style="color:#0b3d91;text-decoration:underline;">'
+                    . s($userdata->email) . '</a>',
+            ],
+            [
+                'label' => get_string('registeremailuserlabel_password', 'theme_iiidem2'),
+                'value' => $userdata->password,
+            ],
+        ],
+        'note' => get_string('registeremailusernote', 'theme_iiidem2', $userdata) . ' '
+            . get_string('registeremailuserhelp', 'theme_iiidem2', $userdata),
+        'ctaurl' => $loginurl,
+        'ctalabel' => get_string('registeremailusercta', 'theme_iiidem2'),
+        'secondaryurl' => $resetlink,
+        'secondarylabel' => get_string('registeremailuserreset', 'theme_iiidem2'),
+        'signoff' => get_string('registeremailusersignoff', 'theme_iiidem2', $userdata),
+    ]);
     $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
     error_log('IIIDEM register mail to=' . $user->email . ' sent=' . var_export($sent, true));
 
@@ -2700,6 +2760,100 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
             'logfile' => $messaging['logfile'],
         ]));
     }
+}
+
+/**
+ * Send branded HTML password-reset confirmation email (forgot password flow).
+ *
+ * @param stdClass $user
+ * @param stdClass $resetrecord
+ * @return bool
+ */
+function theme_iiidem2_send_password_reset_email(stdClass $user, stdClass $resetrecord): bool {
+    global $CFG, $SITE;
+
+    $supportuser = \core_user::get_support_user();
+    $sitename = format_string($SITE->fullname);
+    $resetminutes = isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30;
+    $resetlink = $CFG->wwwroot . '/login/forgot_password.php?token=' . $resetrecord->token;
+    $firstname = !empty($user->firstname) ? $user->firstname : 'Student';
+    $email = (string) $user->email;
+    $emailsafe = s($email);
+
+    // Prefer lang strings when the language cache has them; fall back so mail still sends.
+    $str = static function (string $key, $a = null, string $fallback = '') {
+        if (get_string_manager()->string_exists($key, 'theme_iiidem2')) {
+            return get_string($key, 'theme_iiidem2', $a);
+        }
+        return $fallback;
+    };
+
+    $maildata = (object) [
+        'firstname' => $firstname,
+        'email' => $email,
+        'sitename' => $sitename,
+        'resetlink' => $resetlink,
+        'resetminutes' => $resetminutes,
+    ];
+
+    $subject = $str('passwordresetemailsubject', $maildata, $sitename . ': Password reset request');
+    $text = $str(
+        'passwordresetemailbody',
+        $maildata,
+        "Dear {$firstname},\n\n"
+        . "We received a request to reset the password for your {$sitename} account associated with {$email}.\n\n"
+        . "To create a new password, please click the link below:\n\n{$resetlink}\n\n"
+        . "For your security, this password reset link is valid for {$resetminutes} minutes "
+        . "from the time the request was made.\n\n"
+        . "If you did not request a password reset, you can safely ignore this email. "
+        . "Your account will remain secure, and no further action is required.\n\n"
+        . "If you need any assistance, please contact the {$sitename} Site Administrator.\n\n"
+        . "Kind regards,\nIIIDEM Support Team\nSite Administrator\n"
+    );
+
+    $introhtml = $str(
+        'passwordresetemailintrohtml',
+        (object) [
+            'sitename' => s($sitename),
+            'emailhtml' => '<a href="mailto:' . $emailsafe
+                . '" style="color:#0b3d91;text-decoration:underline;font-weight:700;">'
+                . $emailsafe . '</a>',
+        ],
+        '<p style="margin:0 0 12px;">We received a request to reset the password for your '
+        . s($sitename) . ' account associated with <a href="mailto:' . $emailsafe
+        . '" style="color:#0b3d91;text-decoration:underline;font-weight:700;">'
+        . $emailsafe . '</a>.</p>'
+        . '<p style="margin:0;">To create a new password, please click the link below:</p>'
+    );
+    $notehtml = $str(
+        'passwordresetemailnotehtml',
+        (object) [
+            'resetminutes' => '<strong>' . (int) $resetminutes . ' minutes</strong>',
+            'sitename' => s($sitename),
+        ],
+        '<p style="margin:0 0 12px;">For your security, this password reset link is valid for <strong>'
+        . (int) $resetminutes . ' minutes</strong> from the time the request was made.</p>'
+        . '<p style="margin:0 0 12px;">If you did not request a password reset, you can safely ignore this email. '
+        . 'Your account will remain secure, and no further action is required.</p>'
+        . '<p style="margin:0;">If you need any assistance, please contact the '
+        . s($sitename) . ' Site Administrator.</p>'
+    );
+
+    $html = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $firstname,
+        'title' => $str('passwordresetemailtitle', $maildata, 'Password reset request'),
+        'introhtml' => $introhtml,
+        'rows' => [],
+        'notehtml' => $notehtml,
+        'ctaurl' => $resetlink,
+        'ctalabel' => $str('passwordresetemailcta', null, 'Reset Password'),
+        'regards' => $str('passwordresetemailregards', null, 'Kind regards'),
+        'signoff' => $str('passwordresetemailsignoff', null, 'IIIDEM Support Team'),
+        'signoffextra' => $str('passwordresetemailsignoffextra', null, 'Site Administrator'),
+    ]);
+
+    return email_to_user($user, $supportuser, $subject, $text, $html);
 }
 
 /**
@@ -3107,10 +3261,40 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
     if ($cm->modname === 'page') {
         $page = $DB->get_record('page', ['id' => $cm->instance], '*', IGNORE_MISSING);
         if ($page && !empty($page->content)) {
-            return format_text($page->content, $page->contentformat, [
+            $formatted = format_text($page->content, $page->contentformat, [
                 'overflowdiv' => true,
                 'noclean' => true,
             ]);
+
+            // Live-class Pages: Join button opens Webex in the theme popup.
+            // Meeting details (number/password) remain visible under the button.
+            $joinurl = theme_iiidem2_extract_join_url_from_page_html($formatted);
+            $islivepage = theme_iiidem2_page_name_matches_live_class((string) $page->name)
+                || ($joinurl !== '' && preg_match('#https?://[^/\s]*webex\.com/#i', $joinurl));
+            if ($islivepage && $joinurl !== '') {
+                $detailshtml = preg_replace(
+                    '/<a\b[^>]*>.*?<\/a>/is',
+                    '',
+                    $formatted
+                );
+                $detailshtml = trim(preg_replace('/(<p>\s*<\/p>\s*)+/i', '', (string) $detailshtml));
+
+                $button = html_writer::tag('button', get_string('liveclassjoin', 'theme_iiidem2'), [
+                    'type' => 'button',
+                    'class' => 'btn btn-primary iiidem-liveclass-open-btn',
+                    'data-action' => 'open-liveclass-modal',
+                    'data-join-url' => $joinurl,
+                ]);
+
+                $parts = [html_writer::div($button, 'iiidem-liveclass-preview__actions mb-2')];
+                if ($detailshtml !== '') {
+                    $parts[] = html_writer::div($detailshtml, 'iiidem-liveclass-preview__details text-muted');
+                }
+
+                return html_writer::div(implode('', $parts), 'iiidem-liveclass-preview');
+            }
+
+            return $formatted;
         }
         return '';
     }

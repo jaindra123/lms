@@ -123,11 +123,17 @@ class manager {
     public static function add_question(int $sessionid, string $text, array $options, int $correctindex = -1): int {
         global $DB;
 
-        $options = array_values(array_filter(array_map('trim', $options), static function(string $opt): bool {
+        $options = array_map('trim', $options);
+        $availableoptions = array_filter($options, static function(string $opt): bool {
             return $opt !== '';
-        }));
-        if (count($options) < 2) {
+        });
+        if (count($availableoptions) < 2) {
             throw new \moodle_exception('nooptions', 'local_iiidem_livequiz');
+        }
+        if ($correctindex < 0
+                || !array_key_exists($correctindex, $options)
+                || $options[$correctindex] === '') {
+            throw new \moodle_exception('correctoptionrequired', 'local_iiidem_livequiz');
         }
 
         $sortorder = (int) $DB->count_records('local_iiidem_livequiz_question', ['sessionid' => $sessionid]);
@@ -136,10 +142,10 @@ class manager {
             'sessionid' => $sessionid,
             'sortorder' => $sortorder,
             'questiontext' => trim($text),
-            'opt0' => $options[0] ?? '',
-            'opt1' => $options[1] ?? '',
-            'opt2' => $options[2] ?? null,
-            'opt3' => $options[3] ?? null,
+            'opt0' => $options[0],
+            'opt1' => $options[1],
+            'opt2' => $options[2] !== '' ? $options[2] : null,
+            'opt3' => $options[3] !== '' ? $options[3] : null,
             'correctindex' => $correctindex,
         ]);
     }
@@ -366,6 +372,109 @@ class manager {
                 return $r['complete'];
             })),
         ];
+    }
+
+    /**
+     * Detailed results from closed live sessions answered by one student.
+     *
+     * @param int $userid
+     * @param int $limit
+     * @return array
+     */
+    public static function get_student_closed_results(int $userid, int $limit = 20): array {
+        global $DB;
+
+        $sql = "SELECT DISTINCT s.id, s.courseid, s.name, s.timeclosed, c.fullname AS coursename
+                  FROM {local_iiidem_livequiz_session} s
+                  JOIN {local_iiidem_livequiz_answer} a ON a.sessionid = s.id
+                  JOIN {course} c ON c.id = s.courseid
+                 WHERE s.status = :status
+                   AND a.userid = :userid
+              ORDER BY s.timeclosed DESC, s.id DESC";
+        $sessions = $DB->get_records_sql($sql, [
+            'status' => self::STATUS_CLOSED,
+            'userid' => $userid,
+        ], 0, max(1, $limit));
+
+        $results = [];
+        foreach ($sessions as $session) {
+            $questions = self::get_questions((int) $session->id);
+            if (!$questions) {
+                continue;
+            }
+
+            $answers = $DB->get_records('local_iiidem_livequiz_answer', [
+                'sessionid' => $session->id,
+                'userid' => $userid,
+            ]);
+            $answersbyquestion = [];
+            foreach ($answers as $answer) {
+                $answersbyquestion[(int) $answer->questionid] = (int) $answer->choiceindex;
+            }
+
+            $questionrows = [];
+            $correctcount = 0;
+            $wrongcount = 0;
+            $ungradedcount = 0;
+
+            foreach ($questions as $index => $question) {
+                $options = [];
+                foreach (self::question_options($question) as $option) {
+                    $options[(int) $option['index']] = format_string($option['label']);
+                }
+
+                $hasanswer = array_key_exists((int) $question->id, $answersbyquestion);
+                $choiceindex = $hasanswer ? $answersbyquestion[(int) $question->id] : -1;
+                $correctindex = (int) $question->correctindex;
+                $isgradable = $correctindex >= 0 && array_key_exists($correctindex, $options);
+                $iscorrect = $isgradable && $hasanswer && $choiceindex === $correctindex;
+
+                if ($isgradable) {
+                    if ($iscorrect) {
+                        $correctcount++;
+                    } else {
+                        $wrongcount++;
+                    }
+                } else {
+                    $ungradedcount++;
+                }
+
+                $questionrows[] = [
+                    'number' => $index + 1,
+                    'questiontext' => format_text($question->questiontext, FORMAT_PLAIN),
+                    'studentanswer' => $hasanswer && isset($options[$choiceindex])
+                        ? $options[$choiceindex]
+                        : get_string('unanswered', 'local_iiidem_livequiz'),
+                    'correctanswer' => $isgradable
+                        ? $options[$correctindex]
+                        : get_string('notgraded', 'local_iiidem_livequiz'),
+                    'iscorrect' => $iscorrect,
+                    'iswrong' => $isgradable && !$iscorrect,
+                    'isnotgraded' => !$isgradable,
+                    'resultlabel' => $isgradable
+                        ? get_string($iscorrect ? 'answercorrect' : 'answerwrong', 'local_iiidem_livequiz')
+                        : get_string('notgraded', 'local_iiidem_livequiz'),
+                    'statusclass' => $isgradable ? ($iscorrect ? 'success' : 'danger') : 'muted',
+                ];
+            }
+
+            $gradablecount = $correctcount + $wrongcount;
+            $results[] = [
+                'sessionid' => (int) $session->id,
+                'sessionname' => format_string($session->name),
+                'coursename' => format_string($session->coursename),
+                'closeddate' => !empty($session->timeclosed) ? userdate((int) $session->timeclosed) : '',
+                'correctcount' => $correctcount,
+                'wrongcount' => $wrongcount,
+                'ungradedcount' => $ungradedcount,
+                'hasungraded' => $ungradedcount > 0,
+                'totalquestions' => count($questions),
+                'scorelabel' => $gradablecount > 0 ? $correctcount . ' / ' . $gradablecount : '—',
+                'questions' => $questionrows,
+            ];
+        }
+
+        return $results;
     }
 
     /**

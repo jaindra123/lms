@@ -31,7 +31,7 @@ class registration_profile {
         ],
         'iiidem_emb' => [
             'datatype' => 'checkbox',
-            'name' => 'EMB',
+            'name' => 'Allow without payment course',
         ],
         'iiidem_policymaker' => [
             'datatype' => 'checkbox',
@@ -196,13 +196,24 @@ class registration_profile {
     }
 
     /**
-     * User registered as Election Management Body (EMB) official.
+     * Whether the user is fee-exempt via "Allow without payment course"
+     * (profile field iiidem_emb, set by admin or legacy EMB registration).
      *
      * @param int $userid
      * @return bool
      */
     public static function user_is_emb(int $userid): bool {
         return self::get_profile_value($userid, 'iiidem_emb') === '1';
+    }
+
+    /**
+     * Alias: admin marked the user as allowed without course fee payment.
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_allowed_without_course_payment(int $userid): bool {
+        return self::user_is_emb($userid);
     }
 
     /**
@@ -218,8 +229,9 @@ class registration_profile {
     /**
      * Whether the user must pay the course fee.
      *
-     * Students and non-EMB working professionals pay. EMB working
-     * professionals and instructors remain exempt.
+     * Students and working professionals (Policymaker / Journalist /
+     * Researcher) pay, unless an administrator has checked
+     * "Allow without payment course". Instructors remain exempt.
      *
      * @param int $userid
      * @return bool
@@ -228,7 +240,7 @@ class registration_profile {
         $occupation = self::get_profile_value($userid, 'iiidem_occupation');
         $ispayingoccupation = $occupation === 'student' || $occupation === 'working';
 
-        return $ispayingoccupation && !self::user_is_emb($userid);
+        return $ispayingoccupation && !self::user_allowed_without_course_payment($userid);
     }
 
     /**
@@ -250,7 +262,12 @@ class registration_profile {
         }
 
         foreach (self::FIELDS as $shortname => $config) {
-            if ($DB->record_exists('user_info_field', ['shortname' => $shortname])) {
+            $existing = $DB->get_record('user_info_field', ['shortname' => $shortname], 'id, name');
+            if ($existing) {
+                // Keep the visible label in sync (e.g. Allow without payment course).
+                if (!empty($config['name']) && $existing->name !== $config['name']) {
+                    $DB->set_field('user_info_field', 'name', $config['name'], ['id' => $existing->id]);
+                }
                 continue;
             }
 

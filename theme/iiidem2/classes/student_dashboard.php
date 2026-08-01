@@ -53,13 +53,14 @@ class student_dashboard {
         $calendarcontext = theme_iiidem2_get_dashboard_calendar_context($calendarcourseid);
         $learningstats = self::get_learning_statistics($userid, $courses);
         $supportcontext = self::get_support_context($userid);
+        $livequizcontext = self::get_livequiz_results_context($userid);
         $notificationmeta = self::get_notification_meta($userid);
 
         return array_merge([
             'firstname' => $user->firstname,
             'dashboardurl' => \theme_iiidem2_get_dashboard_url()->out(false),
             'sidenav' => self::get_sidebar_nav($courses, $userid),
-            'dashboardtabs' => self::get_dashboard_tabs(),
+            'dashboardtabs' => self::get_dashboard_tabs(!empty($livequizcontext['haslivequizresults'])),
             'progresscards' => self::get_learning_progress_cards($courses, $userid),
             'coursecards' => $coursecards,
             'hascoursecards' => !empty($coursecards),
@@ -95,7 +96,7 @@ class student_dashboard {
             'hasunreadnotifications' => $notificationmeta['unreadcount'] > 0,
             'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
-        ], $calendarcontext, $supportcontext);
+        ], $calendarcontext, $supportcontext, $livequizcontext);
     }
 
     /**
@@ -122,6 +123,28 @@ class student_dashboard {
         $context['sesskey'] = sesskey();
 
         return $context;
+    }
+
+    /**
+     * Closed live-quiz results for the current student.
+     *
+     * @param int $userid
+     * @return array
+     */
+    protected static function get_livequiz_results_context(int $userid): array {
+        global $CFG;
+
+        $pluginlib = $CFG->dirroot . '/local/iiidem_livequiz/lib.php';
+        if (!is_readable($pluginlib)) {
+            return ['haslivequizresults' => false, 'livequizresults' => []];
+        }
+
+        require_once($pluginlib);
+        if (!function_exists('local_iiidem_livequiz_get_dashboard_context')) {
+            return ['haslivequizresults' => false, 'livequizresults' => []];
+        }
+
+        return local_iiidem_livequiz_get_dashboard_context($userid);
     }
 
     /**
@@ -335,10 +358,11 @@ class student_dashboard {
     /**
      * Dashboard tab panels (Moodle-style my-home sections).
      *
+     * @param bool $haslivequizresults
      * @return array
      */
-    protected static function get_dashboard_tabs(): array {
-        return [
+    protected static function get_dashboard_tabs(bool $haslivequizresults = false): array {
+        $tabs = [
             [
                 'id' => 'overview',
                 'icon' => 'fa-gauge-high',
@@ -370,6 +394,17 @@ class student_dashboard {
                 'active' => false,
             ],
         ];
+
+        if ($haslivequizresults) {
+            $tabs[] = [
+                'id' => 'livequiz',
+                'icon' => 'fa-question-circle',
+                'label' => get_string('resultshistory', 'local_iiidem_livequiz'),
+                'active' => false,
+            ];
+        }
+
+        return $tabs;
     }
 
     /**

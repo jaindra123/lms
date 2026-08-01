@@ -167,6 +167,15 @@
             </section>
         </div>
 
+        {{#haslivequizresults}}
+        {{! —— Live quiz results —— }}
+        <div class="iiidem-dashboard-panel d-none" id="panel-livequiz" data-dashboard-panel="livequiz" role="tabpanel" aria-labelledby="tab-livequiz" hidden>
+            <section class="iiidem-student-section mb-4" id="live-quiz-results">
+                {{> theme_iiidem2/dashboard/livequiz_results }}
+            </section>
+        </div>
+        {{/haslivequizresults}}
+
         {{! —— Calendar —— }}
         <div class="iiidem-dashboard-panel d-none" id="panel-calendar" data-dashboard-panel="calendar" role="tabpanel" aria-labelledby="tab-calendar" hidden>
             <section class="row g-4 mb-4">
