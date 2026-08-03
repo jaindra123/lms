@@ -270,6 +270,18 @@ require(['jquery'], function() {
         } else if (modalEl && window.jQuery) {
             window.jQuery(modalEl).modal('show');
         }
+
+        // Drop ?registered=1 so a refresh does not reopen the popup.
+        try {
+            var url = new URL(window.location.href);
+            if (url.searchParams.has('registered')) {
+                url.searchParams.delete('registered');
+                var clean = url.pathname + (url.search ? url.search : '') + url.hash;
+                window.history.replaceState({}, document.title, clean);
+            }
+        } catch (e) {
+            // Ignore older browsers without URL/searchParams.
+        }
     }, 150);
 });
 {{/registersuccess}}

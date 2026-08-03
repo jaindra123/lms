@@ -400,6 +400,57 @@ $string['mycoursespageintro'] = 'Browse and continue your enrolled courses.';
 $string['aboutus'] = 'About us';
 $string['aboutus_lead'] = 'Learn about IIIDEM, our mission, campus, and training programmes.';
 $string['contactus'] = 'Contact us';
+$string['homepagechatbottitle'] = 'Ask IIIDEM';
+$string['homepagechatbotadmintitle'] = 'Reply to questions';
+$string['homepagechatbotwelcome'] = 'Hello! No login needed — type your question and we will notify the site administrator.';
+$string['homepagechatbotadminwelcome'] = 'Open questions from visitors. Click one to reply by email.';
+$string['homepagechatbotname'] = 'Your name';
+$string['homepagechatbotemail'] = 'Your email';
+$string['homepagechatbotplaceholder'] = 'Type your question…';
+$string['homepagechatbotreplyplaceholder'] = 'Type your reply to the user…';
+$string['homepagechatbotsend'] = 'Send';
+$string['homepagechatbotreplysend'] = 'Reply';
+$string['homepagechatbotsending'] = 'Sending your question…';
+$string['homepagechatbotsuccess'] = 'Sent to the administrator. Their reply will appear here and in your email.';
+$string['homepagechatboterror'] = 'Sorry, we could not send your question. Please try again.';
+$string['homepagechatbotvalidation'] = 'Please enter your name, a valid email, and a short question.';
+$string['homepagechatbotthrottle'] = 'Please wait a moment before sending another question.';
+$string['homepagechatbotqueries'] = 'Chatbot queries';
+$string['homepagechatbotqueriesintro'] = 'Visitor questions from the homepage chatbot. Reply here or use the floating chat button while logged in as admin.';
+$string['homepagechatbotqueriesempty'] = 'No chatbot questions yet.';
+$string['homepagechatbotopen'] = 'Open questions';
+$string['homepagechatbotanswered'] = 'Recently answered';
+$string['homepagechatbotnoopen'] = 'No open questions right now.';
+$string['homepagechatbotreplyempty'] = 'Please enter a reply.';
+$string['homepagechatbotnotfound'] = 'Question not found.';
+$string['homepagechatbotnotable'] = 'Chatbot storage is not ready. Please run Site administration → Notifications.';
+$string['homepagechatbotreplyok'] = 'Reply saved and emailed to the user.';
+$string['homepagechatbotreplysaved'] = 'Reply saved. Email could not be sent — check mail settings.';
+$string['homepagechatbotreplysubject'] = '[{$a}] Reply to your question';
+$string['homepagechatbotreplybody'] = 'Dear {$a->name},
+
+Thank you for contacting {$a->sitename}. Here is the reply to your question:
+
+Your question:
+{$a->question}
+
+Admin reply:
+{$a->reply}
+
+Kind regards,
+{$a->sitename} Support Team
+';
+$string['homepagechatbotnotifysubject'] = '[{$a}] New homepage chatbot query';
+$string['homepagechatbotnotifybody'] = 'A visitor sent a question via the homepage chatbot.
+
+Name: {$a->name}
+Email: {$a->email}
+Site: {$a->sitename}
+
+Question:
+{$a->query}';
+$string['homepagechatbotnotifysmall'] = 'Chatbot query from {$a->name}: {$a->query}';
+$string['messageprovider:chatbotquery'] = 'Homepage chatbot queries';
 $string['contactus_lead'] = 'Get in touch with IIIDEM for enquiries about courses, admissions, and support.';
 $string['contactus_getintouch'] = 'Get in touch';
 $string['contactus_sendmessage'] = 'Send us a message';
@@ -545,9 +596,45 @@ $string['registerfirstname'] = 'First name';
 $string['registermiddlename'] = 'Middle name';
 $string['registerlastname'] = 'Last name';
 $string['registercontact'] = 'Contact number';
-$string['registercontact_help'] = 'Select your country code, then enter your mobile number. Example for India: 9876543210 (saved as +919876543210).';
-$string['registerphoneinvalid'] = 'Please enter a valid contact number with country code.';
-$string['registerphoneplaceholder'] = 'Mobile number';
+$string['registercontact_help'] = 'Select your country code, then enter your 10-digit mobile number (digits only). Example for India: 9876543210 (saved as +919876543210).';
+$string['registerphoneinvalid'] = 'Enter a valid 10-digit contact number (digits only, no letters or symbols).';
+$string['registerphoneexists'] = 'This contact number is already registered.';
+$string['registerphoneplaceholder'] = '10-digit mobile number';
+$string['registeremaildisposable'] = 'Please check the email. Temporary, disposable, or test email addresses (for example @mailinator.com, @tempmail.com, @test.com) are not allowed. Use Gmail, Yahoo, Hotmail, Outlook, or your organisation email.';
+$string['registeremailundeliverable'] = 'Please check the email. This domain does not appear to accept mail. Use a genuine address such as Gmail, Yahoo, Hotmail, or your organisation email.';
+$string['registeremailtoast'] = 'Please check the email';
+$string['registerotpmodaltitle'] = 'Verify your email';
+$string['registerotpmodalintro'] = 'Enter the 6-digit verification code we sent to your email address.';
+$string['registerotplabel'] = 'Verification code';
+$string['registerotpplaceholder'] = '6-digit code';
+$string['registerotpverify'] = 'Verify & create account';
+$string['registerotpresend'] = 'Resend code';
+$string['registerotpsending'] = 'Sending verification code…';
+$string['registerotpverifying'] = 'Verifying code…';
+$string['registerotprequiredcode'] = 'Enter the 6-digit verification code.';
+$string['registerotpsubject'] = 'Your {$a} registration verification code';
+$string['registerotptitle'] = 'Email verification';
+$string['registerotpintro'] = 'Use this code to finish creating your account. It expires in {$a->minutes} minutes.';
+$string['registerotpbody'] = 'Hello {$a->firstname},
+
+Your {$a->sitename} registration verification code is: {$a->code}
+
+This code expires in {$a->minutes} minutes. If you did not request this, you can ignore this email.
+';
+$string['registerotpnote'] = 'Do not share this code with anyone.';
+$string['registerotpcta'] = 'Return to registration';
+$string['registerotpsent'] = 'A verification code was sent to {$a}.';
+$string['registerotpsendfailed'] = 'Could not send the verification email. Please try again.';
+$string['registerotpwait'] = 'Please wait {$a} seconds before requesting a new code.';
+$string['registerotpmissing'] = 'No verification code was found. Please request a new code.';
+$string['registerotpexpired'] = 'This verification code has expired. Please request a new code.';
+$string['registerotpinvalid'] = 'That verification code is incorrect. Please try again.';
+$string['registerotplocked'] = 'Too many incorrect attempts. Please request a new code.';
+$string['registerotpverified'] = 'Email verified successfully.';
+$string['registerotprequired'] = 'Please verify your email with the code we sent before creating your account.';
+$string['registerotploadingtitle'] = 'Verifying your email';
+$string['registerotploadingtext'] = 'Please wait while we verify your code and create your account…';
+
 $string['registercreateaccount'] = 'Create account';
 $string['registerhaveaccount'] = 'Already have an account?';
 $string['registersuccess'] = 'Your account has been created. Welcome!';

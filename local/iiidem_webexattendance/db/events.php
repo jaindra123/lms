@@ -1,0 +1,17 @@
+<?php
+defined('MOODLE_INTERNAL') || die();
+
+$observers = [
+    [
+        'eventname' => '\core\event\course_module_created',
+        'callback' => '\local_iiidem_webexattendance\observer::course_module_created',
+    ],
+    [
+        'eventname' => '\core\event\course_module_updated',
+        'callback' => '\local_iiidem_webexattendance\observer::course_module_updated',
+    ],
+    [
+        'eventname' => '\core\event\course_module_deleted',
+        'callback' => '\local_iiidem_webexattendance\observer::course_module_deleted',
+    ],
+];

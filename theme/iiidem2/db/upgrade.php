@@ -167,5 +167,38 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100892, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024100893) {
+        // Homepage chatbot → admin Moodle notifications.
+        message_update_providers('theme_iiidem2');
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100893, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024100894) {
+        // Chatbot Q&A table for admin replies.
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('theme_iiidem2_chatbot');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('email', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('question', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+            $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'open');
+            $table->add_field('reply', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('replyuserid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timereplied', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('emailsent', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('status_timecreated', XMLDB_INDEX_NOTUNIQUE, ['status', 'timecreated']);
+            $table->add_index('email_idx', XMLDB_INDEX_NOTUNIQUE, ['email']);
+            $dbman->create_table($table);
+        }
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100894, 'theme', 'iiidem2');
+    }
+
     return true;
 }

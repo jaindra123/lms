@@ -37,7 +37,19 @@ $pageparams->curdate    = optional_param('curdate', null, PARAM_INT);
 $pageparams->groupby    = optional_param('groupby', 'course', PARAM_ALPHA);
 $pageparams->sesscourses = optional_param('sesscourses', 'current', PARAM_ALPHA);
 
-$cm             = get_coursemodule_from_id('attendance', $id, 0, false, MUST_EXIST);
+if ($id < 1) {
+    throw new \moodle_exception('invalidattendancecmid', 'mod_attendance', new moodle_url('/my/'));
+}
+
+$cm = get_coursemodule_from_id('attendance', $id, 0, false, IGNORE_MISSING);
+if (!$cm) {
+    throw new \moodle_exception(
+        'invalidattendancecmidmissing',
+        'mod_attendance',
+        new moodle_url('/course/index.php'),
+        $id
+    );
+}
 $course         = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 $attendance    = $DB->get_record('attendance', ['id' => $cm->instance], '*', MUST_EXIST);
 
