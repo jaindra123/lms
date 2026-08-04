@@ -29,6 +29,11 @@ class registration_profile {
             'name' => 'Occupation',
             'param1' => "working\nstudent\ninstructor",
         ],
+        'iiidem_reg_status' => [
+            'datatype' => 'menu',
+            'name' => 'Registration approval',
+            'param1' => "pending\napproved\nrejected",
+        ],
         'iiidem_emb' => [
             'datatype' => 'checkbox',
             'name' => 'Allow without payment course',
@@ -311,6 +316,7 @@ class registration_profile {
 
         $desired = [
             'iiidem_occupation',
+            'iiidem_reg_status',
             'iiidem_emb',
             'iiidem_policymaker',
             'iiidem_journalist',
@@ -479,6 +485,7 @@ class registration_profile {
         $profile = (object) [
             'id' => $userid,
             'profile_field_iiidem_occupation' => $storedoccupation,
+            'profile_field_iiidem_reg_status' => 'pending',
             'profile_field_iiidem_emb' => $isemb ? '1' : '0',
             'profile_field_iiidem_policymaker' => self::is_checked($data, 'policymaker') ? '1' : '0',
             'profile_field_iiidem_journalist' => self::is_checked($data, 'journalist') ? '1' : '0',
@@ -495,6 +502,25 @@ class registration_profile {
             'profile_field_iiidem_presentcountry' => self::get_submitted_value($data, 'presentcountry'),
         ];
 
+        profile_save_data($profile);
+    }
+
+    /**
+     * Set a custom profile field value for a user.
+     *
+     * @param int $userid
+     * @param string $shortname
+     * @param string $value
+     */
+    public static function set_profile_value(int $userid, string $shortname, string $value): void {
+        global $CFG;
+
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+        self::ensure_fields();
+        $profile = (object) [
+            'id' => $userid,
+            'profile_field_' . $shortname => $value,
+        ];
         profile_save_data($profile);
     }
 }

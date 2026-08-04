@@ -5469,6 +5469,46 @@ body.iiidem-register-otp-loading-open {
   color: #fff;
 }
 
+.iiidem-register-pending {
+  max-width: 36rem;
+  margin: 2rem auto;
+  padding: 2rem 1.75rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.iiidem-register-pending__title {
+  margin: 0 0 0.75rem;
+  color: #0b3d91;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.iiidem-register-pending__body {
+  margin: 0 0 1.5rem;
+  color: #33415c;
+  line-height: 1.55;
+}
+
+/* Keep pending-registrations action clear of the admin "Save changes" button. */
+.path-admin .settingsform .iiidem-pending-regs-setting {
+  display: block;
+  margin: 1rem 0 1.75rem;
+  padding: 0.85rem 1rem;
+  background: #ffc107;
+  border: 1px solid #d7e0ef;
+  border-radius: 8px;
+}
+.path-admin .settingsform .iiidem-pending-regs-setting .btn {
+  display: inline-block;
+  margin: 0;
+}
+.path-admin .settingsform > .row:has(button[type="submit"]) {
+  margin-top: 1.75rem;
+  padding-top: 0.5rem;
+  clear: both;
+}
+
 /* Temporarily hide homepage chatbot (remove this block to re-enable) */
 .iiidem-home-chatbot {
   display: none !important;

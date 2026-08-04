@@ -200,5 +200,12 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100894, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024100902) {
+        // Registration approval status profile field + deferred enrolment flow.
+        \theme_iiidem2\registration_profile::ensure_fields();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100902, 'theme', 'iiidem2');
+    }
+
     return true;
 }

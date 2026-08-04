@@ -29,9 +29,10 @@ $PAGE->set_pagelayout('register');
 $PAGE->set_cacheable(false);
 $PAGE->set_title(get_string('registerpagetitle', 'theme_iiidem2'));
 $PAGE->set_heading(get_string('registerpagetitle', 'theme_iiidem2'));
-$PAGE->requires->css('/theme/iiidem2/style/intl-tel-input/intlTelInput.min.css');
-// Load in head so country-code widget is available before form scripts run.
+// intl-tel-input CSS is loaded via theme sheet "intltelinput" (local flag sprites).
+// Load JS in footer; register inline script waits until window.intlTelInput exists.
 $PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), false);
+$PAGE->requires->css(new moodle_url('/theme/iiidem2/style/intltelinput.css'));
 $PAGE->requires->js_call_amd('theme_iiidem2/register_occupation', 'init');
 
 $form = new \theme_iiidem2\form\register_form();
@@ -51,16 +52,94 @@ if ($data = $form->get_data()) {
         \theme_iiidem2\registration_otp::clear();
         $user = core_user::get_user($userid);
         theme_iiidem2_send_registration_emails($user, $submission);
-        complete_user_login($user);
-        $redirecturl = new moodle_url('/course/view.php', ['id' => 4, 'registered' => 1]);
-        $SESSION->wantsurl = $redirecturl->out(false);
-        redirect($redirecturl);
+        redirect(new moodle_url('/register/', ['pending' => 1]));
     } catch (moodle_exception $e) {
         \core\notification::error($e->getMessage());
     }
 }
 
+$pending = optional_param('pending', 0, PARAM_INT);
+
 echo $OUTPUT->header();
+
+if ($pending) {
+    echo html_writer::start_div('iiidem-register-pending');
+    echo html_writer::tag('h2', get_string('registerpendingtitle', 'theme_iiidem2'), [
+        'class' => 'iiidem-register-pending__title',
+    ]);
+    echo html_writer::tag('p', get_string('registerpendingbody', 'theme_iiidem2'), [
+        'class' => 'iiidem-register-pending__body',
+    ]);
+    echo html_writer::link(
+        new moodle_url('/login/index.php'),
+        get_string('registerpendinglogin', 'theme_iiidem2'),
+        ['class' => 'btn btn-primary']
+    );
+    echo html_writer::end_div();
+    echo $OUTPUT->footer();
+    exit;
+}
+
+// Embed flag sprite as a data-URI so flags never depend on CDN / image.php.
+$flagfile = $CFG->dirroot . '/theme/iiidem2/pix/intl-tel-input/flags.png';
+$flag2xfile = $CFG->dirroot . '/theme/iiidem2/pix/intl-tel-input/flags2x.png';
+$flagdata = is_readable($flagfile)
+    ? ('data:image/png;base64,' . base64_encode(file_get_contents($flagfile)))
+    : '';
+$flag2xdata = is_readable($flag2xfile)
+    ? ('data:image/png;base64,' . base64_encode(file_get_contents($flag2xfile)))
+    : $flagdata;
+
+if ($flagdata !== '') {
+    echo html_writer::tag('style', '
+/* Flag sprite (local, embedded). Do not hide dial-code text. */
+.iiidem-register-form .iti__flag {
+  background-image: url(' . json_encode($flagdata, JSON_UNESCAPED_SLASHES) . ') !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+}
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .iiidem-register-form .iti__flag {
+    background-image: url(' . json_encode($flag2xdata, JSON_UNESCAPED_SLASHES) . ') !important;
+  }
+}
+.iiidem-register-form .iti__selected-flag {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  color: #212529 !important;
+  min-height: 42px;
+  padding: 0 8px !important;
+}
+.iiidem-register-form .iti__selected-flag .iti__flag {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.iiidem-register-form .iti__selected-dial-code {
+  display: inline-block !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  color: #212529 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap !important;
+}
+.iiidem-register-form .iti__arrow {
+  border-top-color: #555 !important;
+  margin-left: 4px !important;
+}
+.iiidem-register-form .iti__country-list .iti__flag {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+', ['id' => 'iiidem-iti-flags']);
+}
+
 $form->display();
 
 $otpsendurl = (new moodle_url('/register/send_otp.php'))->out(false);
@@ -75,14 +154,14 @@ $otpstrings = [
     'intro' => $otpstring('registerotpmodalintro', 'Enter the 6-digit verification code we sent to your email address.'),
     'label' => $otpstring('registerotplabel', 'Verification code'),
     'placeholder' => $otpstring('registerotpplaceholder', '6-digit code'),
-    'verify' => $otpstring('registerotpverify', 'Verify & create account'),
+    'verify' => $otpstring('registerotpverify', 'Verify & submit'),
     'resend' => $otpstring('registerotpresend', 'Resend code'),
     'close' => get_string('closebuttontitle'),
     'sending' => $otpstring('registerotpsending', 'Sending verification code…'),
     'verifying' => $otpstring('registerotpverifying', 'Verifying code…'),
     'required' => $otpstring('registerotprequiredcode', 'Enter the 6-digit verification code.'),
     'loadingtitle' => $otpstring('registerotploadingtitle', 'Verifying your email'),
-    'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and create your account…'),
+    'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and submit your registration…'),
 ];
 ?>
 <div id="iiidem-register-otp-modal" class="iiidem-register-otp-modal" hidden aria-hidden="true">
@@ -158,7 +237,7 @@ window.IIIDEM_REGISTER_OTP = {
     var phoneExistsMsg = (phoneInput && phoneInput.getAttribute('data-phone-exists-message'))
         || 'This contact number is already registered.';
     var invalidPhoneMsg = (phoneInput && phoneInput.getAttribute('data-invalid-phone'))
-        || 'Enter a valid 10-digit contact number (digits only).';
+        || 'Enter a valid contact number (digits only).';
     var approvedPhone = '';
     var phoneCheckSequence = 0;
     var bypassPhoneCheck = false;
@@ -253,8 +332,11 @@ window.IIIDEM_REGISTER_OTP = {
         input.setAttribute('data-password-toggle-ready', '1');
     }
 
-    addPasswordToggle('id_password');
-    addPasswordToggle('id_password2');
+    // Password fields were removed; login credentials are emailed after admin approval.
+    if (document.getElementById('id_password')) {
+        addPasswordToggle('id_password');
+        addPasswordToggle('id_password2');
+    }
 
     function syncOccupationSections() {
         var selected = form.querySelector('input[name="occupation"]:checked');
@@ -481,16 +563,16 @@ window.IIIDEM_REGISTER_OTP = {
         var digits = String(phoneInput.value || '').replace(/\D/g, '');
         var dial = getSelectedDialCode();
 
-        // Pasted / widget E.164: 91XXXXXXXXXX (longer than 10).
-        if (dial && digits.length > 10 && digits.indexOf(dial) === 0) {
+        // Pasted / widget E.164: strip selected dial code when present.
+        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
             digits = digits.substring(dial.length);
         }
         // Trunk prefix 0XXXXXXXXXX.
-        if (digits.length === 11 && digits.charAt(0) === '0') {
+        if (digits.length >= 11 && digits.charAt(0) === '0') {
             digits = digits.substring(1);
         }
-        if (digits.length > 10) {
-            digits = digits.slice(-10);
+        if (digits.length > 15) {
+            digits = digits.slice(0, 15);
         }
         return digits;
     }
@@ -499,24 +581,24 @@ window.IIIDEM_REGISTER_OTP = {
         if (!phoneInput) {
             return;
         }
-        // Allow paste of +91…; enforce national 10 after stripping dial/E.164.
+        // Digits only; length varies by country (not forced to 10).
         phoneInput.setAttribute('maxlength', '16');
         var digits = String(phoneInput.value || '').replace(/\D/g, '');
         var dial = getSelectedDialCode();
-        if (dial && digits.length > 10 && digits.indexOf(dial) === 0) {
+        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
             digits = digits.substring(dial.length);
         }
-        if (digits.length === 11 && digits.charAt(0) === '0') {
+        if (digits.length >= 11 && digits.charAt(0) === '0') {
             digits = digits.substring(1);
         }
-        var national = digits.slice(0, 10);
+        var national = digits.slice(0, 15);
         if (phoneInput.value !== national) {
             phoneInput.value = national;
         }
     }
 
     function isPhoneValid() {
-        return /^[0-9]{10}$/.test(getNationalPhoneDigits());
+        return /^[0-9]{6,15}$/.test(getNationalPhoneDigits());
     }
 
     function checkPhoneAvailability() {
@@ -526,7 +608,7 @@ window.IIIDEM_REGISTER_OTP = {
 
         sanitizePhoneInputValue();
         var national = getNationalPhoneDigits();
-        if (!/^[0-9]{10}$/.test(national)) {
+        if (!/^[0-9]{6,15}$/.test(national)) {
             approvedPhone = '';
             if (String(phoneInput.value || '').trim() !== '') {
                 setFeedback(phoneInput, invalidPhoneMsg);
@@ -565,7 +647,7 @@ window.IIIDEM_REGISTER_OTP = {
                 approvedPhone = '';
                 setFeedback(phoneInput, result.message || phoneExistsMsg);
                 // Do not paint(..., true) — that clears duplicate errors because
-                // the number is format-valid (10 digits).
+                // the number is format-valid.
                 paint(phoneInput);
                 return false;
             }
@@ -643,7 +725,7 @@ window.IIIDEM_REGISTER_OTP = {
                 // Keep Moodle required messaging for empty.
                 return;
             }
-            // Format-valid (10 digits) must not wipe a duplicate-phone error.
+            // Format-valid must not wipe a duplicate-phone error.
             if (ok) {
                 if (allowFeedbackClear && field.getAttribute('data-phone-status') !== 'error') {
                     clearFeedback(field);
@@ -694,8 +776,7 @@ window.IIIDEM_REGISTER_OTP = {
         phoneInput.setAttribute('type', 'tel');
         phoneInput.setAttribute('autocomplete', 'tel');
         phoneInput.setAttribute('inputmode', 'numeric');
-        // Do not use maxlength=10 here: country code digits must not consume the
-        // national 10-digit budget. sanitizePhoneInputValue() enforces 10.
+        // National length varies by country; sanitizePhoneInputValue() keeps digits only.
         phoneInput.setAttribute('maxlength', '16');
         phoneInput.removeAttribute('pattern');
         phoneInput.classList.add('iiidem-phone-input');
@@ -749,6 +830,8 @@ window.IIIDEM_REGISTER_OTP = {
                     }
                 }
             }
+            // Keep national digits only in the input (no dial-code / country name).
+            sanitizePhoneInputValue();
             window.requestAnimationFrame(syncPhoneInputPadding);
             paint(phoneInput);
         });
@@ -758,6 +841,7 @@ window.IIIDEM_REGISTER_OTP = {
                 if (phoneIti && countrySelect.value) {
                     phoneIti.setCountry(String(countrySelect.value).toLowerCase());
                 }
+                sanitizePhoneInputValue();
                 window.requestAnimationFrame(syncPhoneInputPadding);
                 paint(phoneInput);
             });
@@ -905,7 +989,7 @@ window.IIIDEM_REGISTER_OTP = {
         }
         var nationalDigits = getNationalPhoneDigits();
         if (phoneIti && typeof phoneIti.getNumber === 'function') {
-            // Allow E.164 value longer than the visible 10-digit maxlength.
+            // Allow E.164 value longer than the visible national maxlength.
             phoneInput.setAttribute('maxlength', '20');
             var countryData = phoneIti.getSelectedCountryData();
             var dial = (countryData && countryData.dialCode) ? String(countryData.dialCode) : '91';

@@ -28,7 +28,7 @@ require_once(__DIR__ . '/lib.php');
 
 $THEME->name = 'iiidem2';
 $THEME->parents = ['boost']; 
-$THEME->sheets = ['custom', 'quiz-mcq', 'responsive'];
+$THEME->sheets = ['custom', 'responsive'];
 $string['pluginname'] = 'IIIDEM 2';
 
 $THEME->editor_sheets = [];

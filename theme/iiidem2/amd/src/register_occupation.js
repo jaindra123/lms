@@ -132,13 +132,13 @@ define([], function() {
         let digits = String(phoneField.value || '').replace(/\D/g, '');
         if (digits.length > 10 && digits.indexOf('91') === 0) {
             digits = digits.substring(2);
-        } else if (digits.length === 11 && digits.charAt(0) === '0') {
+        } else if (digits.length >= 11 && digits.charAt(0) === '0') {
             digits = digits.substring(1);
         }
-        if (digits.length > 10) {
-            digits = digits.slice(-10);
+        if (digits.length > 15) {
+            digits = digits.slice(0, 15);
         }
-        return /^[0-9]{10}$/.test(digits);
+        return /^[0-9]{6,15}$/.test(digits);
     }
 
     /**
@@ -324,7 +324,7 @@ define([], function() {
             }
 
             const invalidMessage = input.getAttribute('data-invalid-phone')
-                || 'Enter a valid 10-digit contact number (digits only).';
+                || 'Enter a valid contact number (digits only).';
 
             if (!isPhoneValid(input)) {
                 e.preventDefault();
@@ -339,7 +339,7 @@ define([], function() {
                 input.setAttribute('maxlength', '20');
                 const countryData = phoneIti.getSelectedCountryData();
                 const dial = (countryData && countryData.dialCode) ? String(countryData.dialCode) : '91';
-                let digits = String(input.value || '').replace(/\D/g, '').slice(-10);
+                let digits = String(input.value || '').replace(/\D/g, '').slice(0, 15);
                 phoneIti.setNumber('+' + dial + digits);
                 input.value = phoneIti.getNumber();
             }

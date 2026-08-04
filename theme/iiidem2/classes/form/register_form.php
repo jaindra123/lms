@@ -179,33 +179,6 @@ class register_form extends \moodleform {
             $mform->setExpanded($header, false);
         }
 
-        // Own section so password fields are not nested under Instructor / Student / Working.
-        $mform->addElement('header', 'passwordheader', get_string('registerpasswordheader', 'theme_iiidem2'));
-        $mform->setExpanded('passwordheader', true);
-
-        if (!empty($CFG->passwordpolicy)) {
-            $mform->addElement(
-                'static',
-                'passwordpolicyinfo',
-                get_string('registerpasswordshouldbe', 'theme_iiidem2'),
-                print_password_policy()
-            );
-        }
-
-        $mform->addElement('password', 'password', get_string('password'), [
-            'maxlength' => MAX_PASSWORD_CHARACTERS,
-            'autocomplete' => 'new-password',
-        ]);
-        $mform->setType('password', \core_user::get_property_type('password'));
-        $mform->addRule('password', get_string('required'), 'required', null, 'client');
-
-        $mform->addElement('password', 'password2', get_string('password') . ' (' . get_string('again') . ')', [
-            'maxlength' => MAX_PASSWORD_CHARACTERS,
-            'autocomplete' => 'new-password',
-        ]);
-        $mform->setType('password2', \core_user::get_property_type('password'));
-        $mform->addRule('password2', get_string('required'), 'required', null, 'client');
-
         $this->add_action_buttons(true, get_string('registercreateaccount', 'theme_iiidem2'));
     }
 
@@ -235,33 +208,34 @@ class register_form extends \moodleform {
         if ($digits === null || $digits === '') {
             return '';
         }
-        // Strip country code when present as E.164 / longer than 10 digits.
+        // Strip common trunk / India country prefixes when value looks like E.164.
         if (strlen($digits) > 10 && str_starts_with($digits, '91')) {
             $digits = substr($digits, 2);
-        } else if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+        } else if (strlen($digits) >= 11 && str_starts_with($digits, '0')) {
             $digits = substr($digits, 1);
         }
-        if (strlen($digits) > 10) {
-            $digits = substr($digits, -10);
+        // Keep within practical national length (not forced to 10).
+        if (strlen($digits) > 15) {
+            $digits = substr($digits, 0, 15);
         }
         return $digits;
     }
 
     /**
-     * Contact number must be exactly 10 digits (no letters/symbols).
+     * Contact number must be digits only (length varies by country).
      *
      * @param string $national
      * @return bool
      */
     public static function is_valid_national_phone(string $national): bool {
-        return (bool) preg_match('/^[0-9]{10}$/', $national);
+        return (bool) preg_match('/^[0-9]{6,15}$/', $national);
     }
 
     /**
      * Whether this phone is already registered on a local user account.
      *
      * @param string $normalized E.164 form e.g. +919876543210
-     * @param string $national 10-digit national number
+     * @param string $national National number digits
      * @return bool
      */
     public static function phone_exists(string $normalized, string $national = ''): bool {
@@ -291,12 +265,13 @@ class register_form extends \moodleform {
             return true;
         }
 
-        // Match stored values that end with the same 10 national digits (MySQL RIGHT).
+        // Match stored values that end with the same national digits.
+        $nlen = strlen($national);
         return $DB->record_exists_select(
             'user',
             "deleted = 0 AND mnethostid = :mnet AND phone1 <> ''
-             AND RIGHT(REPLACE(REPLACE(REPLACE(phone1, '+', ''), ' ', ''), '-', ''), 10) = :national",
-            ['mnet' => $CFG->mnet_localhost_id, 'national' => $national]
+             AND RIGHT(REPLACE(REPLACE(REPLACE(phone1, '+', ''), ' ', ''), '-', ''), :nlen) = :national",
+            ['mnet' => $CFG->mnet_localhost_id, 'nlen' => $nlen, 'national' => $national]
         );
     }
 
@@ -346,7 +321,7 @@ class register_form extends \moodleform {
             $errors['email'] = get_string('invalidemail');
         } else if (empty($CFG->allowaccountssameemail)
                 && $DB->record_exists('user', [
-                    'email' => core_text::strtolower(trim((string) $data['email'])),
+                    'email' => \core_text::strtolower(trim((string) $data['email'])),
                     'mnethostid' => $CFG->mnet_localhost_id,
                     'deleted' => 0,
                 ])) {
@@ -370,12 +345,6 @@ class register_form extends \moodleform {
             } else if (self::phone_exists($phone, $national)) {
                 $errors['phone1'] = get_string('registerphoneexists', 'theme_iiidem2');
             }
-        }
-
-        if ($data['password'] !== $data['password2']) {
-            $errors['password2'] = get_string('passwordsdiffer');
-        } else if (!check_password_policy($data['password'], $errmsg)) {
-            $errors['password'] = $errmsg;
         }
 
         $formdata = (object) $data;

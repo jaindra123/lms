@@ -66,6 +66,9 @@
         }
 
         function poll() {
+            if (document.hidden) {
+                return;
+            }
             var url = config.apiUrl +
                 '?sesskey=' + encodeURIComponent(config.sesskey) +
                 '&sinceid=' + encodeURIComponent(String(sinceId));
@@ -93,8 +96,13 @@
                 });
         }
 
-        poll();
+        // Do not poll immediately on every page — wait for interval / visibility.
         setInterval(poll, pollMs);
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                poll();
+            }
+        });
     }
 
     // Expose for Moodle js_init_code (runs after this file in footer).
