@@ -281,10 +281,25 @@ function theme_iiidem2_get_footer_context(): array {
  * @return array
  */
 function theme_iiidem2_merge_footer_context(array $templatecontext): array {
-    return array_merge($templatecontext, theme_iiidem2_get_footer_context(), [
+    global $PAGE;
+
+    $merged = array_merge($templatecontext, theme_iiidem2_get_footer_context(), [
         'hasenrollmodal' => !empty($templatecontext['hasenrollmodal']),
         'hasloginmodal' => !empty($templatecontext['hasloginmodal']),
     ]);
+
+    // Sitewide admin reply chatbot — skip on admin pages (performance) and frontpage.
+    $pagelayout = (string) ($PAGE->pagelayout ?? '');
+    $onfrontpage = $pagelayout === 'frontpage';
+    $onadmin = $pagelayout === 'admin' || str_starts_with((string) ($PAGE->pagetype ?? ''), 'admin-');
+    if (!$onfrontpage && !$onadmin && empty($merged['showhomepagechatbot']) && empty($merged['showadminchatbot'])
+            && isloggedin() && !isguestuser() && is_siteadmin()) {
+        $merged = array_merge($merged, theme_iiidem2_chatbot_widget_context(true));
+        $merged['showadminchatbot'] = true;
+        $merged['chatbottitle'] = theme_iiidem2_str('homepagechatbotadmintitle', null, 'Reply to questions');
+    }
+
+    return $merged;
 }
 
 /**
@@ -1090,6 +1105,21 @@ function theme_iiidem2_get_dashboard_context(?int $userid = null): array {
 }
 
 /**
+ * Whether a stored_file's content blob exists and is readable on disk.
+ *
+ * DB file records can outlive missing moodledata/filedir blobs (e.g. incomplete
+ * restore). Calling is_valid_image()/get_imageinfo() on those paths triggers
+ * PHP warnings from getimagesize().
+ *
+ * @param stored_file $file
+ * @return bool
+ */
+function theme_iiidem2_stored_file_is_readable(stored_file $file): bool {
+    $filesystem = get_file_storage()->get_file_system();
+    return $filesystem->is_file_readable_locally_by_hash($file->get_contenthash());
+}
+
+/**
  * Homepage slider slides from theme settings.
  *
  * @return array
@@ -1114,14 +1144,16 @@ function theme_iiidem2_get_frontpage_slides(): array {
 
         if ($files) {
             $file = reset($files);
-            $imageurl = moodle_url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $file->get_itemid(),
-                $file->get_filepath(),
-                $file->get_filename()
-            )->out(false);
+            if (theme_iiidem2_stored_file_is_readable($file)) {
+                $imageurl = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out(false);
+            }
         }
 
         if (empty($imageurl)) {
@@ -1233,14 +1265,16 @@ function theme_iiidem2_get_program_governance_context(): array {
         );
         if ($files) {
             $file = reset($files);
-            $imageurl = moodle_url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $file->get_itemid(),
-                $file->get_filepath(),
-                $file->get_filename()
-            )->out(false);
+            if (theme_iiidem2_stored_file_is_readable($file)) {
+                $imageurl = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out(false);
+            }
         }
 
         $advisors[] = [
@@ -1317,14 +1351,16 @@ function theme_iiidem2_get_course_testimonials_context(): array {
         );
         if ($files) {
             $file = reset($files);
-            $imageurl = moodle_url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $file->get_itemid(),
-                $file->get_filepath(),
-                $file->get_filename()
-            )->out(false);
+            if (theme_iiidem2_stored_file_is_readable($file)) {
+                $imageurl = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out(false);
+            }
         }
 
         $initials = '';
@@ -1434,6 +1470,11 @@ function theme_iiidem2_get_course_image_url(stdClass $course): string {
 
     $courseobj = new core_course_list_element($course);
     foreach ($courseobj->get_course_overviewfiles() as $file) {
+        // Check disk presence first — is_valid_image() calls getimagesize() and
+        // emits a PHP warning when the contenthash blob is missing from filedir.
+        if (!theme_iiidem2_stored_file_is_readable($file)) {
+            continue;
+        }
         if ($file->is_valid_image()) {
             return moodle_url::make_pluginfile_url(
                 $file->get_contextid(),
@@ -1757,6 +1798,525 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
         $userackbody,
         ''
     );
+}
+
+/**
+ * Theme string with English fallback (avoids debugging when lang cache is stale).
+ *
+ * @param string $identifier
+ * @param string|object|array|null $a
+ * @param string $fallback
+ * @return string
+ */
+function theme_iiidem2_str(string $identifier, $a = null, string $fallback = ''): string {
+    if (get_string_manager()->string_exists($identifier, 'theme_iiidem2')) {
+        return get_string($identifier, 'theme_iiidem2', $a);
+    }
+    $out = $fallback;
+    if (is_object($a) || is_array($a)) {
+        foreach ((array) $a as $key => $value) {
+            $out = str_replace('{$a->' . $key . '}', (string) $value, $out);
+        }
+        return $out;
+    }
+    if ($a !== null && $out !== '') {
+        return str_replace('{$a}', (string) $a, $out);
+    }
+    return $out;
+}
+
+/**
+ * Homepage chatbot UI strings for Mustache (with fallbacks).
+ *
+ * @return array<string,string>
+ */
+function theme_iiidem2_homepage_chatbot_strings(): array {
+    return [
+        'chatbottitle' => theme_iiidem2_str('homepagechatbottitle', null, 'Ask IIIDEM'),
+        'chatbotwelcome' => theme_iiidem2_str(
+            'homepagechatbotwelcome',
+            null,
+            'Hello! No login needed — type your question and we will notify the site administrator.'
+        ),
+        'chatbotadminwelcome' => theme_iiidem2_str(
+            'homepagechatbotadminwelcome',
+            null,
+            'Open questions from visitors. Click one to reply by email.'
+        ),
+        'chatbotnameplaceholder' => theme_iiidem2_str('homepagechatbotname', null, 'Your name'),
+        'chatbotemailplaceholder' => theme_iiidem2_str('homepagechatbotemail', null, 'Your email'),
+        'chatbotplaceholder' => theme_iiidem2_str('homepagechatbotplaceholder', null, 'Type your question…'),
+        'chatbotreplyplaceholder' => theme_iiidem2_str('homepagechatbotreplyplaceholder', null, 'Type your reply to the user…'),
+        'chatbotsend' => theme_iiidem2_str('homepagechatbotsend', null, 'Send'),
+        'chatbotreplysend' => theme_iiidem2_str('homepagechatbotreplysend', null, 'Reply'),
+        'chatbotsending' => theme_iiidem2_str('homepagechatbotsending', null, 'Sending your question…'),
+        'chatboterror' => theme_iiidem2_str(
+            'homepagechatboterror',
+            null,
+            'Sorry, we could not send your question. Please try again.'
+        ),
+        'chatbotsuccess' => theme_iiidem2_str(
+            'homepagechatbotsuccess',
+            null,
+            'Sent to the administrator. Their reply will appear here and in your email.'
+        ),
+        'chatbotnoopen' => theme_iiidem2_str('homepagechatbotnoopen', null, 'No open questions right now.'),
+        'chatbotclose' => 'Close',
+    ];
+}
+
+/**
+ * Template context for the floating chatbot widget.
+ *
+ * @param bool $adminmode
+ * @return array
+ */
+function theme_iiidem2_chatbot_widget_context(bool $adminmode = false): array {
+    global $USER;
+
+    $name = '';
+    $email = '';
+    if (isloggedin() && !isguestuser()) {
+        $name = fullname($USER);
+        $email = $USER->email ?? '';
+    }
+
+    return array_merge(theme_iiidem2_homepage_chatbot_strings(), [
+        'sesskey' => sesskey(),
+        'chatbotapiurl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_query.php'))->out(false),
+        'chatbotadminapiurl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_admin_action.php'))->out(false),
+        'chatbotname' => $name,
+        'chatbotemail' => $email,
+        'isrealuser' => (isloggedin() && !isguestuser()),
+        'isadminchatbot' => $adminmode,
+        'showhomepagechatbot' => true,
+    ]);
+}
+
+/**
+ * Push an item onto the admin chatbot toast queue (cross-session).
+ *
+ * @param string $title
+ * @param string $body
+ * @return int Queue item id
+ */
+function theme_iiidem2_chatbot_pending_push(string $title, string $body): int {
+    $raw = get_config('theme_iiidem2', 'chatbot_pending');
+    $list = [];
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $list = $decoded;
+        }
+    }
+
+    $id = (int) round(microtime(true) * 1000);
+    $list[] = [
+        'id' => $id,
+        'title' => $title,
+        'body' => $body,
+        'timecreated' => time(),
+    ];
+    // Keep a short rolling history.
+    if (count($list) > 40) {
+        $list = array_slice($list, -40);
+    }
+    set_config('chatbot_pending', json_encode(array_values($list)), 'theme_iiidem2');
+    return $id;
+}
+
+/**
+ * Pending toast items newer than $sinceid.
+ *
+ * @param int $sinceid
+ * @return array<int,array{id:int,title:string,body:string,timecreated:int}>
+ */
+function theme_iiidem2_chatbot_pending_since(int $sinceid): array {
+    $raw = get_config('theme_iiidem2', 'chatbot_pending');
+    $list = [];
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $list = $decoded;
+        }
+    }
+
+    $items = [];
+    foreach ($list as $row) {
+        if (!is_array($row) || empty($row['id'])) {
+            continue;
+        }
+        $id = (int) $row['id'];
+        if ($id <= $sinceid) {
+            continue;
+        }
+        $items[] = [
+            'id' => $id,
+            'title' => (string) ($row['title'] ?? 'New chatbot query'),
+            'body' => (string) ($row['body'] ?? ''),
+            'timecreated' => (int) ($row['timecreated'] ?? 0),
+        ];
+    }
+    return $items;
+}
+
+/**
+ * Whether the chatbot questions table exists.
+ *
+ * @return bool
+ */
+function theme_iiidem2_chatbot_table_ready(): bool {
+    global $DB;
+    static $ready = null;
+    if ($ready === null) {
+        $ready = $DB->get_manager()->table_exists('theme_iiidem2_chatbot');
+    }
+    return $ready;
+}
+
+/**
+ * Store a visitor question for admin reply.
+ *
+ * @param string $name
+ * @param string $email
+ * @param string $query
+ * @return int New record id (0 if table missing)
+ */
+function theme_iiidem2_chatbot_store_question(string $name, string $email, string $query): int {
+    global $DB, $USER;
+
+    if (!theme_iiidem2_chatbot_table_ready()) {
+        return 0;
+    }
+
+    $now = time();
+    $userid = (isloggedin() && !isguestuser()) ? (int) $USER->id : 0;
+
+    return (int) $DB->insert_record('theme_iiidem2_chatbot', (object) [
+        'userid' => $userid,
+        'name' => $name,
+        'email' => $email,
+        'question' => $query,
+        'status' => 'open',
+        'reply' => null,
+        'replyuserid' => 0,
+        'timecreated' => $now,
+        'timemodified' => $now,
+        'timereplied' => 0,
+        'emailsent' => 0,
+    ]);
+}
+
+/**
+ * Open chatbot questions for admin inbox.
+ *
+ * @param int $limit
+ * @return array
+ */
+function theme_iiidem2_chatbot_list_open(int $limit = 30): array {
+    global $DB;
+
+    if (!theme_iiidem2_chatbot_table_ready()) {
+        return [];
+    }
+
+    $records = $DB->get_records('theme_iiidem2_chatbot', ['status' => 'open'], 'timecreated DESC', '*', 0, $limit);
+    $items = [];
+    foreach ($records as $record) {
+        $items[] = [
+            'id' => (int) $record->id,
+            'name' => $record->name,
+            'email' => $record->email,
+            'question' => $record->question,
+            'timecreated' => (int) $record->timecreated,
+            'timestr' => userdate($record->timecreated, '%d %b %Y, %H:%M'),
+        ];
+    }
+    return $items;
+}
+
+/**
+ * Conversation history for a visitor email (questions + admin replies).
+ *
+ * @param string $email
+ * @param int $limit
+ * @return array
+ */
+function theme_iiidem2_chatbot_history_for_email(string $email, int $limit = 20): array {
+    global $DB;
+
+    $email = trim(\core_text::strtolower($email));
+    if ($email === '' || !validate_email($email) || !theme_iiidem2_chatbot_table_ready()) {
+        return [];
+    }
+
+    // Case-insensitive match on email.
+    $sql = "SELECT *
+              FROM {theme_iiidem2_chatbot}
+             WHERE LOWER(email) = :email
+          ORDER BY timecreated ASC, id ASC";
+    $records = $DB->get_records_sql($sql, ['email' => $email], 0, max(1, $limit));
+
+    $items = [];
+    foreach ($records as $record) {
+        $items[] = [
+            'id' => (int) $record->id,
+            'question' => (string) $record->question,
+            'reply' => (string) ($record->reply ?? ''),
+            'status' => (string) $record->status,
+            'answered' => ($record->status === 'answered' && trim((string) ($record->reply ?? '')) !== ''),
+            'timecreated' => (int) $record->timecreated,
+            'timereplied' => (int) $record->timereplied,
+        ];
+    }
+    return $items;
+}
+
+/**
+ * Admin replies to a chatbot question and emails the visitor.
+ *
+ * @param int $id
+ * @param string $reply
+ * @param int $adminid
+ * @return array{success:bool,message:string}
+ */
+function theme_iiidem2_chatbot_reply(int $id, string $reply, int $adminid): array {
+    global $DB, $SITE, $CFG;
+
+    $reply = trim($reply);
+    if ($id < 1 || $reply === '') {
+        return [
+            'success' => false,
+            'message' => theme_iiidem2_str('homepagechatbotreplyempty', null, 'Please enter a reply.'),
+        ];
+    }
+
+    if (!theme_iiidem2_chatbot_table_ready()) {
+        return [
+            'success' => false,
+            'message' => theme_iiidem2_str(
+                'homepagechatbotnotable',
+                null,
+                'Chatbot storage is not ready. Please run Site administration → Notifications.'
+            ),
+        ];
+    }
+
+    $record = $DB->get_record('theme_iiidem2_chatbot', ['id' => $id]);
+    if (!$record) {
+        return [
+            'success' => false,
+            'message' => theme_iiidem2_str('homepagechatbotnotfound', null, 'Question not found.'),
+        ];
+    }
+
+    $now = time();
+    $record->reply = $reply;
+    $record->replyuserid = $adminid;
+    $record->status = 'answered';
+    $record->timereplied = $now;
+    $record->timemodified = $now;
+
+    $sitename = format_string($SITE->fullname);
+    $subject = theme_iiidem2_str(
+        'homepagechatbotreplysubject',
+        $sitename,
+        '[{$a}] Reply to your question'
+    );
+    $body = theme_iiidem2_str(
+        'homepagechatbotreplybody',
+        (object) [
+            'name' => $record->name,
+            'question' => $record->question,
+            'reply' => $reply,
+            'sitename' => $sitename,
+        ],
+        "Dear {$record->name},\n\n"
+        . "Thank you for contacting {$sitename}. Here is the reply to your question:\n\n"
+        . "Your question:\n{$record->question}\n\n"
+        . "Admin reply:\n{$reply}\n\n"
+        . "Kind regards,\n{$sitename} Support Team\n"
+    );
+
+    $userto = \core_user::get_noreply_user();
+    $userto->email = $record->email;
+    $userto->firstname = $record->name;
+    $userto->lastname = '';
+    $userto->maildisplay = true;
+
+    $from = \core_user::get_support_user();
+    $themeemail = get_config('theme_iiidem2', 'email');
+    if (!empty($themeemail) && validate_email($themeemail)) {
+        $from = clone $from;
+        $from->email = $themeemail;
+        $from->maildisplay = true;
+    }
+
+    $emailsent = false;
+    if (validate_email($record->email)) {
+        try {
+            $emailsent = (bool) email_to_user($userto, $from, $subject, $body, nl2br(s($body)));
+        } catch (Throwable $e) {
+            debugging('theme_iiidem2 chatbot reply email failed: ' . $e->getMessage(), DEBUG_NORMAL);
+        }
+    }
+    $record->emailsent = $emailsent ? 1 : 0;
+    $DB->update_record('theme_iiidem2_chatbot', $record);
+
+    return [
+        'success' => true,
+        'message' => $emailsent
+            ? theme_iiidem2_str('homepagechatbotreplyok', null, 'Reply saved and emailed to the user.')
+            : theme_iiidem2_str(
+                'homepagechatbotreplysaved',
+                null,
+                'Reply saved. Email could not be sent — check mail settings.'
+            ),
+        'emailsent' => $emailsent,
+    ];
+}
+
+/**
+ * Send a homepage chatbot query as Moodle notifications (+ email) to site admins.
+ *
+ * @param string $name
+ * @param string $email
+ * @param string $query
+ * @return bool True if at least one admin was notified.
+ */
+function theme_iiidem2_send_chatbot_query(string $name, string $email, string $query): bool {
+    global $CFG, $SITE, $USER, $DB;
+
+    require_once($CFG->libdir . '/messagelib.php');
+
+    $name = trim($name);
+    $email = trim($email);
+    $query = trim($query);
+
+    if ($name === '' || $query === '' || !validate_email($email)) {
+        return false;
+    }
+
+    // Ensure the message provider exists (upgrade may not have run yet).
+    if (!$DB->record_exists('message_providers', ['component' => 'theme_iiidem2', 'name' => 'chatbotquery'])) {
+        message_update_providers('theme_iiidem2');
+    }
+
+    $sitename = format_string($SITE->fullname);
+    $subject = theme_iiidem2_str(
+        'homepagechatbotnotifysubject',
+        $sitename,
+        '[{$a}] New homepage chatbot query'
+    );
+    $fullmessage = theme_iiidem2_str(
+        'homepagechatbotnotifybody',
+        (object) [
+            'name' => $name,
+            'email' => $email,
+            'query' => $query,
+            'sitename' => $sitename,
+        ],
+        "A visitor sent a question via the homepage chatbot.\n\n"
+        . "Name: {$name}\nEmail: {$email}\nSite: {$sitename}\n\nQuestion:\n{$query}"
+    );
+    $smallmessage = theme_iiidem2_str(
+        'homepagechatbotnotifysmall',
+        (object) [
+            'name' => $name,
+            'query' => \core_text::substr($query, 0, 120),
+        ],
+        'Chatbot query from ' . $name . ': ' . \core_text::substr($query, 0, 120)
+    );
+    $htmlmessage = nl2br(s($fullmessage));
+
+    if (isloggedin() && !isguestuser()) {
+        $from = $USER;
+    } else {
+        $from = \core_user::get_noreply_user();
+    }
+
+    // Always queue a toast item so logged-in admins see a popup even if messaging fails.
+    theme_iiidem2_chatbot_pending_push($subject, $smallmessage);
+
+    // Persist question for admin reply UI.
+    $recordid = theme_iiidem2_chatbot_store_question($name, $email, $query);
+
+    $sent = false;
+    $admins = get_admins();
+    if (empty($admins)) {
+        debugging('theme_iiidem2 chatbot: no site admins found', DEBUG_NORMAL);
+    }
+
+    $contexturl = (new moodle_url('/theme/iiidem2/admin/chatbot_queries.php'))->out(false);
+    if ($recordid > 0) {
+        $contexturl = (new moodle_url('/theme/iiidem2/admin/chatbot_queries.php', ['id' => $recordid]))->out(false);
+    }
+
+    foreach ($admins as $admin) {
+        // Moodle bell / popup notification.
+        try {
+            $message = new \core\message\message();
+            $message->component = 'theme_iiidem2';
+            $message->name = 'chatbotquery';
+            $message->userfrom = $from;
+            $message->userto = $admin;
+            $message->subject = $subject;
+            $message->fullmessage = $fullmessage;
+            $message->fullmessageformat = FORMAT_PLAIN;
+            $message->fullmessagehtml = $htmlmessage;
+            $message->smallmessage = $smallmessage;
+            $message->notification = 1;
+            $message->courseid = SITEID;
+            $message->contexturl = $contexturl;
+            $message->contexturlname = theme_iiidem2_str('homepagechatbotqueries', null, 'Chatbot queries');
+
+            if (message_send($message)) {
+                $sent = true;
+            }
+        } catch (Throwable $e) {
+            debugging('theme_iiidem2 chatbot message_send failed: ' . $e->getMessage(), DEBUG_NORMAL);
+        }
+
+        // Always also email the admin (reliable delivery even if messaging fails).
+        if (!empty($admin->email) && validate_email($admin->email)) {
+            try {
+                if (email_to_user($admin, $from, $subject, $fullmessage, $htmlmessage)) {
+                    $sent = true;
+                }
+            } catch (Throwable $e) {
+                debugging('theme_iiidem2 chatbot email_to_user failed: ' . $e->getMessage(), DEBUG_NORMAL);
+            }
+        }
+    }
+
+    // Also email the configured support / theme contact address (same as Contact Us).
+    $recipient = \core_user::get_support_user();
+    $themeemail = get_config('theme_iiidem2', 'email');
+    if (!empty($themeemail) && validate_email($themeemail)) {
+        $recipient = clone $recipient;
+        $recipient->email = $themeemail;
+        $recipient->maildisplay = true;
+    }
+    if (!empty($recipient->email) && validate_email($recipient->email)) {
+        try {
+            // Avoid duplicate if support email is already an admin.
+            $alreadyadmin = false;
+            foreach ($admins as $admin) {
+                if (!empty($admin->email) && strcasecmp($admin->email, $recipient->email) === 0) {
+                    $alreadyadmin = true;
+                    break;
+                }
+            }
+            if (!$alreadyadmin && email_to_user($recipient, $from, $subject, $fullmessage, $htmlmessage)) {
+                $sent = true;
+            }
+        } catch (Throwable $e) {
+            debugging('theme_iiidem2 chatbot support email failed: ' . $e->getMessage(), DEBUG_NORMAL);
+        }
+    }
+
+    // Pending toast queue is enough for admin UI even if mail/messaging processors fail.
+    return true;
 }
 
 /**
@@ -2581,17 +3141,12 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     require_once($CFG->dirroot . '/user/lib.php');
     require_once($CFG->libdir . '/accesslib.php');
 
-    $auth = 'email';
-    if (!empty($CFG->auth)) {
-        $enabled = array_filter(explode(',', $CFG->auth));
-        if (!in_array('email', $enabled, true) && in_array('manual', $enabled, true)) {
-            $auth = 'manual';
-        }
-    }
-
+    // Manual auth + unconfirmed keeps the account out of Moodle's email-confirm
+    // flow until an administrator approves the registration.
     $user = new stdClass();
     $user->username = theme_iiidem2_generate_username_from_email($data->email);
-    $user->password = $data->password;
+    // Temporary password; a new one is generated and emailed on admin approval.
+    $user->password = generate_password(12);
     $user->firstname = $data->firstname;
     $user->middlename = $data->middlename ?? '';
     $user->lastname = $data->lastname;
@@ -2602,8 +3157,8 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     );
     $user->country = $data->country;
     $user->city = $data->city;
-    $user->auth = $auth;
-    $user->confirmed = 1;
+    $user->auth = 'manual';
+    $user->confirmed = 0;
     $user->mnethostid = $CFG->mnet_localhost_id;
     $user->lang = current_language();
 
@@ -2655,41 +3210,40 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     }
 
     \theme_iiidem2\registration_profile::save_user_data($userid, $data);
-    \theme_iiidem2\registration_enrolment::enrol_user($userid);
+    // Course enrolment is deferred until an administrator approves the profile.
 
     return $userid;
 }
 
 /**
- * Email the new user (with password and reset link) and site administrators after registration.
+ * Shared userdata object for registration-related emails.
  *
- * @param stdClass $user Newly created user record.
- * @param stdClass|null $formdata Original registration submission (optional; used for plain password).
- * @return void
+ * @param stdClass $user
+ * @param stdClass|null $formdata
+ * @param string $password Plain password when known (approval email only).
+ * @return stdClass
  */
-function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formdata = null): void {
+function theme_iiidem2_registration_email_userdata(
+    stdClass $user,
+    ?stdClass $formdata = null,
+    string $password = ''
+): stdClass {
     global $CFG, $SITE;
 
-    require_once($CFG->dirroot . '/login/lib.php');
-
-    $supportuser = \core_user::get_support_user();
     $sitename = format_string($SITE->fullname);
-    $resetminutes = isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30;
-
-    // One-time password reset token (same mechanism as forgot password).
-    $resetrecord = core_login_generate_password_reset($user);
-    $resetlink = (new moodle_url('/login/forgot_password.php', ['token' => $resetrecord->token]))->out(false);
     $loginurl = (new moodle_url('/login/'))->out(false);
-
     $occupation = '';
-    // Plain password exists only on the registration submission (DB stores a hash).
-    $password = '';
     if ($formdata) {
         $occupation = \theme_iiidem2\registration_profile::get_occupation_type($formdata);
-        $password = (string) ($formdata->password ?? '');
+    } else {
+        $occupation = \theme_iiidem2\registration_profile::get_profile_value((int) $user->id, 'iiidem_occupation');
     }
 
-    $userdata = (object) [
+    $reviewurl = (new moodle_url('/theme/iiidem2/admin/pending_registrations.php', [
+        'userid' => $user->id,
+    ]))->out(false);
+
+    return (object) [
         'firstname' => $user->firstname,
         'fullname' => fullname($user),
         'username' => $user->username,
@@ -2700,21 +3254,91 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
         'city' => $user->city ?? '',
         'occupation' => $occupation !== '' ? $occupation : get_string('none'),
         'sitename' => $sitename,
-        'resetlink' => $resetlink,
-        'resetminutes' => $resetminutes,
         'loginurl' => $loginurl,
         'profileurl' => (new moodle_url('/user/profile.php', ['id' => $user->id]))->out(false),
+        'reviewurl' => $reviewurl,
         'admin' => generate_email_signoff(),
+        'resetminutes' => isset($CFG->pwresettime) ? max(1, (int) floor($CFG->pwresettime / MINSECS)) : 30,
     ];
+}
 
-    // Email to the registered user (branded HTML template).
-    $usersubject = get_string('registeremailusersubject', 'theme_iiidem2', $userdata);
+/**
+ * After OTP verification: notify user (profile under process) and site admins.
+ *
+ * @param stdClass $user Newly created pending user.
+ * @param stdClass|null $formdata Original registration submission (optional).
+ * @return void
+ */
+function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formdata = null): void {
+    $supportuser = \core_user::get_support_user();
+    $userdata = theme_iiidem2_registration_email_userdata($user, $formdata);
+    $sitename = $userdata->sitename;
+
+    // Applicant: registered, awaiting admin approval.
+    $usersubject = get_string('registeremailpendingsubject', 'theme_iiidem2', $userdata);
+    $usertext = get_string('registeremailpendingbody', 'theme_iiidem2', $userdata);
+    $userhtml = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $user->firstname,
+        'title' => get_string('registeremailpendingtitle', 'theme_iiidem2', $userdata),
+        'intro' => get_string('registeremailpendingintro', 'theme_iiidem2', $userdata),
+        'rows' => [
+            [
+                'label' => get_string('registeremailuserlabel_email', 'theme_iiidem2'),
+                'valuehtml' => '<a href="mailto:' . s($userdata->email) . '" style="color:#0b3d91;text-decoration:underline;">'
+                    . s($userdata->email) . '</a>',
+            ],
+            [
+                'label' => get_string('registeremailpendinglabel_status', 'theme_iiidem2'),
+                'value' => get_string('registeremailpendingstatus', 'theme_iiidem2'),
+            ],
+        ],
+        'note' => get_string('registeremailpendingnote', 'theme_iiidem2', $userdata),
+        'signoff' => get_string('registeremailusersignoff', 'theme_iiidem2', $userdata),
+    ]);
+    $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+    error_log('IIIDEM pending register mail to=' . $user->email . ' sent=' . var_export($sent, true));
+
+    // Administrators: review / approve queue.
+    $adminsubject = get_string('registeremailadminsubject', 'theme_iiidem2', $userdata);
+    $admintext = get_string('registeremailadminbody', 'theme_iiidem2', $userdata);
+    $adminhtml = get_string('registeremailadminhtml', 'theme_iiidem2', $userdata);
+    foreach (get_admins() as $admin) {
+        if (empty($admin->email) || !validate_email($admin->email)) {
+            continue;
+        }
+        email_to_user($admin, $supportuser, $adminsubject, $admintext, $adminhtml);
+    }
+}
+
+/**
+ * After admin approval: email username/password and optional SMS/WhatsApp.
+ *
+ * @param stdClass $user
+ * @param string $plainpassword
+ * @return void
+ */
+function theme_iiidem2_send_approval_emails(stdClass $user, string $plainpassword): void {
+    global $CFG;
+
+    require_once($CFG->dirroot . '/login/lib.php');
+
+    $supportuser = \core_user::get_support_user();
+    $userdata = theme_iiidem2_registration_email_userdata($user, null, $plainpassword);
+    $sitename = $userdata->sitename;
+
+    $resetrecord = core_login_generate_password_reset($user);
+    $resetlink = (new moodle_url('/login/forgot_password.php', ['token' => $resetrecord->token]))->out(false);
+    $userdata->resetlink = $resetlink;
+    $userdata->password = $plainpassword;
+
+    $usersubject = get_string('registeremailapprovedsubject', 'theme_iiidem2', $userdata);
     $usertext = get_string('registeremailuserbody', 'theme_iiidem2', $userdata);
     $userhtml = \theme_iiidem2\notify_email::render([
         'sitename' => $sitename,
         'firstname' => $user->firstname,
-        'title' => get_string('registeremailusertitle', 'theme_iiidem2', $userdata),
-        'intro' => get_string('registeremailuserintro', 'theme_iiidem2', $userdata),
+        'title' => get_string('registeremailapprovedtitle', 'theme_iiidem2', $userdata),
+        'intro' => get_string('registeremailapprovedintro', 'theme_iiidem2', $userdata),
         'rows' => [
             [
                 'label' => get_string('registeremailuserlabel_username', 'theme_iiidem2'),
@@ -2732,34 +3356,48 @@ function theme_iiidem2_send_registration_emails(stdClass $user, ?stdClass $formd
         ],
         'note' => get_string('registeremailusernote', 'theme_iiidem2', $userdata) . ' '
             . get_string('registeremailuserhelp', 'theme_iiidem2', $userdata),
-        'ctaurl' => $loginurl,
+        'ctaurl' => $userdata->loginurl,
         'ctalabel' => get_string('registeremailusercta', 'theme_iiidem2'),
         'secondaryurl' => $resetlink,
         'secondarylabel' => get_string('registeremailuserreset', 'theme_iiidem2'),
         'signoff' => get_string('registeremailusersignoff', 'theme_iiidem2', $userdata),
     ]);
     $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
-    error_log('IIIDEM register mail to=' . $user->email . ' sent=' . var_export($sent, true));
+    error_log('IIIDEM approval mail to=' . $user->email . ' sent=' . var_export($sent, true));
 
-    // Email to each site administrator.
-    $adminsubject = get_string('registeremailadminsubject', 'theme_iiidem2', $userdata);
-    $admintext = get_string('registeremailadminbody', 'theme_iiidem2', $userdata);
-    $adminhtml = get_string('registeremailadminhtml', 'theme_iiidem2', $userdata);
-    foreach (get_admins() as $admin) {
-        if (empty($admin->email) || !validate_email($admin->email)) {
-            continue;
-        }
-        email_to_user($admin, $supportuser, $adminsubject, $admintext, $adminhtml);
-    }
-
-    // Optional SMS + WhatsApp to the user's contact number (same reset link).
     $messaging = \theme_iiidem2\registration_messaging::notify_user($user, $userdata);
-    if (!empty($messaging['provider']) && $messaging['provider'] === 'log' && (!empty($messaging['sms']) || !empty($messaging['whatsapp']))) {
+    if (!empty($messaging['provider']) && $messaging['provider'] === 'log'
+            && (!empty($messaging['sms']) || !empty($messaging['whatsapp']))) {
         \core\notification::info(get_string('registrationmessagingtestok', 'theme_iiidem2', (object) [
             'phone' => $messaging['phone'],
             'logfile' => $messaging['logfile'],
         ]));
     }
+}
+
+/**
+ * After admin rejection: tell the applicant they cannot enrol.
+ *
+ * @param stdClass $user
+ * @return void
+ */
+function theme_iiidem2_send_rejection_email(stdClass $user): void {
+    $supportuser = \core_user::get_support_user();
+    $userdata = theme_iiidem2_registration_email_userdata($user);
+    $sitename = $userdata->sitename;
+
+    $usersubject = get_string('registeremailrejectedsubject', 'theme_iiidem2', $userdata);
+    $usertext = get_string('registeremailrejectedbody', 'theme_iiidem2', $userdata);
+    $userhtml = \theme_iiidem2\notify_email::render([
+        'sitename' => $sitename,
+        'firstname' => $user->firstname,
+        'title' => get_string('registeremailrejectedtitle', 'theme_iiidem2', $userdata),
+        'intro' => get_string('registeremailrejectedintro', 'theme_iiidem2', $userdata),
+        'note' => get_string('registeremailrejectednote', 'theme_iiidem2', $userdata),
+        'signoff' => get_string('registeremailusersignoff', 'theme_iiidem2', $userdata),
+    ]);
+    $sent = email_to_user($user, $supportuser, $usersubject, $usertext, $userhtml);
+    error_log('IIIDEM rejection mail to=' . $user->email . ' sent=' . var_export($sent, true));
 }
 
 /**
@@ -3087,6 +3725,16 @@ function theme_iiidem2_prepare_admin_index_secondary_nav(moodle_page $page): voi
 
     foreach ($page->secondarynav->children as $child) {
         if (empty($child->key)) {
+            continue;
+        }
+        // Keep Payment / Support as full-page destinations when already set.
+        if ($child->key === 'theme_iiidem2_payment'
+                || $child->key === 'payment'
+                || str_contains((string) $child->key, 'support')) {
+            if ($child->key === 'payment') {
+                $child->action = new moodle_url('/admin/category.php', ['category' => 'payment']);
+                $child->tab = null;
+            }
             continue;
         }
         $child->action = new moodle_url('/admin/search.php', [], 'link' . $child->key);
@@ -4773,22 +5421,41 @@ function theme_iiidem2_get_quiz_curriculum_preview_context(cm_info $cm): ?array 
  * @param moodle_page $page
  */
 function theme_iiidem2_page_init($page) {
-    global $CFG;
+    global $CFG, $USER;
 
     $page->requires->js_call_amd('theme_iiidem2/footer-popover', 'init');
+
+    $pagelayout = (string) ($page->pagelayout ?? '');
+    $pagetype = (string) ($page->pagetype ?? '');
+    $onadmin = $pagelayout === 'admin' || str_starts_with($pagetype, 'admin-');
+
+    // Desktop-style toast for site admins — skip admin UI (avoids 5s full-bootstrap polls).
+    if (!$onadmin && isloggedin() && !isguestuser() && is_siteadmin()
+            && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {
+        $sinceid = 0;
+        foreach (theme_iiidem2_chatbot_pending_since(0) as $item) {
+            $sinceid = max($sinceid, (int) $item['id']);
+        }
+        $page->requires->js(new moodle_url('/theme/iiidem2/javascript/admin_chatbot_toast.js'));
+        $page->requires->js(new moodle_url('/theme/iiidem2/javascript/homepage_chatbot.js'));
+        $cfg = [
+            'apiUrl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_admin_poll.php'))->out(false),
+            'sesskey' => sesskey(),
+            // Only toast queries that arrive after this page load.
+            'sinceId' => $sinceid,
+            'pollMs' => 60000,
+        ];
+        $page->requires->js_init_code(
+            'window.iiidemAdminChatbotToast = ' . json_encode($cfg) . ';'
+            . 'if (typeof window.iiidemAdminChatbotToastInit === "function") {'
+            . 'window.iiidemAdminChatbotToastInit(window.iiidemAdminChatbotToast);}'
+        );
+    }
 
     // Teacher Submissions page: default Status filter to "Submitted"
     // so the list is not cluttered with non-submitters (Status → All still available).
     theme_iiidem2_maybe_default_assign_submitted_filter($page);
     theme_iiidem2_enhance_assign_grading_ui($page);
-
-    if ($page->pagelayout === 'admin' || str_starts_with($page->pagetype ?? '', 'admin-')) {
-        if (theme_iiidem2_is_admin_index_page($page)) {
-            $page->requires->js_init_code(
-                'if(/^#link/.test(location.hash)){location.replace(location.origin+"/admin/search.php"+location.hash);}'
-            );
-        }
-    }
 
     if (isloggedin() && !isguestuser() && !CLI_SCRIPT && !AJAX_SCRIPT && !WS_SERVER) {
         $pagepath = $page->url->get_path(false);

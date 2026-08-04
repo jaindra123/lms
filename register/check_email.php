@@ -2,10 +2,7 @@
 // This file is part of Moodle - http://moodle.org/.
 
 /**
- * AJAX duplicate-email check for the custom registration form.
- *
- * Server-side form validation remains authoritative; this endpoint only
- * provides immediate feedback before the form is submitted.
+ * AJAX email checks for custom registration (duplicate + disposable domains).
  *
  * @package theme_iiidem2
  * @copyright 2026 IIIDEM
@@ -21,12 +18,35 @@ require_sesskey();
 $email = core_text::strtolower(trim(required_param('email', PARAM_EMAIL)));
 $exists = false;
 
-if (validate_email($email) && empty($CFG->allowaccountssameemail)) {
+// Always check duplicates first so registered users see "already registered"
+// instead of disposable / MX messages.
+if (empty($CFG->allowaccountssameemail) && validate_email($email)) {
     $exists = $DB->record_exists('user', [
         'email' => $email,
         'mnethostid' => $CFG->mnet_localhost_id,
+        'deleted' => 0,
     ]);
 }
 
+if ($exists) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'exists' => true,
+        'ok' => false,
+        'reason' => 'exists',
+        'message' => get_string('emailexists'),
+        'toast' => get_string('emailexists'),
+    ]);
+    exit;
+}
+
+$quality = \theme_iiidem2\registration_email::validate($email);
+
 header('Content-Type: application/json; charset=utf-8');
-echo json_encode(['exists' => $exists]);
+echo json_encode([
+    'exists' => false,
+    'ok' => $quality['ok'],
+    'reason' => $quality['reason'],
+    'message' => $quality['message'] ?? '',
+    'toast' => $quality['toast'] ?? '',
+]);

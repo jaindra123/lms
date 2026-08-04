@@ -400,6 +400,57 @@ $string['mycoursespageintro'] = 'Browse and continue your enrolled courses.';
 $string['aboutus'] = 'About us';
 $string['aboutus_lead'] = 'Learn about IIIDEM, our mission, campus, and training programmes.';
 $string['contactus'] = 'Contact us';
+$string['homepagechatbottitle'] = 'Ask IIIDEM';
+$string['homepagechatbotadmintitle'] = 'Reply to questions';
+$string['homepagechatbotwelcome'] = 'Hello! No login needed — type your question and we will notify the site administrator.';
+$string['homepagechatbotadminwelcome'] = 'Open questions from visitors. Click one to reply by email.';
+$string['homepagechatbotname'] = 'Your name';
+$string['homepagechatbotemail'] = 'Your email';
+$string['homepagechatbotplaceholder'] = 'Type your question…';
+$string['homepagechatbotreplyplaceholder'] = 'Type your reply to the user…';
+$string['homepagechatbotsend'] = 'Send';
+$string['homepagechatbotreplysend'] = 'Reply';
+$string['homepagechatbotsending'] = 'Sending your question…';
+$string['homepagechatbotsuccess'] = 'Sent to the administrator. Their reply will appear here and in your email.';
+$string['homepagechatboterror'] = 'Sorry, we could not send your question. Please try again.';
+$string['homepagechatbotvalidation'] = 'Please enter your name, a valid email, and a short question.';
+$string['homepagechatbotthrottle'] = 'Please wait a moment before sending another question.';
+$string['homepagechatbotqueries'] = 'Chatbot queries';
+$string['homepagechatbotqueriesintro'] = 'Visitor questions from the homepage chatbot. Reply here or use the floating chat button while logged in as admin.';
+$string['homepagechatbotqueriesempty'] = 'No chatbot questions yet.';
+$string['homepagechatbotopen'] = 'Open questions';
+$string['homepagechatbotanswered'] = 'Recently answered';
+$string['homepagechatbotnoopen'] = 'No open questions right now.';
+$string['homepagechatbotreplyempty'] = 'Please enter a reply.';
+$string['homepagechatbotnotfound'] = 'Question not found.';
+$string['homepagechatbotnotable'] = 'Chatbot storage is not ready. Please run Site administration → Notifications.';
+$string['homepagechatbotreplyok'] = 'Reply saved and emailed to the user.';
+$string['homepagechatbotreplysaved'] = 'Reply saved. Email could not be sent — check mail settings.';
+$string['homepagechatbotreplysubject'] = '[{$a}] Reply to your question';
+$string['homepagechatbotreplybody'] = 'Dear {$a->name},
+
+Thank you for contacting {$a->sitename}. Here is the reply to your question:
+
+Your question:
+{$a->question}
+
+Admin reply:
+{$a->reply}
+
+Kind regards,
+{$a->sitename} Support Team
+';
+$string['homepagechatbotnotifysubject'] = '[{$a}] New homepage chatbot query';
+$string['homepagechatbotnotifybody'] = 'A visitor sent a question via the homepage chatbot.
+
+Name: {$a->name}
+Email: {$a->email}
+Site: {$a->sitename}
+
+Question:
+{$a->query}';
+$string['homepagechatbotnotifysmall'] = 'Chatbot query from {$a->name}: {$a->query}';
+$string['messageprovider:chatbotquery'] = 'Homepage chatbot queries';
 $string['contactus_lead'] = 'Get in touch with IIIDEM for enquiries about courses, admissions, and support.';
 $string['contactus_getintouch'] = 'Get in touch';
 $string['contactus_sendmessage'] = 'Send us a message';
@@ -540,19 +591,118 @@ $string['curriculumenrolrequiredunderstood'] = 'OK';
 
 $string['loginsignup'] = 'Sign up';
 $string['registerpagetitle'] = 'Create your account';
-$string['registerpagesubtitle'] = 'Register to access IIIDEM courses, live classes, and certificates.';
+$string['registerpagesubtitle'] = 'Register to access IIIDEM courses, live classes, and certificates. After email verification your profile will be reviewed by an administrator.';
 $string['registerfirstname'] = 'First name';
 $string['registermiddlename'] = 'Middle name';
 $string['registerlastname'] = 'Last name';
 $string['registercontact'] = 'Contact number';
-$string['registercontact_help'] = 'Select your country code, then enter your mobile number. Example for India: 9876543210 (saved as +919876543210).';
-$string['registerphoneinvalid'] = 'Please enter a valid contact number with country code.';
+$string['registercontact_help'] = 'Select your country code, then enter your mobile number (digits only). Example for India: 9876543210 (saved as +919876543210).';
+$string['registerphoneinvalid'] = 'Enter a valid contact number (digits only, no letters or symbols).';
+$string['registerphoneexists'] = 'This contact number is already registered.';
 $string['registerphoneplaceholder'] = 'Mobile number';
-$string['registercreateaccount'] = 'Create account';
+$string['registeremaildisposable'] = 'Please check the email. Temporary, disposable, or test email addresses (for example @mailinator.com, @tempmail.com, @test.com) are not allowed. Use Gmail, Yahoo, Hotmail, Outlook, or your organisation email.';
+$string['registeremailundeliverable'] = 'Please check the email. This domain does not appear to accept mail. Use a genuine address such as Gmail, Yahoo, Hotmail, or your organisation email.';
+$string['registeremailtoast'] = 'Please check the email';
+$string['registerotpmodaltitle'] = 'Verify your email';
+$string['registerotpmodalintro'] = 'Enter the 6-digit verification code we sent to your email address.';
+$string['registerotplabel'] = 'Verification code';
+$string['registerotpplaceholder'] = '6-digit code';
+$string['registerotpverify'] = 'Verify & submit';
+$string['registerotpresend'] = 'Resend code';
+$string['registerotpsending'] = 'Sending verification code…';
+$string['registerotpverifying'] = 'Verifying code…';
+$string['registerotprequiredcode'] = 'Enter the 6-digit verification code.';
+$string['registerotpsubject'] = 'Your {$a} registration verification code';
+$string['registerotptitle'] = 'Email verification';
+$string['registerotpintro'] = 'Use this code to finish your registration. It expires in {$a->minutes} minutes.';
+$string['registerotpbody'] = 'Hello {$a->firstname},
+
+Your {$a->sitename} registration verification code is: {$a->code}
+
+This code expires in {$a->minutes} minutes. If you did not request this, you can ignore this email.
+';
+$string['registerotpnote'] = 'Do not share this code with anyone.';
+$string['registerotpcta'] = 'Return to registration';
+$string['registerotpsent'] = 'A verification code was sent to {$a}.';
+$string['registerotpsendfailed'] = 'Could not send the verification email. Please try again.';
+$string['registerotpwait'] = 'Please wait {$a} seconds before requesting a new code.';
+$string['registerotpmissing'] = 'No verification code was found. Please request a new code.';
+$string['registerotpexpired'] = 'This verification code has expired. Please request a new code.';
+$string['registerotpinvalid'] = 'That verification code is incorrect. Please try again.';
+$string['registerotplocked'] = 'Too many incorrect attempts. Please request a new code.';
+$string['registerotpverified'] = 'Email verified successfully.';
+$string['registerotprequired'] = 'Please verify your email with the code we sent before submitting your registration.';
+$string['registerotploadingtitle'] = 'Verifying your email';
+$string['registerotploadingtext'] = 'Please wait while we verify your code and submit your registration…';
+
+$string['registercreateaccount'] = 'Submit registration';
 $string['registerhaveaccount'] = 'Already have an account?';
-$string['registersuccess'] = 'Your account has been created. Welcome!';
-$string['registersuccesstitle'] = 'Registration successful';
-$string['registersuccessbody'] = 'Your account has been created successfully. You can now explore the course and complete enrolment when you are ready.';
+$string['registersuccess'] = 'Your registration has been submitted.';
+$string['registersuccesstitle'] = 'Registration submitted';
+$string['registersuccessbody'] = 'Your profile is under process. You will receive an email when an administrator approves your registration.';
+$string['registerpendingtitle'] = 'Registration submitted';
+$string['registerpendingbody'] = 'Thank you for registering. Your profile is under process. An administrator will review your details. After approval you will receive an email with your username and password so you can sign in and enrol.';
+$string['registerpendinglogin'] = 'Go to sign in';
+
+$string['pendingregistrations'] = 'Pending registrations';
+$string['pendingregistrationsopen'] = 'Open pending registrations';
+$string['pendingregistrationsintroshort'] = 'Review and approve or reject new portal registrations:';
+$string['pendingregistrationssetting'] = '<div class="iiidem-pending-regs-setting">'
+    . '<p class="mb-2">Review and approve or reject new portal registrations.</p>'
+    . '<a class="btn btn-secondary" href="{$a}" >Open pending registrations</a>'
+    . '</div>';
+$string['pendingregistrationsintro'] = 'Review new portal registrations. Approving sends the user their username and password and enrols them in the configured course(s). Rejecting notifies them that they cannot enrol.';
+$string['pendingregistrationsempty'] = 'There are no registrations waiting for approval.';
+$string['pendingregapprove'] = 'Approve';
+$string['pendingregreject'] = 'Reject';
+$string['pendingregapproveconfirm'] = 'Approve this registration and email login credentials to the user?';
+$string['pendingregrejectconfirm'] = 'Reject this registration and email the applicant that they cannot enrol?';
+$string['pendingregusernotfound'] = 'User not found.';
+$string['pendingregalreadyapproved'] = 'This registration has already been approved.';
+$string['pendingregalreadyrejected'] = 'This registration has already been rejected.';
+$string['pendingregapprovedok'] = '{$a} has been approved. Login credentials were emailed.';
+$string['pendingregrejectedok'] = '{$a} has been rejected. A notification email was sent.';
+
+$string['registeremailpendingsubject'] = '{$a->sitename}: Registration received — profile under process';
+$string['registeremailpendingtitle'] = 'Registration received';
+$string['registeremailpendingintro'] = 'Thank you for registering on {$a->sitename}. Your profile is under process and will be reviewed by an administrator. You will receive another email once your registration is approved, with your login details.';
+$string['registeremailpendinglabel_status'] = 'Status';
+$string['registeremailpendingstatus'] = 'Under process — awaiting admin approval';
+$string['registeremailpendingnote'] = 'You cannot sign in until an administrator approves your registration. For assistance, contact the {$a->sitename} support team.';
+$string['registeremailpendingbody'] = 'Dear {$a->firstname},
+
+Thank you for registering on {$a->sitename}.
+
+Your profile is under process and will be reviewed by an administrator. After approval you will receive an email with your username and password so you can sign in and enrol for further processes.
+
+You cannot sign in until your registration is approved.
+
+For any assistance, please contact the {$a->sitename} support team.
+
+Regards,
+{$a->sitename} Administrator
+';
+
+$string['registeremailapprovedsubject'] = '{$a->sitename}: Registration approved — you can sign in';
+$string['registeremailapprovedtitle'] = 'Your registration is approved';
+$string['registeremailapprovedintro'] = 'Your registration on {$a->sitename} has been approved by an administrator. You can now sign in using the credentials below and enrol for further processes:';
+
+$string['registeremailrejectedsubject'] = '{$a->sitename}: Registration not approved';
+$string['registeremailrejectedtitle'] = 'Registration not approved';
+$string['registeremailrejectedintro'] = 'We are sorry to inform you that your registration on {$a->sitename} was not approved. You cannot enrol on our portal at this time.';
+$string['registeremailrejectednote'] = 'If you believe this is a mistake, please contact the {$a->sitename} support team.';
+$string['registeremailrejectedbody'] = 'Dear {$a->firstname},
+
+We are sorry to inform you that your registration on {$a->sitename} was not approved by an administrator.
+
+You cannot enrol on our website at this time.
+
+If you believe this is a mistake, please contact the {$a->sitename} support team.
+
+Regards,
+{$a->sitename} Administrator
+';
+
 $string['registeremailusersubject'] = '{$a->sitename}: Account created';
 $string['registeremailusertitle'] = 'Welcome to {$a->sitename}!';
 $string['registeremailuserintro'] = 'Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:';
@@ -597,7 +747,7 @@ $string['registeremailuserbody'] = 'Dear {$a->firstname},
 
 Welcome to {$a->sitename}!
 
-Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:
+Your registration has been approved by an administrator. You can now access the {$a->sitename} Learning Management System using the credentials below:
 
 Username: {$a->username}
 Email: {$a->email}
@@ -616,8 +766,8 @@ For any assistance, please contact the {$a->sitename} support team.
 Regards,
 {$a->sitename} Administrator
 ';
-$string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
-$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
+$string['registeremailadminsubject'] = '{$a->sitename}: New registration awaiting approval';
+$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename} and is awaiting approval.
 
 Name: {$a->fullname}
 Username: {$a->username}
@@ -627,11 +777,14 @@ Country: {$a->country}
 City: {$a->city}
 Role: {$a->occupation}
 
+Review and approve or reject:
+{$a->reviewurl}
+
 Profile: {$a->profileurl}
 
 {$a->admin}
 ';
-$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong>.</p>
+$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong> and is awaiting approval.</p>
 <ul>
 <li><strong>Name:</strong> {$a->fullname}</li>
 <li><strong>Username:</strong> {$a->username}</li>
@@ -641,6 +794,7 @@ $string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a
 <li><strong>City:</strong> {$a->city}</li>
 <li><strong>Role:</strong> {$a->occupation}</li>
 </ul>
+<p><a href="{$a->reviewurl}">Review pending registrations</a></p>
 <p><a href="{$a->profileurl}">View user profile</a></p>
 <p>{$a->admin}</p>';
 $string['registersmsbody'] = 'Hi {$a->firstname}, your {$a->sitename} account is ready. Username: {$a->username}. Set password: {$a->resetlink}';

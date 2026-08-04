@@ -308,6 +308,8 @@ $string['indicator:socialbreadthdef'] = 'Attendance social';
 $string['indicator:socialbreadthdef_help'] = 'The participant has reached this percentage of the social engagement offered by the Attendance during this analysis interval (Levels = No participation, Participant alone)';
 $string['indicator:socialbreadthdef_link'] = 'Learning_analytics_indicators#Social_breadth';
 $string['invalidaction'] = 'You must select an action';
+$string['invalidattendancecmid'] = 'That Attendance link is not valid. Open Attendance from your course page. The URL must use a numeric activity id (for example view.php?id=123), not a placeholder such as CMID.';
+$string['invalidattendancecmidmissing'] = 'No Attendance activity was found for that link (id={$a}). Open the course, then open or add the Attendance activity from there.';
 $string['invalidemails'] = 'You must specify addresses of existing user accounts, could not find: {$a}';
 $string['invalidimportfile'] = 'File format is invalid.';
 $string['invalidsessionenddate'] = 'This date can not be earlier than the session date';

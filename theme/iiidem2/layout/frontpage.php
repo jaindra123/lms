@@ -54,6 +54,13 @@ $templatecontext = array_merge(
 
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_slider', 'init');
 $PAGE->requires->js_call_amd('theme_iiidem2/frontpage_about_tabs', 'init');
+$PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/homepage_chatbot.js'));
+
+$isadminchatbot = isloggedin() && !isguestuser() && is_siteadmin();
+$templatecontext = array_merge($templatecontext, theme_iiidem2_chatbot_widget_context($isadminchatbot));
+if ($isadminchatbot) {
+    $templatecontext['chatbottitle'] = theme_iiidem2_str('homepagechatbotadmintitle', null, 'Reply to questions');
+}
 
 echo $OUTPUT->render_from_template('theme_iiidem2/frontpage', $templatecontext);
 ?>

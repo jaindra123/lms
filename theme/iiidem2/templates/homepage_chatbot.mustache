@@ -1,0 +1,86 @@
+{{!
+    @template theme_iiidem2/homepage_chatbot
+
+    Floating homepage chatbot — visitors ask; admins reply.
+}}
+<div class="iiidem-home-chatbot{{#isadminchatbot}} iiidem-home-chatbot--admin{{/isadminchatbot}}"
+     data-api-url="{{{chatbotapiurl}}}"
+     data-admin-api-url="{{{chatbotadminapiurl}}}"
+     data-sesskey="{{sesskey}}"
+     data-admin-mode="{{#isadminchatbot}}1{{/isadminchatbot}}{{^isadminchatbot}}0{{/isadminchatbot}}"
+     data-sending="{{chatbotsending}}"
+     data-error="{{chatboterror}}"
+     data-reply-placeholder="{{chatbotreplyplaceholder}}"
+     data-no-open="{{chatbotnoopen}}">
+    <div class="iiidem-home-chatbot__panel" role="dialog" aria-label="{{chatbottitle}}" hidden>
+        <div class="iiidem-home-chatbot__header">
+            <span>{{chatbottitle}}</span>
+            <button type="button" class="iiidem-home-chatbot__close" data-action="close" aria-label="{{chatbotclose}}">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+
+        {{#isadminchatbot}}
+        <div class="iiidem-home-chatbot__admin" data-role="admin-inbox">
+            <div class="iiidem-home-chatbot__admin-list" data-role="admin-list">
+                <p class="iiidem-home-chatbot__hint">{{chatbotadminwelcome}}</p>
+            </div>
+            <div class="iiidem-home-chatbot__admin-thread" data-role="admin-thread" hidden>
+                <button type="button" class="iiidem-home-chatbot__back" data-action="admin-back">← Back</button>
+                <div class="iiidem-home-chatbot__body" data-role="admin-messages"></div>
+                <form class="iiidem-home-chatbot__form" data-role="admin-reply-form" novalidate>
+                    <div class="iiidem-home-chatbot__compose">
+                        <input type="text" name="reply" class="iiidem-home-chatbot__input" required
+                               placeholder="{{chatbotreplyplaceholder}}"
+                               aria-label="{{chatbotreplyplaceholder}}"
+                               maxlength="4000" autocomplete="off">
+                        <button type="submit" class="iiidem-home-chatbot__send" data-action="admin-reply">
+                            {{chatbotreplysend}}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {{/isadminchatbot}}
+
+        {{^isadminchatbot}}
+        <div class="iiidem-home-chatbot__body" data-role="messages">
+            <div class="iiidem-home-chatbot__bubble iiidem-home-chatbot__bubble--bot">
+                {{chatbotwelcome}}
+            </div>
+        </div>
+        <form class="iiidem-home-chatbot__form" data-role="form" novalidate>
+            {{^isrealuser}}
+            <div class="iiidem-home-chatbot__fields">
+                <input type="text" name="name" class="iiidem-home-chatbot__field" required
+                       placeholder="{{chatbotnameplaceholder}}"
+                       aria-label="{{chatbotnameplaceholder}}"
+                       autocomplete="name" value="{{chatbotname}}">
+                <input type="email" name="email" class="iiidem-home-chatbot__field" required
+                       placeholder="{{chatbotemailplaceholder}}"
+                       aria-label="{{chatbotemailplaceholder}}"
+                       autocomplete="email" value="{{chatbotemail}}">
+            </div>
+            {{/isrealuser}}
+            {{#isrealuser}}
+            <input type="hidden" name="name" value="{{chatbotname}}">
+            <input type="hidden" name="email" value="{{chatbotemail}}">
+            {{/isrealuser}}
+            <div class="iiidem-home-chatbot__compose">
+                <input type="text" name="query" class="iiidem-home-chatbot__input" required
+                       placeholder="{{chatbotplaceholder}}"
+                       aria-label="{{chatbotplaceholder}}"
+                       maxlength="2000" autocomplete="off">
+                <button type="submit" class="iiidem-home-chatbot__send" data-action="send">
+                    {{chatbotsend}}
+                </button>
+            </div>
+        </form>
+        {{/isadminchatbot}}
+    </div>
+    <button type="button" class="iiidem-home-chatbot__toggle" data-action="toggle"
+            aria-expanded="false" aria-label="{{chatbottitle}}">
+        <span class="fa fa-comments" aria-hidden="true"></span>
+        {{#isadminchatbot}}<span class="iiidem-home-chatbot__badge" data-role="admin-badge" hidden>0</span>{{/isadminchatbot}}
+    </button>
+</div>

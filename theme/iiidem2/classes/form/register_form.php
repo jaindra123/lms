@@ -43,15 +43,24 @@ class register_form extends \moodleform {
         $mform->addElement('text', 'email', get_string('email'), [
             'data-email-check-url' => (new \moodle_url('/register/check_email.php'))->out(false),
             'data-email-exists-message' => get_string('emailexists'),
+            'data-email-disposable-message' => get_string_manager()->string_exists('registeremaildisposable', 'theme_iiidem2')
+                ? get_string('registeremaildisposable', 'theme_iiidem2')
+                : 'Please use a genuine email address. Temporary or disposable email addresses are not allowed.',
+            'data-email-undeliverable-message' => get_string_manager()->string_exists('registeremailundeliverable', 'theme_iiidem2')
+                ? get_string('registeremailundeliverable', 'theme_iiidem2')
+                : 'This email domain does not appear to accept mail. Please use a deliverable email address.',
         ]);
         $mform->setType('email', \core_user::get_property_type('email'));
         $mform->addRule('email', get_string('required'), 'required', null, 'client');
+        $mform->addRule('email', get_string('invalidemail'), 'email', null, 'client');
         $mform->setForceLtr('email');
 
         $mform->addElement('text', 'phone1', get_string('registercontact', 'theme_iiidem2'), [
-            'maxlength' => 20,
+            'maxlength' => 16,
             'autocomplete' => 'tel',
-            'inputmode' => 'tel',
+            'inputmode' => 'numeric',
+            'data-phone-check-url' => (new \moodle_url('/register/check_phone.php'))->out(false),
+            'data-phone-exists-message' => get_string('registerphoneexists', 'theme_iiidem2'),
             'data-invalid-phone' => get_string('registerphoneinvalid', 'theme_iiidem2'),
             'placeholder' => get_string('registerphoneplaceholder', 'theme_iiidem2'),
         ]);
@@ -170,33 +179,6 @@ class register_form extends \moodleform {
             $mform->setExpanded($header, false);
         }
 
-        // Own section so password fields are not nested under Instructor / Student / Working.
-        $mform->addElement('header', 'passwordheader', get_string('registerpasswordheader', 'theme_iiidem2'));
-        $mform->setExpanded('passwordheader', true);
-
-        if (!empty($CFG->passwordpolicy)) {
-            $mform->addElement(
-                'static',
-                'passwordpolicyinfo',
-                get_string('registerpasswordshouldbe', 'theme_iiidem2'),
-                print_password_policy()
-            );
-        }
-
-        $mform->addElement('password', 'password', get_string('password'), [
-            'maxlength' => MAX_PASSWORD_CHARACTERS,
-            'autocomplete' => 'new-password',
-        ]);
-        $mform->setType('password', \core_user::get_property_type('password'));
-        $mform->addRule('password', get_string('required'), 'required', null, 'client');
-
-        $mform->addElement('password', 'password2', get_string('password') . ' (' . get_string('again') . ')', [
-            'maxlength' => MAX_PASSWORD_CHARACTERS,
-            'autocomplete' => 'new-password',
-        ]);
-        $mform->setType('password2', \core_user::get_property_type('password'));
-        $mform->addRule('password2', get_string('required'), 'required', null, 'client');
-
         $this->add_action_buttons(true, get_string('registercreateaccount', 'theme_iiidem2'));
     }
 
@@ -213,6 +195,84 @@ class register_form extends \moodleform {
         ] as $field) {
             $this->_form->applyFilter($field, 'trim');
         }
+    }
+
+    /**
+     * Digits only from a phone value (national or E.164).
+     *
+     * @param string $phone
+     * @return string
+     */
+    public static function national_phone_digits(string $phone): string {
+        $digits = preg_replace('/\D+/', '', $phone);
+        if ($digits === null || $digits === '') {
+            return '';
+        }
+        // Strip common trunk / India country prefixes when value looks like E.164.
+        if (strlen($digits) > 10 && str_starts_with($digits, '91')) {
+            $digits = substr($digits, 2);
+        } else if (strlen($digits) >= 11 && str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+        // Keep within practical national length (not forced to 10).
+        if (strlen($digits) > 15) {
+            $digits = substr($digits, 0, 15);
+        }
+        return $digits;
+    }
+
+    /**
+     * Contact number must be digits only (length varies by country).
+     *
+     * @param string $national
+     * @return bool
+     */
+    public static function is_valid_national_phone(string $national): bool {
+        return (bool) preg_match('/^[0-9]{6,15}$/', $national);
+    }
+
+    /**
+     * Whether this phone is already registered on a local user account.
+     *
+     * @param string $normalized E.164 form e.g. +919876543210
+     * @param string $national National number digits
+     * @return bool
+     */
+    public static function phone_exists(string $normalized, string $national = ''): bool {
+        global $CFG, $DB;
+
+        $national = $national !== '' ? $national : self::national_phone_digits($normalized);
+        if ($national === '' || !self::is_valid_national_phone($national)) {
+            return false;
+        }
+
+        $candidates = array_values(array_unique(array_filter([
+            $normalized,
+            $national,
+            '0' . $national,
+            '91' . $national,
+            '+91' . $national,
+        ])));
+
+        list($insql, $inparams) = $DB->get_in_or_equal($candidates, SQL_PARAMS_NAMED, 'phone');
+        $params = $inparams + ['mnet' => $CFG->mnet_localhost_id];
+
+        if ($DB->record_exists_select(
+            'user',
+            "deleted = 0 AND mnethostid = :mnet AND phone1 <> '' AND phone1 {$insql}",
+            $params
+        )) {
+            return true;
+        }
+
+        // Match stored values that end with the same national digits.
+        $nlen = strlen($national);
+        return $DB->record_exists_select(
+            'user',
+            "deleted = 0 AND mnethostid = :mnet AND phone1 <> ''
+             AND RIGHT(REPLACE(REPLACE(REPLACE(phone1, '+', ''), ' ', ''), '-', ''), :nlen) = :national",
+            ['mnet' => $CFG->mnet_localhost_id, 'nlen' => $nlen, 'national' => $national]
+        );
     }
 
     /**
@@ -259,23 +319,32 @@ class register_form extends \moodleform {
 
         if (!validate_email($data['email'])) {
             $errors['email'] = get_string('invalidemail');
-        } else if (empty($CFG->allowaccountssameemail)) {
-            if ($DB->record_exists('user', ['email' => $data['email'], 'mnethostid' => $CFG->mnet_localhost_id])) {
-                $errors['email'] = get_string('emailexists');
+        } else if (empty($CFG->allowaccountssameemail)
+                && $DB->record_exists('user', [
+                    'email' => \core_text::strtolower(trim((string) $data['email'])),
+                    'mnethostid' => $CFG->mnet_localhost_id,
+                    'deleted' => 0,
+                ])) {
+            $errors['email'] = get_string('emailexists');
+        } else {
+            $quality = \theme_iiidem2\registration_email::validate((string) $data['email']);
+            if (!$quality['ok']) {
+                $errors['email'] = $quality['message'];
             }
         }
 
-        $phone = self::normalize_phone((string) ($data['phone1'] ?? ''), (string) ($data['country'] ?? ''));
-        if ($phone === '') {
+        $national = self::national_phone_digits((string) ($data['phone1'] ?? ''));
+        if ($national === '') {
             $errors['phone1'] = get_string('required');
-        } else if (!preg_match('/^\+[1-9]\d{6,14}$/', $phone)) {
+        } else if (!self::is_valid_national_phone($national)) {
             $errors['phone1'] = get_string('registerphoneinvalid', 'theme_iiidem2');
-        }
-
-        if ($data['password'] !== $data['password2']) {
-            $errors['password2'] = get_string('passwordsdiffer');
-        } else if (!check_password_policy($data['password'], $errmsg)) {
-            $errors['password'] = $errmsg;
+        } else {
+            $phone = self::normalize_phone($national, (string) ($data['country'] ?? ''));
+            if ($phone === '' || !preg_match('/^\+[1-9]\d{6,14}$/', $phone)) {
+                $errors['phone1'] = get_string('registerphoneinvalid', 'theme_iiidem2');
+            } else if (self::phone_exists($phone, $national)) {
+                $errors['phone1'] = get_string('registerphoneexists', 'theme_iiidem2');
+            }
         }
 
         $formdata = (object) $data;

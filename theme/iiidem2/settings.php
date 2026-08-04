@@ -116,7 +116,17 @@ if ($ADMIN->fulltree) {
 
     $name = 'theme_iiidem2/registrationcourseids';
     $title = get_string('registrationcourseids', 'theme_iiidem2');
-    $description = get_string('registrationcourseids_desc', 'theme_iiidem2');
+    $pendingurl = (new moodle_url('/theme/iiidem2/admin/pending_registrations.php'))->out(false);
+    $description = get_string('registrationcourseids_desc', 'theme_iiidem2')
+        . html_writer::div(
+            html_writer::tag('p', get_string('pendingregistrationsintroshort', 'theme_iiidem2'), ['class' => 'mb-2 mt-3'])
+            . html_writer::link(
+                $pendingurl,
+                get_string('pendingregistrationsopen', 'theme_iiidem2'),
+                ['class' => 'btn btn-secondary']
+            ),
+            'iiidem-pending-regs-setting'
+        );
     $setting = new admin_setting_configtext($name, $title, $description, '4', PARAM_TEXT);
     $page->add($setting);
 

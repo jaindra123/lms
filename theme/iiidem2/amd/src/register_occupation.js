@@ -129,18 +129,16 @@ define([], function() {
         if (!phoneField) {
             return false;
         }
-        const value = String(phoneField.value || '').trim();
-        if (value === '') {
-            return false;
+        let digits = String(phoneField.value || '').replace(/\D/g, '');
+        if (digits.length > 10 && digits.indexOf('91') === 0) {
+            digits = digits.substring(2);
+        } else if (digits.length >= 11 && digits.charAt(0) === '0') {
+            digits = digits.substring(1);
         }
-        if (phoneIti && typeof phoneIti.isValidNumber === 'function') {
-            try {
-                return !!phoneIti.isValidNumber();
-            } catch (e) {
-                // Fall through to regex.
-            }
+        if (digits.length > 15) {
+            digits = digits.slice(0, 15);
         }
-        return /^\+?[0-9\s\-()]{7,20}$/.test(value);
+        return /^[0-9]{6,15}$/.test(digits);
     }
 
     /**
@@ -160,8 +158,17 @@ define([], function() {
 
         if (field.id === 'id_phone1') {
             const valid = isPhoneValid(field);
-            setRequiredIconState(fitem, valid);
-            if (valid) {
+            const existsMsg = field.getAttribute('data-phone-exists-message') || '';
+            const feedback = document.getElementById('id_error_' + field.name)
+                || (fitem ? fitem.querySelector('.invalid-feedback, .form-control-feedback') : null);
+            const feedbackText = feedback ? String(feedback.textContent || '').trim() : '';
+            const isDuplicateError = field.getAttribute('data-phone-status') === 'error'
+                || (existsMsg && feedbackText === existsMsg)
+                || /already registered/i.test(feedbackText);
+
+            // Format-valid numbers can still be duplicates — do not wipe that error.
+            setRequiredIconState(fitem, valid && !isDuplicateError);
+            if (valid && !isDuplicateError) {
                 setFieldError(field, '');
             }
             return;
@@ -317,9 +324,9 @@ define([], function() {
             }
 
             const invalidMessage = input.getAttribute('data-invalid-phone')
-                || 'Please enter a valid contact number with country code.';
+                || 'Enter a valid contact number (digits only).';
 
-            if (phoneIti && typeof phoneIti.isValidNumber === 'function' && !phoneIti.isValidNumber()) {
+            if (!isPhoneValid(input)) {
                 e.preventDefault();
                 e.stopPropagation();
                 setFieldError(input, invalidMessage);
@@ -329,6 +336,11 @@ define([], function() {
             }
 
             if (phoneIti && typeof phoneIti.getNumber === 'function') {
+                input.setAttribute('maxlength', '20');
+                const countryData = phoneIti.getSelectedCountryData();
+                const dial = (countryData && countryData.dialCode) ? String(countryData.dialCode) : '91';
+                let digits = String(input.value || '').replace(/\D/g, '').slice(0, 15);
+                phoneIti.setNumber('+' + dial + digits);
                 input.value = phoneIti.getNumber();
             }
             setFieldError(input, '');

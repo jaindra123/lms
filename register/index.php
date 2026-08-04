@@ -29,9 +29,10 @@ $PAGE->set_pagelayout('register');
 $PAGE->set_cacheable(false);
 $PAGE->set_title(get_string('registerpagetitle', 'theme_iiidem2'));
 $PAGE->set_heading(get_string('registerpagetitle', 'theme_iiidem2'));
-$PAGE->requires->css('/theme/iiidem2/style/intl-tel-input/intlTelInput.min.css');
-// Load in head so country-code widget is available before form scripts run.
+// intl-tel-input CSS is loaded via theme sheet "intltelinput" (local flag sprites).
+// Load JS in footer; register inline script waits until window.intlTelInput exists.
 $PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), false);
+$PAGE->requires->css(new moodle_url('/theme/iiidem2/style/intltelinput.css'));
 $PAGE->requires->js_call_amd('theme_iiidem2/register_occupation', 'init');
 
 $form = new \theme_iiidem2\form\register_form();
@@ -43,20 +44,169 @@ if ($form->is_cancelled()) {
 if ($data = $form->get_data()) {
     try {
         $submission = (object) array_merge((array) $_POST, (array) $data);
+        $email = \core_text::strtolower(trim((string) ($submission->email ?? '')));
+        if (!\theme_iiidem2\registration_otp::is_verified($email)) {
+            throw new \moodle_exception('registerotprequired', 'theme_iiidem2');
+        }
         $userid = theme_iiidem2_create_registered_user($submission);
+        \theme_iiidem2\registration_otp::clear();
         $user = core_user::get_user($userid);
         theme_iiidem2_send_registration_emails($user, $submission);
-        complete_user_login($user);
-        $redirecturl = new moodle_url('/course/view.php', ['id' => 4, 'registered' => 1]);
-        $SESSION->wantsurl = $redirecturl->out(false);
-        redirect($redirecturl);
+        redirect(new moodle_url('/register/', ['pending' => 1]));
     } catch (moodle_exception $e) {
         \core\notification::error($e->getMessage());
     }
 }
 
+$pending = optional_param('pending', 0, PARAM_INT);
+
 echo $OUTPUT->header();
+
+if ($pending) {
+    echo html_writer::start_div('iiidem-register-pending');
+    echo html_writer::tag('h2', get_string('registerpendingtitle', 'theme_iiidem2'), [
+        'class' => 'iiidem-register-pending__title',
+    ]);
+    echo html_writer::tag('p', get_string('registerpendingbody', 'theme_iiidem2'), [
+        'class' => 'iiidem-register-pending__body',
+    ]);
+    echo html_writer::link(
+        new moodle_url('/login/index.php'),
+        get_string('registerpendinglogin', 'theme_iiidem2'),
+        ['class' => 'btn btn-primary']
+    );
+    echo html_writer::end_div();
+    echo $OUTPUT->footer();
+    exit;
+}
+
+// Embed flag sprite as a data-URI so flags never depend on CDN / image.php.
+$flagfile = $CFG->dirroot . '/theme/iiidem2/pix/intl-tel-input/flags.png';
+$flag2xfile = $CFG->dirroot . '/theme/iiidem2/pix/intl-tel-input/flags2x.png';
+$flagdata = is_readable($flagfile)
+    ? ('data:image/png;base64,' . base64_encode(file_get_contents($flagfile)))
+    : '';
+$flag2xdata = is_readable($flag2xfile)
+    ? ('data:image/png;base64,' . base64_encode(file_get_contents($flag2xfile)))
+    : $flagdata;
+
+if ($flagdata !== '') {
+    echo html_writer::tag('style', '
+/* Flag sprite (local, embedded). Do not hide dial-code text. */
+.iiidem-register-form .iti__flag {
+  background-image: url(' . json_encode($flagdata, JSON_UNESCAPED_SLASHES) . ') !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+}
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .iiidem-register-form .iti__flag {
+    background-image: url(' . json_encode($flag2xdata, JSON_UNESCAPED_SLASHES) . ') !important;
+  }
+}
+.iiidem-register-form .iti__selected-flag {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  color: #212529 !important;
+  min-height: 42px;
+  padding: 0 8px !important;
+}
+.iiidem-register-form .iti__selected-flag .iti__flag {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.iiidem-register-form .iti__selected-dial-code {
+  display: inline-block !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  color: #212529 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap !important;
+}
+.iiidem-register-form .iti__arrow {
+  border-top-color: #555 !important;
+  margin-left: 4px !important;
+}
+.iiidem-register-form .iti__country-list .iti__flag {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+', ['id' => 'iiidem-iti-flags']);
+}
+
 $form->display();
+
+$otpsendurl = (new moodle_url('/register/send_otp.php'))->out(false);
+$otpverifyurl = (new moodle_url('/register/verify_otp.php'))->out(false);
+$otpstring = static function(string $key, string $fallback) {
+    return get_string_manager()->string_exists($key, 'theme_iiidem2')
+        ? get_string($key, 'theme_iiidem2')
+        : $fallback;
+};
+$otpstrings = [
+    'title' => $otpstring('registerotpmodaltitle', 'Verify your email'),
+    'intro' => $otpstring('registerotpmodalintro', 'Enter the 6-digit verification code we sent to your email address.'),
+    'label' => $otpstring('registerotplabel', 'Verification code'),
+    'placeholder' => $otpstring('registerotpplaceholder', '6-digit code'),
+    'verify' => $otpstring('registerotpverify', 'Verify & submit'),
+    'resend' => $otpstring('registerotpresend', 'Resend code'),
+    'close' => get_string('closebuttontitle'),
+    'sending' => $otpstring('registerotpsending', 'Sending verification code…'),
+    'verifying' => $otpstring('registerotpverifying', 'Verifying code…'),
+    'required' => $otpstring('registerotprequiredcode', 'Enter the 6-digit verification code.'),
+    'loadingtitle' => $otpstring('registerotploadingtitle', 'Verifying your email'),
+    'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and submit your registration…'),
+];
+?>
+<div id="iiidem-register-otp-modal" class="iiidem-register-otp-modal" hidden aria-hidden="true">
+    <div class="iiidem-register-otp-modal__backdrop" data-otp-close="1"></div>
+    <div class="iiidem-register-otp-modal__dialog" role="dialog" aria-modal="true"
+         aria-labelledby="iiidem-register-otp-title">
+        <div class="iiidem-register-otp-modal__header">
+            <h2 id="iiidem-register-otp-title" class="iiidem-register-otp-modal__title">
+                <?php echo s($otpstrings['title']); ?>
+            </h2>
+            <button type="button" class="iiidem-register-otp-modal__close" data-otp-close="1"
+                    aria-label="<?php echo s($otpstrings['close']); ?>">&times;</button>
+        </div>
+        <div class="iiidem-register-otp-modal__body">
+            <p class="iiidem-register-otp-modal__intro" data-otp-intro>
+                <?php echo s($otpstrings['intro']); ?>
+            </p>
+            <p class="iiidem-register-otp-modal__status" data-otp-status hidden></p>
+            <label class="iiidem-register-otp-modal__label" for="iiidem-register-otp-input">
+                <?php echo s($otpstrings['label']); ?>
+            </label>
+            <input id="iiidem-register-otp-input" class="form-control iiidem-register-otp-modal__input"
+                   type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                   placeholder="<?php echo s($otpstrings['placeholder']); ?>">
+            <p class="iiidem-register-otp-modal__error" data-otp-error hidden></p>
+        </div>
+        <div class="iiidem-register-otp-modal__footer">
+            <button type="button" class="btn btn-link" data-otp-resend>
+                <?php echo s($otpstrings['resend']); ?>
+            </button>
+            <button type="button" class="btn btn-primary" data-otp-verify>
+                <?php echo s($otpstrings['verify']); ?>
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+window.IIIDEM_REGISTER_OTP = {
+    sendUrl: <?php echo json_encode($otpsendurl); ?>,
+    verifyUrl: <?php echo json_encode($otpverifyurl); ?>,
+    strings: <?php echo json_encode($otpstrings); ?>
+};
+</script>
+<?php
+// Continue inline registration scripts below.
 ?>
 <script>
 (function () {
@@ -70,14 +220,39 @@ $form->display();
     var emailInput = document.getElementById('id_email');
     var phoneInput = document.getElementById('id_phone1');
     var countrySelect = document.getElementById('id_country');
+    var firstnameInput = document.getElementById('id_firstname');
     var emailCheckUrl = emailInput ? emailInput.getAttribute('data-email-check-url') : '';
     var emailExistsMsg = (emailInput && emailInput.getAttribute('data-email-exists-message'))
         || 'This email address is already registered.';
+    var emailDisposableMsg = (emailInput && emailInput.getAttribute('data-email-disposable-message'))
+        || 'Please check the email. Temporary or disposable email addresses are not allowed.';
+    var emailUndeliverableMsg = (emailInput && emailInput.getAttribute('data-email-undeliverable-message'))
+        || 'Please check the email. This domain does not appear to accept mail.';
+    var emailToastMsg = 'Please check the email';
+    var emailInvalidMsg = 'Please enter a valid email address (for example name@gmail.com).';
     var approvedEmail = '';
     var emailCheckSequence = 0;
     var bypassEmailCheck = false;
+    var phoneCheckUrl = phoneInput ? phoneInput.getAttribute('data-phone-check-url') : '';
+    var phoneExistsMsg = (phoneInput && phoneInput.getAttribute('data-phone-exists-message'))
+        || 'This contact number is already registered.';
     var invalidPhoneMsg = (phoneInput && phoneInput.getAttribute('data-invalid-phone'))
-        || 'Please enter a valid contact number with country code.';
+        || 'Enter a valid contact number (digits only).';
+    var approvedPhone = '';
+    var phoneCheckSequence = 0;
+    var bypassPhoneCheck = false;
+    var otpVerifiedEmail = '';
+    var bypassOtpGate = false;
+    var otpCfg = window.IIIDEM_REGISTER_OTP || {};
+    var otpModal = document.getElementById('iiidem-register-otp-modal');
+    var otpInput = document.getElementById('iiidem-register-otp-input');
+    var otpStatus = otpModal ? otpModal.querySelector('[data-otp-status]') : null;
+    var otpError = otpModal ? otpModal.querySelector('[data-otp-error]') : null;
+    var otpIntro = otpModal ? otpModal.querySelector('[data-otp-intro]') : null;
+    var otpVerifyBtn = otpModal ? otpModal.querySelector('[data-otp-verify]') : null;
+    var otpResendBtn = otpModal ? otpModal.querySelector('[data-otp-resend]') : null;
+    var pendingSubmitter = null;
+    var otpBusy = false;
 
     // Conditional role fields are required only for the selected role. Moodle's
     // client required rules validate hidden role fields too, so render the
@@ -157,8 +332,11 @@ $form->display();
         input.setAttribute('data-password-toggle-ready', '1');
     }
 
-    addPasswordToggle('id_password');
-    addPasswordToggle('id_password2');
+    // Password fields were removed; login credentials are emailed after admin approval.
+    if (document.getElementById('id_password')) {
+        addPasswordToggle('id_password');
+        addPasswordToggle('id_password2');
+    }
 
     function syncOccupationSections() {
         var selected = form.querySelector('input[name="occupation"]:checked');
@@ -212,6 +390,7 @@ $form->display();
         }
         field.classList.remove('is-invalid');
         field.removeAttribute('aria-invalid');
+        field.removeAttribute('data-phone-status');
         item.classList.remove('has-danger');
         var feedback = document.getElementById('id_error_' + field.name)
             || item.querySelector('.form-control-feedback, .invalid-feedback');
@@ -228,14 +407,72 @@ $form->display();
         }
         field.classList.add('is-invalid');
         field.setAttribute('aria-invalid', 'true');
+        if (field.id === 'id_phone1') {
+            field.setAttribute('data-phone-status', 'error');
+        }
         item.classList.add('has-danger');
         item.classList.remove('iiidem-field-valid');
         var feedback = document.getElementById('id_error_' + field.name)
             || item.querySelector('.form-control-feedback, .invalid-feedback');
-        if (feedback) {
-            feedback.textContent = message;
-            feedback.style.display = 'block';
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.className = 'form-control-feedback invalid-feedback';
+            feedback.id = 'id_error_' + field.name;
+            var felement = item.querySelector('.felement') || item;
+            felement.appendChild(feedback);
         }
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
+    function showRegisterToast(title, body) {
+        var host = document.getElementById('iiidem-register-toast-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'iiidem-register-toast-host';
+            host.className = 'iiidem-register-toast-host';
+            host.setAttribute('aria-live', 'polite');
+            document.body.appendChild(host);
+        }
+        var toast = document.createElement('div');
+        toast.className = 'iiidem-register-toast';
+        toast.innerHTML = ''
+            + '<button type="button" class="iiidem-register-toast__close" aria-label="Close">&times;</button>'
+            + '<p class="iiidem-register-toast__title"></p>'
+            + (body ? '<p class="iiidem-register-toast__body"></p>' : '');
+        toast.querySelector('.iiidem-register-toast__title').textContent = title || emailToastMsg;
+        var bodyEl = toast.querySelector('.iiidem-register-toast__body');
+        if (bodyEl && body) {
+            bodyEl.textContent = body;
+        }
+        host.appendChild(toast);
+        window.requestAnimationFrame(function () {
+            toast.classList.add('is-visible');
+        });
+        var close = function () {
+            toast.classList.add('is-hiding');
+            setTimeout(function () {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 220);
+        };
+        toast.querySelector('.iiidem-register-toast__close').addEventListener('click', close);
+        setTimeout(close, 5000);
+    }
+
+    function isValidEmailFormat(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+    }
+
+    function rejectEmail(message, toastTitle, toastBody) {
+        approvedEmail = '';
+        if (emailInput) {
+            setFeedback(emailInput, message || emailInvalidMsg);
+            paint(emailInput);
+        }
+        showRegisterToast(toastTitle || emailToastMsg, toastBody || message || emailInvalidMsg);
+        return false;
     }
 
     function checkEmailAvailability() {
@@ -244,8 +481,11 @@ $form->display();
         }
 
         var email = String(emailInput.value || '').trim().toLowerCase();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return Promise.resolve(true);
+        if (!email) {
+            return Promise.resolve(rejectEmail(emailInvalidMsg));
+        }
+        if (!isValidEmailFormat(email)) {
+            return Promise.resolve(rejectEmail(emailInvalidMsg));
         }
 
         var sequence = ++emailCheckSequence;
@@ -268,46 +508,159 @@ $form->display();
                     || email !== String(emailInput.value || '').trim().toLowerCase()) {
                 return false;
             }
-            if (result.exists) {
-                approvedEmail = '';
-                setFeedback(emailInput, emailExistsMsg);
-                paint(emailInput);
-                return false;
+            if (result.exists || result.reason === 'exists') {
+                return rejectEmail(result.message || emailExistsMsg, result.toast || emailExistsMsg, '');
+            }
+            if (result.ok === false || result.reason === 'disposable' || result.reason === 'undeliverable'
+                    || result.reason === 'invalid') {
+                var msg = result.message || '';
+                if (!msg) {
+                    if (result.reason === 'disposable') {
+                        msg = emailDisposableMsg;
+                    } else if (result.reason === 'undeliverable') {
+                        msg = emailUndeliverableMsg;
+                    } else {
+                        msg = emailInvalidMsg;
+                    }
+                }
+                return rejectEmail(msg, result.toast || emailToastMsg, msg);
             }
             approvedEmail = email;
             clearFeedback(emailInput);
             paint(emailInput, true);
             return true;
         }).catch(function() {
-            // Do not block registration if AJAX is unavailable. PHP validation
-            // below remains the authoritative duplicate-email check.
-            approvedEmail = email;
-            return true;
+            // Do not mark as approved when the quality check cannot run.
+            approvedEmail = '';
+            return rejectEmail(
+                'Could not verify the email address. Please try again.',
+                emailToastMsg,
+                'Could not verify the email address. Please try again.'
+            );
         });
     }
 
-    function isPhoneValid() {
-        if (!phoneInput) {
-            return false;
-        }
-        var raw = String(phoneInput.value || '').trim();
-        if (!raw) {
-            return false;
-        }
-        if (phoneIti && typeof phoneIti.isValidNumber === 'function') {
-            try {
-                if (phoneIti.isValidNumber()) {
-                    return true;
-                }
-            } catch (e) {
-                // Fall through.
+    function getSelectedDialCode() {
+        if (phoneIti && typeof phoneIti.getSelectedCountryData === 'function') {
+            var data = phoneIti.getSelectedCountryData();
+            if (data && data.dialCode) {
+                return String(data.dialCode);
             }
         }
-        // Fallback before utils load: national digits or E.164.
-        if (/^\+[1-9]\d{7,14}$/.test(raw.replace(/[\s\-()]/g, ''))) {
-            return true;
+        if (countrySelect && String(countrySelect.value || '').toUpperCase() === 'IN') {
+            return '91';
         }
-        return /^(?:0)?[6-9]\d{9}$/.test(raw.replace(/\D/g, ''));
+        return '91';
+    }
+
+    /**
+     * National number only (dial code from the +91 selector must not count).
+     */
+    function getNationalPhoneDigits() {
+        if (!phoneInput) {
+            return '';
+        }
+        var digits = String(phoneInput.value || '').replace(/\D/g, '');
+        var dial = getSelectedDialCode();
+
+        // Pasted / widget E.164: strip selected dial code when present.
+        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
+            digits = digits.substring(dial.length);
+        }
+        // Trunk prefix 0XXXXXXXXXX.
+        if (digits.length >= 11 && digits.charAt(0) === '0') {
+            digits = digits.substring(1);
+        }
+        if (digits.length > 15) {
+            digits = digits.slice(0, 15);
+        }
+        return digits;
+    }
+
+    function sanitizePhoneInputValue() {
+        if (!phoneInput) {
+            return;
+        }
+        // Digits only; length varies by country (not forced to 10).
+        phoneInput.setAttribute('maxlength', '16');
+        var digits = String(phoneInput.value || '').replace(/\D/g, '');
+        var dial = getSelectedDialCode();
+        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
+            digits = digits.substring(dial.length);
+        }
+        if (digits.length >= 11 && digits.charAt(0) === '0') {
+            digits = digits.substring(1);
+        }
+        var national = digits.slice(0, 15);
+        if (phoneInput.value !== national) {
+            phoneInput.value = national;
+        }
+    }
+
+    function isPhoneValid() {
+        return /^[0-9]{6,15}$/.test(getNationalPhoneDigits());
+    }
+
+    function checkPhoneAvailability() {
+        if (!phoneInput || !phoneCheckUrl) {
+            return Promise.resolve(true);
+        }
+
+        sanitizePhoneInputValue();
+        var national = getNationalPhoneDigits();
+        if (!/^[0-9]{6,15}$/.test(national)) {
+            approvedPhone = '';
+            if (String(phoneInput.value || '').trim() !== '') {
+                setFeedback(phoneInput, invalidPhoneMsg);
+                paint(phoneInput, true);
+            }
+            return Promise.resolve(false);
+        }
+
+        var sequence = ++phoneCheckSequence;
+        var body = new URLSearchParams();
+        body.set('phone', national);
+        body.set('country', countrySelect ? String(countrySelect.value || 'IN') : 'IN');
+        body.set('sesskey', (window.M && M.cfg) ? M.cfg.sesskey : '');
+
+        return fetch(phoneCheckUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: body.toString()
+        }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('Phone availability check failed');
+            }
+            return response.json();
+        }).then(function(result) {
+            if (sequence !== phoneCheckSequence || national !== getNationalPhoneDigits()) {
+                return false;
+            }
+            if (!result.valid) {
+                approvedPhone = '';
+                setFeedback(phoneInput, result.message || invalidPhoneMsg);
+                paint(phoneInput);
+                return false;
+            }
+            if (result.exists) {
+                approvedPhone = '';
+                setFeedback(phoneInput, result.message || phoneExistsMsg);
+                // Do not paint(..., true) — that clears duplicate errors because
+                // the number is format-valid.
+                paint(phoneInput);
+                return false;
+            }
+            approvedPhone = national;
+            clearFeedback(phoneInput);
+            paint(phoneInput, true);
+            return true;
+        }).catch(function() {
+            // Network / parse failure — do not mark as approved; PHP still
+            // validates on submit. Keep the field unchecked for duplicates.
+            approvedPhone = '';
+            return true;
+        });
     }
 
     function hasValue(field) {
@@ -358,6 +711,12 @@ $form->display();
         item.classList.toggle('iiidem-field-empty', !ok);
 
         if (field.id === 'id_phone1') {
+            // Keep AJAX / server duplicate messages visible.
+            if (field.getAttribute('data-phone-status') === 'error' && !allowFeedbackClear) {
+                item.classList.remove('iiidem-field-valid');
+                item.classList.add('iiidem-field-empty');
+                return;
+            }
             if (hasServerError && !allowFeedbackClear) {
                 return;
             }
@@ -366,9 +725,18 @@ $form->display();
                 // Keep Moodle required messaging for empty.
                 return;
             }
-            if (ok && allowFeedbackClear) {
-                clearFeedback(field);
-            } else {
+            // Format-valid must not wipe a duplicate-phone error.
+            if (ok) {
+                if (allowFeedbackClear && field.getAttribute('data-phone-status') !== 'error') {
+                    clearFeedback(field);
+                }
+                if (field.getAttribute('data-phone-status') === 'error') {
+                    item.classList.remove('iiidem-field-valid');
+                    item.classList.add('iiidem-field-empty');
+                }
+                return;
+            }
+            if (allowFeedbackClear) {
                 setFeedback(field, invalidPhoneMsg);
             }
         } else if (ok && allowFeedbackClear) {
@@ -407,7 +775,10 @@ $form->display();
 
         phoneInput.setAttribute('type', 'tel');
         phoneInput.setAttribute('autocomplete', 'tel');
-        phoneInput.setAttribute('inputmode', 'tel');
+        phoneInput.setAttribute('inputmode', 'numeric');
+        // National length varies by country; sanitizePhoneInputValue() keeps digits only.
+        phoneInput.setAttribute('maxlength', '16');
+        phoneInput.removeAttribute('pattern');
         phoneInput.classList.add('iiidem-phone-input');
 
         phoneIti = window.intlTelInput(phoneInput, {
@@ -416,7 +787,7 @@ $form->display();
             separateDialCode: true,
             nationalMode: true,
             autoPlaceholder: 'aggressive',
-            formatOnDisplay: true,
+            formatOnDisplay: false,
             utilsScript: (window.M && M.cfg && M.cfg.wwwroot
                 ? M.cfg.wwwroot
                 : '') + '/theme/iiidem2/javascript/intl-tel-input/utils.js'
@@ -437,6 +808,13 @@ $form->display();
         phoneInput.setAttribute('data-iti-ready', '1');
         window.requestAnimationFrame(syncPhoneInputPadding);
 
+        phoneInput.addEventListener('input', function () {
+            sanitizePhoneInputValue();
+            approvedPhone = '';
+            phoneCheckSequence++;
+            phoneInput.removeAttribute('data-phone-status');
+        });
+
         phoneInput.addEventListener('countrychange', function () {
             if (!countrySelect || !phoneIti) {
                 return;
@@ -452,6 +830,8 @@ $form->display();
                     }
                 }
             }
+            // Keep national digits only in the input (no dial-code / country name).
+            sanitizePhoneInputValue();
             window.requestAnimationFrame(syncPhoneInputPadding);
             paint(phoneInput);
         });
@@ -461,6 +841,7 @@ $form->display();
                 if (phoneIti && countrySelect.value) {
                     phoneIti.setCountry(String(countrySelect.value).toLowerCase());
                 }
+                sanitizePhoneInputValue();
                 window.requestAnimationFrame(syncPhoneInputPadding);
                 paint(phoneInput);
             });
@@ -491,6 +872,11 @@ $form->display();
                 if (e.target === emailInput) {
                     approvedEmail = '';
                     emailCheckSequence++;
+                    otpVerifiedEmail = '';
+                }
+                if (e.target === phoneInput) {
+                    approvedPhone = '';
+                    phoneCheckSequence++;
                 }
                 paint(e.target, true);
             }
@@ -518,13 +904,23 @@ $form->display();
         });
     }
 
+    if (phoneInput) {
+        phoneInput.addEventListener('blur', function () {
+            checkPhoneAvailability();
+        });
+    }
+
     form.addEventListener('submit', function (e) {
-        if (!emailInput || bypassEmailCheck) {
+        if (bypassEmailCheck && bypassPhoneCheck) {
             return;
         }
 
-        var email = String(emailInput.value || '').trim().toLowerCase();
-        if (email && approvedEmail === email) {
+        var email = emailInput ? String(emailInput.value || '').trim().toLowerCase() : '';
+        var national = getNationalPhoneDigits();
+        var emailOk = !emailInput || !email || approvedEmail === email;
+        var phoneOk = !phoneInput || !national || approvedPhone === national;
+
+        if (emailOk && phoneOk) {
             return;
         }
 
@@ -532,13 +928,32 @@ $form->display();
         e.stopImmediatePropagation();
         var submitter = e.submitter || null;
 
-        checkEmailAvailability().then(function(available) {
-            if (!available) {
+        var checks = [];
+        if (!emailOk) {
+            checks.push(checkEmailAvailability());
+        } else {
+            checks.push(Promise.resolve(true));
+        }
+        if (!phoneOk) {
+            checks.push(checkPhoneAvailability());
+        } else {
+            checks.push(Promise.resolve(true));
+        }
+
+        Promise.all(checks).then(function(results) {
+            var emailAvailable = results[0];
+            var phoneAvailable = results[1];
+            if (!emailAvailable) {
                 emailInput.focus();
+                return;
+            }
+            if (!phoneAvailable) {
+                phoneInput.focus();
                 return;
             }
 
             bypassEmailCheck = true;
+            bypassPhoneCheck = true;
             try {
                 if (typeof form.requestSubmit === 'function') {
                     if (submitter) {
@@ -551,6 +966,7 @@ $form->display();
                 }
             } finally {
                 bypassEmailCheck = false;
+                bypassPhoneCheck = false;
             }
         });
     }, true);
@@ -571,20 +987,327 @@ $form->display();
             phoneInput.focus();
             return false;
         }
+        var nationalDigits = getNationalPhoneDigits();
         if (phoneIti && typeof phoneIti.getNumber === 'function') {
+            // Allow E.164 value longer than the visible national maxlength.
+            phoneInput.setAttribute('maxlength', '20');
             var countryData = phoneIti.getSelectedCountryData();
-            var nationalDigits = String(phoneInput.value || '').replace(/\D/g, '');
-            // Users commonly type India's trunk prefix 0 even though +91 is
-            // already displayed separately. Remove it before creating E.164.
-            if (countryData && countryData.iso2 === 'in' && /^0[6-9]\d{9}$/.test(nationalDigits)) {
-                phoneIti.setNumber('+91' + nationalDigits.substring(1));
-            }
+            var dial = (countryData && countryData.dialCode) ? String(countryData.dialCode) : '91';
+            phoneIti.setNumber('+' + dial + nationalDigits);
             phoneInput.value = phoneIti.getNumber(); // E.164 e.g. +9198xxxxxxxx
+        } else {
+            phoneInput.setAttribute('maxlength', '20');
+            var iso = countrySelect ? String(countrySelect.value || 'IN').toUpperCase() : 'IN';
+            var dialFallback = (iso === 'IN') ? '91' : '';
+            phoneInput.value = dialFallback ? ('+' + dialFallback + nationalDigits) : nationalDigits;
         }
         clearFeedback(phoneInput);
         paint(phoneInput, true);
         return true;
     }, true);
+
+    function setOtpError(message) {
+        if (!otpError) {
+            return;
+        }
+        if (message) {
+            otpError.hidden = false;
+            otpError.textContent = message;
+        } else {
+            otpError.hidden = true;
+            otpError.textContent = '';
+        }
+    }
+
+    function setOtpStatus(message) {
+        if (!otpStatus) {
+            return;
+        }
+        if (message) {
+            otpStatus.hidden = false;
+            otpStatus.textContent = message;
+        } else {
+            otpStatus.hidden = true;
+            otpStatus.textContent = '';
+        }
+    }
+
+    function openOtpModal(email) {
+        if (!otpModal) {
+            return;
+        }
+        setOtpError('');
+        setOtpStatus('');
+        if (otpInput) {
+            otpInput.value = '';
+        }
+        otpModal.hidden = false;
+        otpModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('iiidem-register-otp-open');
+        if (otpInput) {
+            otpInput.focus();
+        }
+    }
+
+    function closeOtpModal() {
+        if (!otpModal) {
+            return;
+        }
+        otpModal.hidden = true;
+        otpModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('iiidem-register-otp-open');
+        pendingSubmitter = null;
+    }
+
+    function postOtp(url, payload) {
+        var body = new URLSearchParams();
+        Object.keys(payload).forEach(function(key) {
+            body.set(key, payload[key]);
+        });
+        body.set('sesskey', (window.M && M.cfg) ? M.cfg.sesskey : '');
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: body.toString()
+        }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('OTP request failed');
+            }
+            return response.json();
+        });
+    }
+
+    function sendRegistrationOtp() {
+        if (!emailInput || !otpCfg.sendUrl || otpBusy) {
+            return Promise.resolve(false);
+        }
+        var email = String(emailInput.value || '').trim().toLowerCase();
+        var firstname = firstnameInput ? String(firstnameInput.value || '').trim() : '';
+        otpBusy = true;
+        if (otpResendBtn) {
+            otpResendBtn.disabled = true;
+        }
+        setOtpStatus((otpCfg.strings && otpCfg.strings.sending) || 'Sending code…');
+        setOtpError('');
+        return postOtp(otpCfg.sendUrl, {email: email, firstname: firstname}).then(function(result) {
+            otpBusy = false;
+            if (otpResendBtn) {
+                otpResendBtn.disabled = false;
+            }
+            if (!result.ok) {
+                setOtpStatus('');
+                setOtpError(result.message || 'Could not send verification code.');
+                if (result.reason === 'disposable' || result.reason === 'undeliverable'
+                        || result.reason === 'invalid') {
+                    closeOtpModal();
+                    setFeedback(emailInput, result.message || emailDisposableMsg);
+                    paint(emailInput);
+                    showRegisterToast(result.toast || emailToastMsg, result.message || '');
+                    approvedEmail = '';
+                }
+                return false;
+            }
+            setOtpStatus(result.message || '');
+            return true;
+        }).catch(function() {
+            otpBusy = false;
+            if (otpResendBtn) {
+                otpResendBtn.disabled = false;
+            }
+            setOtpStatus('');
+            setOtpError('Could not send verification code. Please try again.');
+            return false;
+        });
+    }
+
+    function showOtpLoading() {
+        hideOtpLoading();
+        var title = (otpCfg.strings && otpCfg.strings.loadingtitle) || 'Verifying your email';
+        var text = (otpCfg.strings && otpCfg.strings.loadingtext)
+            || 'Please wait while we verify your code and create your account…';
+        var overlay = document.createElement('div');
+        overlay.id = 'iiidem-register-otp-loading';
+        overlay.className = 'iiidem-register-otp-loading';
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.innerHTML = ''
+            + '<div class="iiidem-register-otp-loading__card">'
+            +   '<div class="iiidem-register-otp-loading__spinner" aria-hidden="true"></div>'
+            +   '<p class="iiidem-register-otp-loading__title">' + title + '</p>'
+            +   '<p class="iiidem-register-otp-loading__text">' + text + '</p>'
+            + '</div>';
+        document.body.appendChild(overlay);
+        document.body.classList.add('iiidem-register-otp-loading-open');
+        if (otpVerifyBtn) {
+            otpVerifyBtn.setAttribute('aria-busy', 'true');
+            if (!otpVerifyBtn.dataset.originalHtml) {
+                otpVerifyBtn.dataset.originalHtml = otpVerifyBtn.innerHTML;
+            }
+            otpVerifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>'
+                + ((otpCfg.strings && otpCfg.strings.verifying) || 'Verifying…');
+        }
+    }
+
+    function hideOtpLoading() {
+        var overlay = document.getElementById('iiidem-register-otp-loading');
+        if (overlay) {
+            overlay.remove();
+        }
+        document.body.classList.remove('iiidem-register-otp-loading-open');
+        if (otpVerifyBtn) {
+            otpVerifyBtn.removeAttribute('aria-busy');
+            if (otpVerifyBtn.dataset.originalHtml) {
+                otpVerifyBtn.innerHTML = otpVerifyBtn.dataset.originalHtml;
+            }
+        }
+    }
+
+    function verifyRegistrationOtp() {
+        if (!emailInput || !otpCfg.verifyUrl || otpBusy) {
+            return;
+        }
+        var email = String(emailInput.value || '').trim().toLowerCase();
+        var code = otpInput ? String(otpInput.value || '').replace(/\D/g, '') : '';
+        if (!/^[0-9]{6}$/.test(code)) {
+            setOtpError((otpCfg.strings && otpCfg.strings.required) || 'Enter the 6-digit code.');
+            return;
+        }
+        otpBusy = true;
+        if (otpVerifyBtn) {
+            otpVerifyBtn.disabled = true;
+        }
+        if (otpResendBtn) {
+            otpResendBtn.disabled = true;
+        }
+        setOtpError('');
+        setOtpStatus((otpCfg.strings && otpCfg.strings.verifying) || 'Verifying…');
+        showOtpLoading();
+        postOtp(otpCfg.verifyUrl, {email: email, code: code}).then(function(result) {
+            if (!result.ok) {
+                otpBusy = false;
+                hideOtpLoading();
+                if (otpVerifyBtn) {
+                    otpVerifyBtn.disabled = false;
+                }
+                if (otpResendBtn) {
+                    otpResendBtn.disabled = false;
+                }
+                setOtpStatus('');
+                setOtpError(result.message || 'Invalid verification code.');
+                return;
+            }
+            otpVerifiedEmail = email;
+            // Keep loader visible through form submit / account creation.
+            closeOtpModal();
+            bypassEmailCheck = true;
+            bypassPhoneCheck = true;
+            bypassOtpGate = true;
+            try {
+                if (typeof form.requestSubmit === 'function') {
+                    if (pendingSubmitter) {
+                        form.requestSubmit(pendingSubmitter);
+                    } else {
+                        form.requestSubmit();
+                    }
+                } else {
+                    form.submit();
+                }
+            } finally {
+                bypassEmailCheck = false;
+                bypassPhoneCheck = false;
+                bypassOtpGate = false;
+            }
+        }).catch(function() {
+            otpBusy = false;
+            hideOtpLoading();
+            if (otpVerifyBtn) {
+                otpVerifyBtn.disabled = false;
+            }
+            if (otpResendBtn) {
+                otpResendBtn.disabled = false;
+            }
+            setOtpStatus('');
+            setOtpError('Could not verify the code. Please try again.');
+        });
+    }
+
+    function startOtpFlow(submitter) {
+        var email = emailInput ? String(emailInput.value || '').trim().toLowerCase() : '';
+        pendingSubmitter = submitter || null;
+        // Re-validate email quality before opening OTP (blocks disposable / test domains).
+        checkEmailAvailability().then(function(ok) {
+            if (!ok) {
+                if (emailInput) {
+                    emailInput.focus();
+                }
+                return;
+            }
+            openOtpModal(email);
+            sendRegistrationOtp();
+        });
+    }
+
+    form.addEventListener('submit', function (e) {
+        if (bypassOtpGate || !otpModal || !otpCfg.sendUrl) {
+            return;
+        }
+
+        var email = emailInput ? String(emailInput.value || '').trim().toLowerCase() : '';
+        var national = getNationalPhoneDigits();
+        var emailOk = !emailInput || !email || approvedEmail === email;
+        var phoneOk = !phoneInput || !national || approvedPhone === national;
+
+        // Invalid / unapproved email must never fall through silently.
+        if (!emailOk || !isValidEmailFormat(email)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            checkEmailAvailability().then(function(ok) {
+                if (!ok && emailInput) {
+                    emailInput.focus();
+                }
+            });
+            return;
+        }
+        if (!phoneOk) {
+            return;
+        }
+        if (email && otpVerifiedEmail === email) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        startOtpFlow(e.submitter || null);
+    }, true);
+
+    if (otpModal) {
+        otpModal.querySelectorAll('[data-otp-close]').forEach(function(el) {
+            el.addEventListener('click', function () {
+                closeOtpModal();
+            });
+        });
+    }
+    if (otpVerifyBtn) {
+        otpVerifyBtn.addEventListener('click', verifyRegistrationOtp);
+    }
+    if (otpResendBtn) {
+        otpResendBtn.addEventListener('click', function () {
+            sendRegistrationOtp();
+        });
+    }
+    if (otpInput) {
+        otpInput.addEventListener('input', function () {
+            otpInput.value = String(otpInput.value || '').replace(/\D/g, '').slice(0, 6);
+            setOtpError('');
+        });
+        otpInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyRegistrationOtp();
+            }
+        });
+    }
 
     ensurePhoneWidget();
     paintAll();
