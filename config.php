@@ -197,7 +197,16 @@ if ($env === 'production') {
     @ini_set('display_errors', '1');
     $CFG->debug = (E_ALL | E_STRICT);
     $CFG->debugdisplay = 1;
-    $CFG->themedesignermode = ($env === 'dev');
+    // Theme designer mode recompiles SCSS on every request and makes admin
+    // pages very slow. Enable only when explicitly developing theme CSS:
+    //   set MOODLE_THEME_DESIGNER=1 in the environment.
+    $CFG->themedesignermode = !empty(getenv('MOODLE_THEME_DESIGNER'));
+    $CFG->cachejs = true;
+
+    // DDEV / local: allow Moodle cURL to call its own wwwroot (mobile app
+    // settings HEAD-check). Default private-IP blocklist breaks that and
+    // floods admin pages with "URL is blocked" debugging.
+    $CFG->curlsecurityblockedhosts = '';
 }
 
 /* -------------------------------------------------------------------------
