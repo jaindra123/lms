@@ -92,10 +92,18 @@
     }
 
     function poll() {
-        var url = apiurl + '?action=getactive&courseid=' + encodeURIComponent(courseid) +
-            '&cmid=' + encodeURIComponent(cmid) + '&sesskey=' + encodeURIComponent(sesskey);
+        var body = new URLSearchParams();
+        body.set('action', 'getactive');
+        body.set('courseid', courseid);
+        body.set('cmid', cmid);
+        body.set('sesskey', sesskey);
 
-        fetch(url, {credentials: 'same-origin'})
+        fetch(apiurl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: body.toString()
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.status === 'waiting') {

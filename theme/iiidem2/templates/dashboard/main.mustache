@@ -25,11 +25,11 @@
     {{/isteacher}}
 
     {{#isadmin}}
-    <div class="container-fluid py-4">
-        <div class="iiidem-dashboard-welcome mb-4">
+    <div class="container-fluid py-4 px-3 px-md-4 px-xl-5">
+        <header class="iiidem-dashboard-welcome mb-4 eci-card eci-card__body">
             <h1 class="h2 mb-1">{{#str}}dashboardwelcome, theme_iiidem2, {{fullname}}{{/str}}</h1>
             <p class="text-muted mb-0">{{#str}}dashboardroleadmin, theme_iiidem2{{/str}}</p>
-        </div>
+        </header>
 
         {{#hascoursecards}}
         <section class="iiidem-student-section mb-4" id="my-courses">

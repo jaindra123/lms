@@ -27,6 +27,16 @@ defined('MOODLE_INTERNAL') || die();
 $string['pluginname'] = 'IIIDEM 2';
 $string['choosereadme'] = 'Custom Moodle theme based on Boost.';
 
+$string['eciskiptomain'] = 'Skip to main content';
+
+$string['footerinstitutename'] = 'India International Institute of Democracy & Election Management';
+$string['footerquicklinks'] = 'Quick Links';
+$string['footercopyright'] = 'Copyright IIIDEM 2026. All Rights Reserved';
+$string['footeraboutdesc'] = 'The India International Institute of Democracy and Election Management (IIIDEM) is a global knowledge and capacity-building center dedicated to advancing democratic governance and strengthening electoral integrity. It serves as an international forum for dialogue, learning, and innovation on democratic processes, bringing together experts, institutions, and practitioners from around the world.';
+$string['footeraddressdefault'] = 'Sector-13, Dwarka, Delhi, 110078, India';
+$string['footerphonedefault'] = '+91-11-25303512';
+$string['footeremaildefault'] = 'it-iiidem@eci.gov.in';
+
 $string['headerlogo'] = 'Header logo (fallback)';
 $string['headerlogo_desc'] = 'Optional fallback only when no logo is set under Site administration → Appearance → Logos. The navbar uses the site Compact logo first, then the main Logo, then this setting.';
 $string['footerlogo'] = 'Footer Logo';
@@ -79,6 +89,11 @@ $string['dashboardteacherlivemcqbtn'] = 'Manage';
 $string['quizmcq_customize_hint'] = 'Quiz attempt UI is controlled by theme layouts and CSS: layout/quizattempt.php, templates/layout/quizattempt.mustache, style/quiz-mcq.css, and classes/output/mod_quiz/renderer.php.';
 $string['coursequizzes_eyebrow'] = 'Assessment';
 $string['curriculumpreview'] = 'Preview';
+$string['curriculumgroupreading'] = 'Reading material';
+$string['curriculumgrouplive'] = 'Live sessions';
+$string['curriculumgroupassignments'] = 'Assignments';
+$string['curriculumgroupquizzes'] = 'Quizzes';
+$string['curriculumgroupother'] = 'Other activities';
 $string['curriculumassignsubmit'] = 'Submit assignment';
 $string['curriculumassigncontinuesubmit'] = 'Continue submission';
 $string['curriculumassignviewsubmission'] = 'View submission';
@@ -154,6 +169,31 @@ $string['dashboardnavrecordings'] = 'Recordings';
 $string['dashboardnavgrades'] = 'Grades';
 $string['dashboardnavcertificate'] = 'Certificate';
 $string['dashboardnavsupport'] = 'Support';
+$string['dashboardnavattendance'] = 'My attendance';
+$string['dashboardstudentattendance'] = 'My attendance';
+$string['dashboardstudentattendanceview'] = 'Full attendance';
+$string['dashboardstudentattendancenotmarked'] = 'Not marked';
+$string['dashboardstudentattendancenorecords'] = 'No attendance sessions yet.';
+$string['dashboardstudentattendancesummary'] = 'Present {$a->present} of {$a->total} marked sessions ({$a->percent}%)';
+$string['dashboardstudentattendanceownonly'] = 'You can only view your own attendance.';
+
+$string['certificatesettings'] = 'Completion certificates';
+$string['certificatesettings_desc'] = 'Automatically issue a PDF certificate (student name + course name) when a student completes an assignment.';
+$string['certificateenabled'] = 'Enable assignment completion certificates';
+$string['certificateenabled_desc'] = 'When enabled, students receive a downloadable Certificate of Completion after the assignment is completed (or graded).';
+$string['certificateassigncmids'] = 'Assignment activity IDs (optional)';
+$string['certificateassigncmids_desc'] = 'Comma-separated course-module IDs of assignments that should issue a certificate. Leave empty to issue on any assignment completion in the course.';
+$string['certificatesignatory'] = 'Signatory name';
+$string['certificatesignatory_desc'] = 'Name printed under the signature line.';
+$string['certificatesignatorytitle'] = 'Signatory title';
+$string['certificatesignatorytitle_desc'] = 'Title printed under the signatory name.';
+$string['certificatelocation'] = 'Certificate location line';
+$string['certificatelocation_desc'] = 'City/country line printed under the date (for example: Delhi India).';
+$string['dashboardstudentcertificates'] = 'My certificates';
+$string['dashboardstudentcertificatesempty'] = 'No certificates yet. Complete your course assignment to earn a Certificate of Completion.';
+$string['dashboardstudentcertificatedownload'] = 'Download PDF';
+$string['dashboardstudentcertificateissued'] = 'Issued {$a}';
+
 $string['adminnavpayment'] = 'Payment';
 $string['dashboardsupporttitle'] = 'Help & Support';
 $string['dashboardsupportlead'] = 'Browse FAQs, raise a ticket, or contact the IIIDEM support team.';
@@ -170,6 +210,7 @@ $string['dashboardsessionsoon'] = 'Soon';
 $string['dashboardwelcome'] = 'Welcome, {$a}';
 $string['dashboardloaderrortitle'] = 'Dashboard temporarily unavailable';
 $string['dashboardloaderrormessage'] = 'We could not load your dashboard right now. Please try again. If the problem continues, contact the site administrator.';
+$string['genericerror'] = 'Something went wrong. Please try again. If the problem continues, contact support.';
 $string['dashboardretry'] = 'Try again';
 $string['dashboardroleadmin'] = 'You are viewing the administrator dashboard.';
 $string['dashboardroleteacher'] = 'You are viewing the teacher dashboard.';
@@ -326,6 +367,48 @@ $string['dashboardteacherstudentattendancenorecords'] = 'No attendance sessions 
 $string['dashboardteachernavgrading'] = 'Grading';
 $string['dashboardteachernavcontent'] = 'Content Library';
 $string['dashboardteachernavcapstone'] = 'Capstone';
+$string['teachermaterialspagetitle'] = 'Upload course materials';
+$string['teachermaterialspagesubtitle'] = 'Upload a file for your students. They can open it from the course curriculum.';
+$string['teachermaterialsuploadheading'] = 'New file for students';
+$string['teachermaterialslistheading'] = 'Recent materials';
+$string['teachermaterialscourse'] = 'Course';
+$string['teachermaterialssection'] = 'Course section';
+$string['teachermaterialstitle'] = 'File title';
+$string['teachermaterialstitle_help'] = 'This title is shown to students in the course curriculum.';
+$string['teachermaterialsintro'] = 'Description (optional)';
+$string['teachermaterialsfile'] = 'File';
+$string['teachermaterialsfile_help'] = 'Upload one non-executable file (PDF, Office, OpenDocument, plain text, or image: PNG/JPG/GIF/WebP). Scripts, HTML, SVG, and executables are blocked.';
+$string['teachermaterialsinvalidtype'] = 'This file type is not allowed ({$a}). Upload a PDF, Office/OpenDocument file, text, or image (PNG/JPG/GIF/WebP).';
+$string['teachermaterialsmaxsize'] = 'Maximum upload size: {$a}';
+$string['teachermaterialssubmit'] = 'Upload for students';
+$string['teachermaterialssuccess'] = 'File uploaded. Students can see it in the course curriculum.';
+$string['teachermaterialsnocourses'] = 'You do not have permission to upload materials in any course.';
+$string['teachermaterialsempty'] = 'No uploaded files yet. Upload a file on the left to share it with students.';
+$string['teachermaterialsviewincourse'] = 'View in course';
+$string['teachermaterialsquickaction'] = 'Upload material';
+$string['teacherassignmentpagetitle'] = 'Create assignment';
+$string['teacherassignmentpagesubtitle'] = 'Create an assignment for students without turning on Edit mode. They submit from the course; you grade from the queue.';
+$string['teacherassignmentuploadheading'] = 'New assignment';
+$string['teacherassignmentlistheading'] = 'Your assignments';
+$string['teacherassignmentcourse'] = 'Course';
+$string['teacherassignmentsection'] = 'Course section';
+$string['teacherassignmentname'] = 'Assignment name';
+$string['teacherassignmentname_help'] = 'This name is shown to students in the course curriculum.';
+$string['teacherassignmentintro'] = 'Instructions (optional)';
+$string['teacherassignmentallowfrom'] = 'Allow submissions from';
+$string['teacherassignmentduedate'] = 'Due date';
+$string['teacherassignmentgrade'] = 'Maximum grade';
+$string['teacherassignmentgradeinvalid'] = 'Enter a grade between 0 and 1000.';
+$string['teacherassignmentmaxfiles'] = 'Max files per submission';
+$string['teacherassignmentmaxfilesinvalid'] = 'Enter a number between 1 and 20.';
+$string['teacherassignmentonlinetext'] = 'Also allow online text submissions';
+$string['teacherassignmentduebeforeallow'] = 'Due date must be on or after the allow-from date.';
+$string['teacherassignmentsubmit'] = 'Create assignment';
+$string['teacherassignmentsuccess'] = 'Assignment created. Students can submit from the course; use this page to check submissions.';
+$string['teacherassignmentnocourses'] = 'You do not have permission to create assignments in any course.';
+$string['teacherassignmentempty'] = 'No assignments yet. Create one on the left.';
+$string['teacherassignmentchecksubmissions'] = 'Check submissions';
+$string['teacherassignmentquickaction'] = 'Create assignment';
 $string['dashboardteacherstartsinn'] = 'starts in {$a} min';
 $string['dashboardteacherlivestarting'] = 'starting now';
 $string['dashboardteacherbtnstart'] = 'Start';
@@ -393,6 +476,12 @@ $string['curriculumtotalduration'] = 'Total Duration';
 $string['curriculumtotallectures'] = 'Total Lectures';
 $string['curriculumlecturescount'] = '{$a} Lectures';
 $string['courseinstructorsheading'] = 'Meet your Professors';
+$string['courseinstructorviewbio'] = 'View biography for';
+$string['courseinstructorfullprofile'] = 'View full profile';
+$string['featuredinstructors'] = 'Featured professors (Meet your Professors)';
+$string['featuredinstructors_desc'] = 'Optional. Control which teachers appear under “Meet your Professors”. One course per line: <code>courseid:userid,userid</code>. Example for course 4 showing users 12 and 15:<br><code>4:12,15</code><br>User ID is in the profile URL (<code>/user/profile.php?id=12</code>). Order is preserved. If a course has no line here, the max-count setting below is used.';
+$string['maxinstructors'] = 'Max professors to show';
+$string['maxinstructors_desc'] = 'When a course has no featured list above, show at most this many teachers (editing teachers first). Use 0 to show all.';
 $string['coursefaqheading'] = 'Frequently asked questions';
 $string['coursefaqempty'] = 'No questions have been added for this course yet.';
 $string['mycoursespageintro'] = 'Browse and continue your enrolled courses.';
@@ -415,6 +504,8 @@ $string['homepagechatbotsuccess'] = 'Sent to the administrator. Their reply will
 $string['homepagechatboterror'] = 'Sorry, we could not send your question. Please try again.';
 $string['homepagechatbotvalidation'] = 'Please enter your name, a valid email, and a short question.';
 $string['homepagechatbotthrottle'] = 'Please wait a moment before sending another question.';
+$string['ratelimited'] = 'Too many requests. Please wait a moment and try again.';
+$string['registerotpratelimit'] = 'Too many verification emails from this network. Please wait and try again.';
 $string['homepagechatbotqueries'] = 'Chatbot queries';
 $string['homepagechatbotqueriesintro'] = 'Visitor questions from the homepage chatbot. Reply here or use the floating chat button while logged in as admin.';
 $string['homepagechatbotqueriesempty'] = 'No chatbot questions yet.';
@@ -591,13 +682,13 @@ $string['curriculumenrolrequiredunderstood'] = 'OK';
 
 $string['loginsignup'] = 'Sign up';
 $string['registerpagetitle'] = 'Create your account';
-$string['registerpagesubtitle'] = 'Register to access IIIDEM courses, live classes, and certificates. After email verification your profile will be reviewed by an administrator.';
+$string['registerpagesubtitle'] = 'Register to access IIIDEM courses, live classes, and certificates.';
 $string['registerfirstname'] = 'First name';
 $string['registermiddlename'] = 'Middle name';
 $string['registerlastname'] = 'Last name';
 $string['registercontact'] = 'Contact number';
-$string['registercontact_help'] = 'Select your country code, then enter your mobile number (digits only). Example for India: 9876543210 (saved as +919876543210).';
-$string['registerphoneinvalid'] = 'Enter a valid contact number (digits only, no letters or symbols).';
+$string['registercontact_help'] = 'Select your country code, then enter your mobile number (digits only). Length can vary by country. Example for India: 9876543210 (saved as +919876543210).';
+$string['registerphoneinvalid'] = 'Enter a valid contact number (digits only, typically 4–15 digits).';
 $string['registerphoneexists'] = 'This contact number is already registered.';
 $string['registerphoneplaceholder'] = 'Mobile number';
 $string['registeremaildisposable'] = 'Please check the email. Temporary, disposable, or test email addresses (for example @mailinator.com, @tempmail.com, @test.com) are not allowed. Use Gmail, Yahoo, Hotmail, Outlook, or your organisation email.';
@@ -607,14 +698,14 @@ $string['registerotpmodaltitle'] = 'Verify your email';
 $string['registerotpmodalintro'] = 'Enter the 6-digit verification code we sent to your email address.';
 $string['registerotplabel'] = 'Verification code';
 $string['registerotpplaceholder'] = '6-digit code';
-$string['registerotpverify'] = 'Verify & submit';
+$string['registerotpverify'] = 'Verify & create account';
 $string['registerotpresend'] = 'Resend code';
 $string['registerotpsending'] = 'Sending verification code…';
 $string['registerotpverifying'] = 'Verifying code…';
 $string['registerotprequiredcode'] = 'Enter the 6-digit verification code.';
 $string['registerotpsubject'] = 'Your {$a} registration verification code';
 $string['registerotptitle'] = 'Email verification';
-$string['registerotpintro'] = 'Use this code to finish your registration. It expires in {$a->minutes} minutes.';
+$string['registerotpintro'] = 'Use this code to finish creating your account. It expires in {$a->minutes} minutes.';
 $string['registerotpbody'] = 'Hello {$a->firstname},
 
 Your {$a->sitename} registration verification code is: {$a->code}
@@ -631,78 +722,15 @@ $string['registerotpexpired'] = 'This verification code has expired. Please requ
 $string['registerotpinvalid'] = 'That verification code is incorrect. Please try again.';
 $string['registerotplocked'] = 'Too many incorrect attempts. Please request a new code.';
 $string['registerotpverified'] = 'Email verified successfully.';
-$string['registerotprequired'] = 'Please verify your email with the code we sent before submitting your registration.';
+$string['registerotprequired'] = 'Please verify your email with the code we sent before creating your account.';
 $string['registerotploadingtitle'] = 'Verifying your email';
-$string['registerotploadingtext'] = 'Please wait while we verify your code and submit your registration…';
+$string['registerotploadingtext'] = 'Please wait while we verify your code and create your account…';
 
-$string['registercreateaccount'] = 'Submit registration';
+$string['registercreateaccount'] = 'Create account';
 $string['registerhaveaccount'] = 'Already have an account?';
-$string['registersuccess'] = 'Your registration has been submitted.';
-$string['registersuccesstitle'] = 'Registration submitted';
-$string['registersuccessbody'] = 'Your profile is under process. You will receive an email when an administrator approves your registration.';
-$string['registerpendingtitle'] = 'Registration submitted';
-$string['registerpendingbody'] = 'Thank you for registering. Your profile is under process. An administrator will review your details. After approval you will receive an email with your username and password so you can sign in and enrol.';
-$string['registerpendinglogin'] = 'Go to sign in';
-
-$string['pendingregistrations'] = 'Pending registrations';
-$string['pendingregistrationsopen'] = 'Open pending registrations';
-$string['pendingregistrationsintroshort'] = 'Review and approve or reject new portal registrations:';
-$string['pendingregistrationssetting'] = '<div class="iiidem-pending-regs-setting">'
-    . '<p class="mb-2">Review and approve or reject new portal registrations.</p>'
-    . '<a class="btn btn-secondary" href="{$a}" >Open pending registrations</a>'
-    . '</div>';
-$string['pendingregistrationsintro'] = 'Review new portal registrations. Approving sends the user their username and password and enrols them in the configured course(s). Rejecting notifies them that they cannot enrol.';
-$string['pendingregistrationsempty'] = 'There are no registrations waiting for approval.';
-$string['pendingregapprove'] = 'Approve';
-$string['pendingregreject'] = 'Reject';
-$string['pendingregapproveconfirm'] = 'Approve this registration and email login credentials to the user?';
-$string['pendingregrejectconfirm'] = 'Reject this registration and email the applicant that they cannot enrol?';
-$string['pendingregusernotfound'] = 'User not found.';
-$string['pendingregalreadyapproved'] = 'This registration has already been approved.';
-$string['pendingregalreadyrejected'] = 'This registration has already been rejected.';
-$string['pendingregapprovedok'] = '{$a} has been approved. Login credentials were emailed.';
-$string['pendingregrejectedok'] = '{$a} has been rejected. A notification email was sent.';
-
-$string['registeremailpendingsubject'] = '{$a->sitename}: Registration received — profile under process';
-$string['registeremailpendingtitle'] = 'Registration received';
-$string['registeremailpendingintro'] = 'Thank you for registering on {$a->sitename}. Your profile is under process and will be reviewed by an administrator. You will receive another email once your registration is approved, with your login details.';
-$string['registeremailpendinglabel_status'] = 'Status';
-$string['registeremailpendingstatus'] = 'Under process — awaiting admin approval';
-$string['registeremailpendingnote'] = 'You cannot sign in until an administrator approves your registration. For assistance, contact the {$a->sitename} support team.';
-$string['registeremailpendingbody'] = 'Dear {$a->firstname},
-
-Thank you for registering on {$a->sitename}.
-
-Your profile is under process and will be reviewed by an administrator. After approval you will receive an email with your username and password so you can sign in and enrol for further processes.
-
-You cannot sign in until your registration is approved.
-
-For any assistance, please contact the {$a->sitename} support team.
-
-Regards,
-{$a->sitename} Administrator
-';
-
-$string['registeremailapprovedsubject'] = '{$a->sitename}: Registration approved — you can sign in';
-$string['registeremailapprovedtitle'] = 'Your registration is approved';
-$string['registeremailapprovedintro'] = 'Your registration on {$a->sitename} has been approved by an administrator. You can now sign in using the credentials below and enrol for further processes:';
-
-$string['registeremailrejectedsubject'] = '{$a->sitename}: Registration not approved';
-$string['registeremailrejectedtitle'] = 'Registration not approved';
-$string['registeremailrejectedintro'] = 'We are sorry to inform you that your registration on {$a->sitename} was not approved. You cannot enrol on our portal at this time.';
-$string['registeremailrejectednote'] = 'If you believe this is a mistake, please contact the {$a->sitename} support team.';
-$string['registeremailrejectedbody'] = 'Dear {$a->firstname},
-
-We are sorry to inform you that your registration on {$a->sitename} was not approved by an administrator.
-
-You cannot enrol on our website at this time.
-
-If you believe this is a mistake, please contact the {$a->sitename} support team.
-
-Regards,
-{$a->sitename} Administrator
-';
-
+$string['registersuccess'] = 'Your account has been created. Welcome!';
+$string['registersuccesstitle'] = 'Registration successful';
+$string['registersuccessbody'] = 'Your account has been created successfully. You can now explore the course and complete enrolment when you are ready.';
 $string['registeremailusersubject'] = '{$a->sitename}: Account created';
 $string['registeremailusertitle'] = 'Welcome to {$a->sitename}!';
 $string['registeremailuserintro'] = 'Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:';
@@ -747,7 +775,7 @@ $string['registeremailuserbody'] = 'Dear {$a->firstname},
 
 Welcome to {$a->sitename}!
 
-Your registration has been approved by an administrator. You can now access the {$a->sitename} Learning Management System using the credentials below:
+Your account has been created successfully. You can now access the {$a->sitename} Learning Management System using the credentials below:
 
 Username: {$a->username}
 Email: {$a->email}
@@ -766,8 +794,8 @@ For any assistance, please contact the {$a->sitename} support team.
 Regards,
 {$a->sitename} Administrator
 ';
-$string['registeremailadminsubject'] = '{$a->sitename}: New registration awaiting approval';
-$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename} and is awaiting approval.
+$string['registeremailadminsubject'] = '{$a->sitename}: New user registration';
+$string['registeremailadminbody'] = 'A new user has registered on {$a->sitename}.
 
 Name: {$a->fullname}
 Username: {$a->username}
@@ -777,14 +805,11 @@ Country: {$a->country}
 City: {$a->city}
 Role: {$a->occupation}
 
-Review and approve or reject:
-{$a->reviewurl}
-
 Profile: {$a->profileurl}
 
 {$a->admin}
 ';
-$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong> and is awaiting approval.</p>
+$string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a->sitename}</strong>.</p>
 <ul>
 <li><strong>Name:</strong> {$a->fullname}</li>
 <li><strong>Username:</strong> {$a->username}</li>
@@ -794,7 +819,6 @@ $string['registeremailadminhtml'] = '<p>A new user has registered on <strong>{$a
 <li><strong>City:</strong> {$a->city}</li>
 <li><strong>Role:</strong> {$a->occupation}</li>
 </ul>
-<p><a href="{$a->reviewurl}">Review pending registrations</a></p>
 <p><a href="{$a->profileurl}">View user profile</a></p>
 <p>{$a->admin}</p>';
 $string['registersmsbody'] = 'Hi {$a->firstname}, your {$a->sitename} account is ready. Username: {$a->username}. Set password: {$a->resetlink}';
@@ -845,24 +869,25 @@ $string['msg91whatsappnamespace'] = 'MSG91 WhatsApp template namespace (optional
 $string['msg91whatsappnamespace_desc'] = 'Meta template namespace if your MSG91 setup requires it.';
 $string['registeroccupation'] = 'Role';
 $string['registrationcourseids'] = 'Registration course IDs';
-$string['registrationcourseids_desc'] = 'Comma-separated course IDs that receive newly registered users (for example: 4,5). Students and NON-EMB professionals are enrolled as suspended until fee payment succeeds; EMB professionals and instructors are enrolled as active participants. Each paid course must have an enabled Enrolment on payment method, and exempt users require an enabled Manual enrolment method.';
+$string['registrationcourseids_desc'] = 'Comma-separated course IDs that receive newly registered users (for example: 4,5). Students and NON-EMB professionals are enrolled as suspended until fee payment succeeds; EMB professionals are enrolled as active students; Professors/Instructors are enrolled as Teachers (editingteacher) so they get the teacher dashboard. Each paid course must have an enabled Enrolment on payment method, and exempt users require an enabled Manual enrolment method.';
 $string['registeroccupationworking'] = 'Working professional / NON-EMB';
 $string['registeroccupationworkingemb'] = 'Working professional / EMB';
-$string['registeroccupationstudent'] = 'Student';
-$string['registeroccupationinstructor'] = 'Professor / Instructor';
+$string['registeroccupationstudent'] = 'Graduate Student';
+$string['registeroccupationinstructor'] = 'Instructor';
 $string['registeroccupationrequired'] = 'Please select your role.';
 $string['registerworkingprofile'] = 'Working professional / NON-EMB details';
 $string['registerworkingembprofile'] = 'Working professional / EMB details';
-$string['registerstudentprofile'] = 'Student details';
-$string['registerinstructorprofile'] = 'Professor / Instructor details';
+$string['registerstudentprofile'] = 'Graduate Student details';
+$string['registerinstructorprofile'] = 'Instructor details';
 $string['registerpasswordheader'] = 'Password';
 $string['registerpasswordshouldbe'] = 'Password requirements';
+$string['registerpasswordsmustmatch'] = 'both should be Same';
 $string['registeremb'] = 'I am from an EMB';
 $string['registerembrequired'] = 'Please confirm that you are from an EMB.';
 $string['registerpolicymaker'] = 'Policymaker';
 $string['registerjournalist'] = 'Journalist';
 $string['registerelectoralpractitioner'] = 'Electoral practitioner';
-$string['registerresearcher'] = 'Researcher / Academician';
+$string['registerresearcher'] = 'Researcher(PHD)/ Academician(Professors)';
 $string['registerworkingcategoryrequired'] = 'Please select one option (Policymaker, Journalist, or Researcher).';
 $string['registerorganization'] = 'Organization';
 $string['registerorganisation'] = 'Organisation';

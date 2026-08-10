@@ -69,7 +69,10 @@ if ($ADMIN->fulltree) {
     $name = 'theme_iiidem2/backgroundimage';
     $title = get_string('backgroundimage', 'theme_iiidem2');
     $description = get_string('backgroundimage_desc', 'theme_iiidem2');
-    $setting = new admin_setting_configstoredfile($name, $title, $description, 'backgroundimage');
+    $setting = new admin_setting_configstoredfile($name, $title, $description, 'backgroundimage', 0, [
+        'maxfiles' => 1,
+        'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+    ]);
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
@@ -77,7 +80,10 @@ if ($ADMIN->fulltree) {
     $name = 'theme_iiidem2/loginbackgroundimage';
     $title = get_string('loginbackgroundimage', 'theme_iiidem2');
     $description = get_string('loginbackgroundimage_desc', 'theme_iiidem2');
-    $setting = new admin_setting_configstoredfile($name, $title, $description, 'loginbackgroundimage');
+    $setting = new admin_setting_configstoredfile($name, $title, $description, 'loginbackgroundimage', 0, [
+        'maxfiles' => 1,
+        'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+    ]);
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
@@ -97,7 +103,9 @@ if ($ADMIN->fulltree) {
         $name,
         $title,
         $description,
-        'headerlogo'
+        'headerlogo',
+        0,
+        ['maxfiles' => 1, 'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp']]
     );
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
@@ -114,19 +122,21 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
     $page->add($setting);
 
+    $name = 'theme_iiidem2/featuredinstructors';
+    $title = get_string('featuredinstructors', 'theme_iiidem2');
+    $description = get_string('featuredinstructors_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtextarea($name, $title, $description, '', PARAM_RAW);
+    $page->add($setting);
+
+    $name = 'theme_iiidem2/maxinstructors';
+    $title = get_string('maxinstructors', 'theme_iiidem2');
+    $description = get_string('maxinstructors_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtext($name, $title, $description, '4', PARAM_INT);
+    $page->add($setting);
+
     $name = 'theme_iiidem2/registrationcourseids';
     $title = get_string('registrationcourseids', 'theme_iiidem2');
-    $pendingurl = (new moodle_url('/theme/iiidem2/admin/pending_registrations.php'))->out(false);
-    $description = get_string('registrationcourseids_desc', 'theme_iiidem2')
-        . html_writer::div(
-            html_writer::tag('p', get_string('pendingregistrationsintroshort', 'theme_iiidem2'), ['class' => 'mb-2 mt-3'])
-            . html_writer::link(
-                $pendingurl,
-                get_string('pendingregistrationsopen', 'theme_iiidem2'),
-                ['class' => 'btn btn-secondary']
-            ),
-            'iiidem-pending-regs-setting'
-        );
+    $description = get_string('registrationcourseids_desc', 'theme_iiidem2');
     $setting = new admin_setting_configtext($name, $title, $description, '4', PARAM_TEXT);
     $page->add($setting);
 
@@ -204,7 +214,9 @@ if ($ADMIN->fulltree) {
                 'theme_iiidem2/slideimage' . $i,
                 'Slide Image',
                 '',
-                'slideimage' . $i
+                'slideimage' . $i,
+                0,
+                ['maxfiles' => 1, 'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp']]
             );
 
             $setting->set_updatedcallback('theme_reset_all_caches');
@@ -412,7 +424,9 @@ $setting = new admin_setting_configstoredfile(
     $name,
     $title,
     $description,
-    'footerlogo'
+    'footerlogo',
+    0,
+    ['maxfiles' => 1, 'accepted_types' => ['.png', '.jpg', '.jpeg', '.gif', '.webp']]
 );
 $setting->set_updatedcallback('theme_reset_all_caches');
 $page->add($setting);
@@ -421,7 +435,7 @@ $page->add($setting);
 $name = 'theme_iiidem2/copyrighttext';
 $title = 'Copyright Text';
 $description = 'Footer copyright text';
-$default = '© 2026 IIIDEM. All Rights Reserved.';
+$default = 'Copyright IIIDEM 2026. All Rights Reserved';
 
 $setting = new admin_setting_configtext(
     $name,
@@ -815,5 +829,51 @@ $page->add(new admin_setting_configtext(
     PARAM_TEXT
 ));
 
+$settings->add($page);
+
+// Assignment completion certificates.
+$page = new admin_settingpage(
+    'theme_iiidem2_certificates',
+    get_string('certificatesettings', 'theme_iiidem2')
+);
+$page->add(new admin_setting_heading(
+    'theme_iiidem2/certificateheading',
+    get_string('certificatesettings', 'theme_iiidem2'),
+    get_string('certificatesettings_desc', 'theme_iiidem2')
+));
+$page->add(new admin_setting_configcheckbox(
+    'theme_iiidem2/certificateenabled',
+    get_string('certificateenabled', 'theme_iiidem2'),
+    get_string('certificateenabled_desc', 'theme_iiidem2'),
+    1
+));
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/certificateassigncmids',
+    get_string('certificateassigncmids', 'theme_iiidem2'),
+    get_string('certificateassigncmids_desc', 'theme_iiidem2'),
+    '',
+    PARAM_TEXT
+));
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/certificatesignatory',
+    get_string('certificatesignatory', 'theme_iiidem2'),
+    get_string('certificatesignatory_desc', 'theme_iiidem2'),
+    'Rakesh Kumar Verma',
+    PARAM_TEXT
+));
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/certificatesignatorytitle',
+    get_string('certificatesignatorytitle', 'theme_iiidem2'),
+    get_string('certificatesignatorytitle_desc', 'theme_iiidem2'),
+    'Director General (IIIDEM)',
+    PARAM_TEXT
+));
+$page->add(new admin_setting_configtext(
+    'theme_iiidem2/certificatelocation',
+    get_string('certificatelocation', 'theme_iiidem2'),
+    get_string('certificatelocation_desc', 'theme_iiidem2'),
+    'Delhi India',
+    PARAM_TEXT
+));
 $settings->add($page);
 }

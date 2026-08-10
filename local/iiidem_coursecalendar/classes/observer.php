@@ -33,7 +33,8 @@ class observer {
         try {
             manager::cancel_by_webex_cmid((int) $event->objectid);
         } catch (\Throwable $e) {
-            self::report_failure('delete', $e);
+            // Never print to browser during delete — redirects must complete.
+            error_log('local_iiidem_coursecalendar (delete): ' . $e->getMessage());
         }
     }
 
@@ -66,17 +67,11 @@ class observer {
     }
 
     /**
-     * Quiet failure: log + short admin/teacher notice. Never dump stack traces to the browser.
+     * Quiet failure: log details; show a generic notice only (no API/SQL text in browser).
      */
     private static function report_failure(string $context, \Throwable $e): void {
-        error_log('local_iiidem_coursecalendar (' . $context . '): ' . $e->getMessage());
-        // Strip HTML/links noise for on-screen notice.
-        $msg = trim(strip_tags($e->getMessage()));
-        $msg = preg_replace('#https?://\S+#', '', $msg);
-        $msg = trim(preg_replace('/\s+/', ' ', $msg));
-        if ($msg === '') {
-            $msg = get_string('error');
-        }
-        \core\notification::error(get_string('googleapisyncfailed', 'local_iiidem_coursecalendar', shorten_text($msg, 220)));
+        error_log('local_iiidem_coursecalendar (' . $context . '): ' . $e->getMessage()
+            . ' in ' . $e->getFile() . ':' . $e->getLine());
+        \core\notification::error(get_string('googleapisyncfailed', 'local_iiidem_coursecalendar'));
     }
 }

@@ -1,0 +1,68 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_materials
+
+    Teacher upload page for course File materials students can view.
+}}
+<div class="iiidem-teacher-dashboard-v2 iiidem-teacher-materials-page">
+    {{> theme_iiidem2/dashboard/teacher_sidebar }}
+
+    <div class="iiidem-teacher-main">
+        <header class="iiidem-teacher-topbar">
+            <div class="iiidem-teacher-topbar__heading">
+                <h1 class="iiidem-teacher-topbar__title">{{#str}}teachermaterialspagetitle, theme_iiidem2{{/str}}</h1>
+                <p class="iiidem-teacher-topbar__subtitle">{{#str}}teachermaterialspagesubtitle, theme_iiidem2{{/str}}</p>
+            </div>
+            <div class="iiidem-teacher-topbar__actions">
+                <a href="{{{createassignmenturl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm">
+                    {{#str}}teacherassignmentquickaction, theme_iiidem2{{/str}}
+                </a>
+            </div>
+        </header>
+
+        <section class="row g-4">
+            <div class="col-lg-7">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-upload" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}teachermaterialsuploadheading, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body iiidem-teacher-materials__form">
+                        {{{formhtml}}}
+                    </div>
+                </article>
+            </div>
+            <div class="col-lg-5">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-folder-open" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}teachermaterialslistheading, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasmaterials}}
+                        <ul class="iiidem-teacher-materials__list list-unstyled mb-0">
+                            {{#materials}}
+                            <li class="iiidem-teacher-materials__item">
+                                <div class="iiidem-teacher-materials__item-main">
+                                    <a href="{{{url}}}" class="iiidem-teacher-materials__item-title">{{name}}</a>
+                                    <div class="iiidem-teacher-materials__item-meta">{{coursename}}</div>
+                                </div>
+                                <a href="{{{courseurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">
+                                    {{#str}}teachermaterialsviewincourse, theme_iiidem2{{/str}}
+                                </a>
+                            </li>
+                            {{/materials}}
+                        </ul>
+                        {{/hasmaterials}}
+                        {{^hasmaterials}}
+                        <p class="text-muted mb-0">{{#str}}teachermaterialsempty, theme_iiidem2{{/str}}</p>
+                        {{/hasmaterials}}
+                    </div>
+                </article>
+            </div>
+        </section>
+    </div>
+</div>

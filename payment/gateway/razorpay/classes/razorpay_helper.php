@@ -19,6 +19,10 @@ class razorpay_helper {
     }
 
     public static function should_use_mock(\stdClass $config): bool {
+        if (self::is_live_host()) {
+            return false;
+        }
+
         $keyid = trim($config->keyid ?? '');
         $secret = trim($config->keysecret ?? '');
 
@@ -32,6 +36,27 @@ class razorpay_helper {
 
         return ($config->environment ?? 'test') === 'test'
             && stripos($keyid, 'rzp_test_mock') === 0;
+    }
+
+    /**
+     * Production hosts must never accept mock orders or mock signatures.
+     */
+    public static function is_live_host(): bool {
+        global $CFG;
+
+        $host = strtolower((string) (parse_url($CFG->wwwroot ?? '', PHP_URL_HOST) ?: ''));
+        $blocked = [
+            'iiidemlms.eci.gov.in',
+            'lms.eci.gov.in',
+        ];
+        return in_array($host, $blocked, true);
+    }
+
+    /**
+     * Whether mock payment completion is permitted in this environment.
+     */
+    public static function mock_payments_allowed(): bool {
+        return !self::is_live_host();
     }
 
     public static function get_api_base(\stdClass $config): string {
@@ -157,8 +182,99 @@ class razorpay_helper {
     }
 
     public static function verify_mock_signature(string $orderid, string $paymentid, string $signature): bool {
+        if (!self::mock_payments_allowed()) {
+            return false;
+        }
         $expected = hash_hmac('sha256', $orderid . '|' . $paymentid, 'razorpay_mock_secret');
         return hash_equals($expected, $signature);
+    }
+
+    /**
+     * Server-side expected course fee for a stored txn (never trust client amount).
+     *
+     * @param \stdClass $txn
+     * @return float
+     */
+    public static function expected_amount_for_txn(\stdClass $txn): float {
+        $payable = \core_payment\helper::get_payable(
+            $txn->component,
+            $txn->paymentarea,
+            (int) $txn->itemid
+        );
+        $surcharge = \core_payment\helper::get_gateway_surcharge('razorpay');
+        $base = course_fee_amount::get_payment_amount((int) $txn->itemid, $payable->get_amount());
+        return \core_payment\helper::get_rounded_cost($base, $payable->get_currency(), $surcharge);
+    }
+
+    /**
+     * Require stored txn amount to match the current server-side payable.
+     *
+     * @param \stdClass $txn
+     * @return void
+     * @throws \moodle_exception
+     */
+    public static function assert_txn_matches_payable(\stdClass $txn): void {
+        $expected = self::expected_amount_for_txn($txn);
+        $stored = (float) $txn->amount;
+        if ($expected <= 0 || abs($expected - $stored) >= 0.005) {
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
+        $payable = \core_payment\helper::get_payable(
+            $txn->component,
+            $txn->paymentarea,
+            (int) $txn->itemid
+        );
+        if (strcasecmp((string) $txn->currency, (string) $payable->get_currency()) !== 0) {
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
+    }
+
+    /**
+     * Fetch a payment from Razorpay and assert amount/order/status vs local txn.
+     *
+     * @param \stdClass $config
+     * @param \stdClass $txn
+     * @param string $paymentid
+     * @return void
+     * @throws \moodle_exception
+     */
+    public static function assert_remote_payment_matches_txn(\stdClass $config, \stdClass $txn, string $paymentid): void {
+        $keyid = trim($config->keyid ?? '');
+        $secret = trim($config->keysecret ?? '');
+        if ($keyid === '' || $secret === '') {
+            throw new \moodle_exception('paymentfailed', 'paygw_razorpay');
+        }
+
+        $payment = self::api_request(
+            'GET',
+            self::get_api_base($config) . '/payments/' . rawurlencode($paymentid),
+            $keyid,
+            $secret,
+            null
+        );
+
+        $remoteorder = (string) ($payment['order_id'] ?? '');
+        $remoteamount = (int) ($payment['amount'] ?? -1);
+        $remotecurrency = strtoupper((string) ($payment['currency'] ?? ''));
+        $remotestatus = strtolower((string) ($payment['status'] ?? ''));
+
+        $expectedpaise = self::amount_to_paise((float) $txn->amount);
+        $okstatus = in_array($remotestatus, ['captured', 'authorized'], true);
+
+        if ($remoteorder !== (string) $txn->orderid
+                || $remoteamount !== $expectedpaise
+                || $remotecurrency !== strtoupper((string) $txn->currency)
+                || !$okstatus) {
+            debugging(
+                'Razorpay amount/status mismatch payment=' . $paymentid
+                . ' order=' . $remoteorder
+                . ' amount=' . $remoteamount
+                . ' expected=' . $expectedpaise
+                . ' status=' . $remotestatus,
+                DEBUG_DEVELOPER
+            );
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
     }
 
     /**
@@ -282,6 +398,9 @@ class razorpay_helper {
 
     public static function complete_transaction(\stdClass $txn, string $razorpaypaymentid): void {
         global $DB;
+
+        // Never enrol from a client-tampered or stale underpaid transaction.
+        self::assert_txn_matches_payable($txn);
 
         $alreadycompleted = (($txn->status ?? '') === 'completed');
 

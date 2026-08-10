@@ -1,0 +1,68 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_create_assignment
+
+    Teacher create-assignment page (students can submit; teacher can grade).
+}}
+<div class="iiidem-teacher-dashboard-v2 iiidem-teacher-materials-page">
+    {{> theme_iiidem2/dashboard/teacher_sidebar }}
+
+    <div class="iiidem-teacher-main">
+        <header class="iiidem-teacher-topbar">
+            <div class="iiidem-teacher-topbar__heading">
+                <h1 class="iiidem-teacher-topbar__title">{{#str}}teacherassignmentpagetitle, theme_iiidem2{{/str}}</h1>
+                <p class="iiidem-teacher-topbar__subtitle">{{#str}}teacherassignmentpagesubtitle, theme_iiidem2{{/str}}</p>
+            </div>
+            <div class="iiidem-teacher-topbar__actions">
+                <a href="{{{materialsurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--teal btn-sm">
+                    {{#str}}teachermaterialsquickaction, theme_iiidem2{{/str}}
+                </a>
+            </div>
+        </header>
+
+        <section class="row g-4">
+            <div class="col-lg-7">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-file-pen" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}teacherassignmentuploadheading, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body iiidem-teacher-materials__form">
+                        {{{formhtml}}}
+                    </div>
+                </article>
+            </div>
+            <div class="col-lg-5">
+                <article class="iiidem-teacher-panel">
+                    <header class="iiidem-teacher-panel__header">
+                        <div class="iiidem-teacher-panel__title-wrap">
+                            <span class="iiidem-teacher-panel__icon"><span class="fa fa-list-check" aria-hidden="true"></span></span>
+                            <h2 class="iiidem-teacher-panel__title">{{#str}}teacherassignmentlistheading, theme_iiidem2{{/str}}</h2>
+                        </div>
+                    </header>
+                    <div class="iiidem-teacher-panel__body">
+                        {{#hasassignments}}
+                        <ul class="iiidem-teacher-materials__list list-unstyled mb-0">
+                            {{#assignments}}
+                            <li class="iiidem-teacher-materials__item">
+                                <div class="iiidem-teacher-materials__item-main">
+                                    <a href="{{{url}}}" class="iiidem-teacher-materials__item-title">{{name}}</a>
+                                    <div class="iiidem-teacher-materials__item-meta">{{coursename}}</div>
+                                </div>
+                                <a href="{{{gradingurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--navy btn-sm">
+                                    {{#str}}teacherassignmentchecksubmissions, theme_iiidem2{{/str}}
+                                </a>
+                            </li>
+                            {{/assignments}}
+                        </ul>
+                        {{/hasassignments}}
+                        {{^hasassignments}}
+                        <p class="text-muted mb-0">{{#str}}teacherassignmentempty, theme_iiidem2{{/str}}</p>
+                        {{/hasassignments}}
+                    </div>
+                </article>
+            </div>
+        </section>
+    </div>
+</div>

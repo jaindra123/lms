@@ -198,6 +198,16 @@ class teacher_dashboard {
     protected static function get_quick_actions(int $userid, array $courses): array {
         $actions = [
             [
+                'icon' => 'fa-upload',
+                'label' => get_string('teachermaterialsquickaction', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/theme/iiidem2/dashboard/materials.php'))->out(false),
+            ],
+            [
+                'icon' => 'fa-file-pen',
+                'label' => get_string('teacherassignmentquickaction', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/theme/iiidem2/dashboard/create_assignment.php'))->out(false),
+            ],
+            [
                 'icon' => 'fa-folder-plus',
                 'label' => get_string('dashboardteacheractioncreate', 'theme_iiidem2'),
                 'url' => (new \moodle_url('/course/edit.php'))->out(false),
@@ -606,27 +616,39 @@ class teacher_dashboard {
     }
 
     /**
+     * Sidebar navigation for teacher dashboard sub-pages (materials, assignments, etc.).
+     *
+     * @param int|null $userid
+     * @param string $activekey One of: dashboard, sessions, roster, certificates,
+     *        grading, discussions, materials, create_assignment, analytics, capstone
+     * @return array
+     */
+    public static function get_page_sidenav(?int $userid = null, string $activekey = 'dashboard'): array {
+        if ($userid === null) {
+            global $USER;
+            $userid = (int) $USER->id;
+        }
+        $courses = self::get_teaching_courses($userid);
+        return self::get_sidebar_nav($courses, $userid, $activekey);
+    }
+
+    /**
      * Sidebar navigation for the instructor dashboard.
      *
      * @param array $courses
      * @param int $userid
+     * @param string $activekey
      * @return array
      */
-    protected static function get_sidebar_nav(array $courses, int $userid): array {
+    protected static function get_sidebar_nav(array $courses, int $userid, string $activekey = 'dashboard'): array {
         $firstcourseid = !empty($courses[0]) ? (int) $courses[0]->id : 0;
         $courseurl = $firstcourseid
             ? (new \moodle_url('/course/view.php', ['id' => $firstcourseid]))->out(false)
-            : (new \moodle_url('/course/management.php'))->out(false);
-        $participantsurl = $firstcourseid
-            ? (new \moodle_url('/user/index.php', ['id' => $firstcourseid]))->out(false)
             : (new \moodle_url('/course/management.php'))->out(false);
         $gradeurl = $firstcourseid
             ? (new \moodle_url('/grade/report/grader/index.php', ['id' => $firstcourseid]))->out(false)
             : (new \moodle_url('/grade/report/grader/index.php'))->out(false);
         $forumurl = self::get_first_forum_url($courses);
-        $attendanceurl = self::get_attendance_url($courses);
-        $dashboardattendance = \theme_iiidem2_get_dashboard_url();
-        $dashboardattendance->set_anchor('teacher-attendance');
         $dashboardcertificates = \theme_iiidem2_get_dashboard_url();
         $dashboardcertificates->set_anchor('teacher-certificates');
         $dashboardstudents = \theme_iiidem2_get_dashboard_url();
@@ -635,64 +657,75 @@ class teacher_dashboard {
 
         $nav = [
             [
+                'key' => 'dashboard',
                 'icon' => 'fa-gauge-high',
                 'label' => get_string('dashboard', 'theme_iiidem2'),
                 'url' => \theme_iiidem2_get_dashboard_url()->out(false),
-                'active' => true,
             ],
             [
+                'key' => 'sessions',
                 'icon' => 'fa-video',
                 'label' => get_string('dashboardteachernavsessions', 'theme_iiidem2'),
                 'url' => student_dashboard::get_live_class_page_url($userid)->out(false),
-                'active' => false,
             ],
             [
+                'key' => 'roster',
                 'icon' => 'fa-user-check',
                 'label' => get_string('dashboardteachernavroster', 'theme_iiidem2'),
                 'url' => $dashboardstudents->out(false),
-                'active' => false,
             ],
             [
+                'key' => 'certificates',
                 'icon' => 'fa-certificate',
                 'label' => get_string('dashboardteachernavcertificates', 'theme_iiidem2'),
                 'url' => $dashboardcertificates->out(false),
-                'active' => false,
             ],
             [
+                'key' => 'grading',
                 'icon' => 'fa-pen',
                 'label' => get_string('dashboardteachernavgrading', 'theme_iiidem2'),
                 'url' => $gradeurl,
-                'active' => false,
             ],
             [
+                'key' => 'discussions',
                 'icon' => 'fa-comments',
                 'label' => get_string('dashboardnavdiscussions', 'theme_iiidem2'),
                 'url' => $forumurl ?: $courseurl,
-                'active' => false,
             ],
             [
+                'key' => 'materials',
                 'icon' => 'fa-folder-open',
                 'label' => get_string('dashboardteachernavcontent', 'theme_iiidem2'),
-                'url' => (new \moodle_url('/course/management.php'))->out(false),
-                'active' => false,
+                'url' => (new \moodle_url('/theme/iiidem2/dashboard/materials.php'))->out(false),
+            ],
+            [
+                'key' => 'create_assignment',
+                'icon' => 'fa-file-pen',
+                'label' => get_string('teacherassignmentquickaction', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/theme/iiidem2/dashboard/create_assignment.php'))->out(false),
             ],
         ];
 
         if ($reporturl !== null) {
             $nav[] = [
+                'key' => 'analytics',
                 'icon' => 'fa-chart-line',
                 'label' => get_string('dashboardteacheranalytics', 'theme_iiidem2'),
                 'url' => $reporturl,
-                'active' => false,
             ];
         }
 
         $nav[] = [
-                'icon' => 'fa-diagram-project',
-                'label' => get_string('dashboardteachernavcapstone', 'theme_iiidem2'),
-                'url' => $gradeurl,
-                'active' => false,
+            'key' => 'capstone',
+            'icon' => 'fa-diagram-project',
+            'label' => get_string('dashboardteachernavcapstone', 'theme_iiidem2'),
+            'url' => $gradeurl,
         ];
+
+        foreach ($nav as &$item) {
+            $item['active'] = (($item['key'] ?? '') === $activekey);
+        }
+        unset($item);
 
         return $nav;
     }

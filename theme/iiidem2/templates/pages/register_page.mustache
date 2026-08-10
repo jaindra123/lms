@@ -9,7 +9,7 @@
 {{{ output.standard_top_of_body_html }}}
 {{> theme_iiidem2/navbar }}
 
-<main class="iiidem-marketing-page iiidem-register-page" id="register-page">
+<main class="iiidem-marketing-page iiidem-register-page" id="main-content" tabindex="-1">
 
     <section class="iiidem-page-hero">
         <div class="container">
@@ -23,23 +23,24 @@
         </div>
     </section>
 
-</main>
-
-<section class="iiidem-register-section py-5">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="iiidem-register-card card border-0 shadow-sm">
-                    <div class="card-body p-4 p-md-5">
-                        <div class="iiidem-register-form">
-                            {{{ output.main_content }}}
+    <section class="iiidem-register-section py-5" aria-labelledby="register-form-heading">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h2 id="register-form-heading" class="sr-only">{{pagetitle}}</h2>
+                    <div class="iiidem-register-card eci-card card border-0 shadow-sm">
+                        <div class="card-body eci-card__body p-4 p-md-5">
+                            <div class="iiidem-register-form">
+                                {{{ output.main_content }}}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+
+</main>
 
 {{> theme_iiidem2/page_end }}
 

@@ -28,8 +28,16 @@
 
             setBody('<p class="text-muted mb-0">Searching…</p>');
 
-            var url = apiUrl + '?action=searchfaq&q=' + encodeURIComponent(q) + '&sesskey=' + encodeURIComponent(sesskey);
-            fetch(url, {credentials: 'same-origin'})
+            var bodyParams = new URLSearchParams();
+            bodyParams.set('action', 'searchfaq');
+            bodyParams.set('q', q);
+            bodyParams.set('sesskey', sesskey);
+            fetch(apiUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: bodyParams.toString()
+            })
                 .then(function(response) {
                     if (!response.ok) {
                         throw new Error('HTTP ' + response.status);

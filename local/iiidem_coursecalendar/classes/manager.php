@@ -692,9 +692,13 @@ class manager {
         foreach ($records as $record) {
             if ($client && !empty($record->googleeventid)) {
                 try {
-                    $client->delete_event((string) $record->googleeventid, !empty($record->invites_sent));
+                    // Short timeout: staging often cannot reach Google; never block CM delete.
+                    $client->delete_event((string) $record->googleeventid, !empty($record->invites_sent), 8);
                 } catch (\Throwable $e) {
-                    debugging('Cancel Webex Google event failed: ' . $e->getMessage(), DEBUG_NORMAL);
+                    // Log only — debugging() prints to the browser when debugdisplay is on
+                    // and breaks Moodle's post-delete redirect (as seen on staging).
+                    error_log('local_iiidem_coursecalendar: cancel Google event failed (cmid=' .
+                        $cmid . '): ' . $e->getMessage());
                 }
             }
             $record->status = self::STATUS_CANCELLED;
@@ -734,9 +738,10 @@ class manager {
         if (!empty($record->googleeventid) && google_calendar_client::is_configured()) {
             try {
                 $client = new google_calendar_client();
-                $client->delete_event((string) $record->googleeventid, !empty($record->invites_sent));
+                $client->delete_event((string) $record->googleeventid, !empty($record->invites_sent), 8);
             } catch (\Throwable $e) {
-                debugging('Cancel Google event failed: ' . $e->getMessage(), DEBUG_NORMAL);
+                error_log('local_iiidem_coursecalendar: cancel Google event failed (eventid=' .
+                    $eventid . '): ' . $e->getMessage());
             }
         }
 

@@ -18,11 +18,13 @@ try {
     require_login(null, false, null, false, true);
     require_sesskey();
 
+    \theme_iiidem2\rate_limit::require_json('mark_activity_viewed', 60, 60);
+
     $cmid = required_param('cmid', PARAM_INT);
     $result = theme_iiidem2_mark_curriculum_activity_viewed($cmid);
     ob_end_clean();
     echo json_encode($result);
 } catch (Throwable $e) {
     ob_end_clean();
-    echo json_encode(['success' => false, 'error' => 'exception']);
+    echo json_encode(\theme_iiidem2\safe_errors::json($e, 'mark_activity_viewed', false));
 }

@@ -4,24 +4,7 @@
     Instructor dashboard — sidebar, stats, live class control, grading queue.
 }}
 <div class="iiidem-teacher-dashboard-v2">
-    <aside class="iiidem-teacher-sidebar" aria-label="{{#str}}dashboardteacherlabel, theme_iiidem2{{/str}}">
-        <div class="iiidem-teacher-sidebar__brand">
-            <span class="fa fa-chalkboard-user" aria-hidden="true"></span>
-            <span>{{#str}}dashboardteacherlabel, theme_iiidem2{{/str}}</span>
-        </div>
-        <nav class="iiidem-teacher-sidebar__nav">
-            <ul class="list-unstyled mb-0">
-                {{#sidenav}}
-                <li class="iiidem-teacher-sidebar__item{{#active}} is-active{{/active}}">
-                    <a href="{{{url}}}">
-                        <span class="fa {{icon}}" aria-hidden="true"></span>
-                        <span>{{label}}</span>
-                    </a>
-                </li>
-                {{/sidenav}}
-            </ul>
-        </nav>
-    </aside>
+    {{> theme_iiidem2/dashboard/teacher_sidebar }}
 
     <div class="iiidem-teacher-main">
         <header class="iiidem-teacher-topbar">

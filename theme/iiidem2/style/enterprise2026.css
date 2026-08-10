@@ -1,0 +1,884 @@
+/*
+ * IIIDEM Enterprise 2026 / GIGW 3.0 / WCAG 2.1 AA design system
+ * ---------------------------------------------------------------------------
+ * Moodle theme overlay (Mustache + CSS). Visual language mirrors modern
+ * shadcn-style cards, rem typography, and focus rings without React/Tailwind.
+ * Scoped to enhance existing .iiidem-* / .card surfaces — no logic changes.
+ */
+
+:root {
+  /* GIGW / WCAG palette (4.5:1+) */
+  --eci-bg: #f8f9fa;
+  --eci-surface: #ffffff;
+  --eci-text: #1e293b;
+  --eci-text-muted: #475569;
+  --eci-border: #e2e8f0;
+  --eci-border-faint: #f1f5f9;
+  --eci-primary: #0b3d91;
+  --eci-primary-hover: #0a3580;
+  --eci-focus: #2563eb;
+  --eci-ring: rgba(37, 99, 235, 0.45);
+
+  /* Spacing scale (breathing room) */
+  --eci-space-3: 0.75rem;
+  --eci-space-4: 1rem;
+  --eci-space-6: 1.5rem;
+  --eci-space-8: 2rem;
+  --eci-space-10: 2.5rem;
+  --eci-space-12: 3rem;
+
+  /* Radius & elevation (shadcn-like) */
+  --eci-radius: 0.75rem; /* 12px */
+  --eci-radius-lg: 1rem; /* 16px */
+  --eci-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --eci-shadow-md: 0 4px 6px rgba(15, 23, 42, 0.04), 0 12px 24px rgba(15, 23, 42, 0.06);
+
+  /* Map onto existing theme tokens */
+  --iiidem-text-color: var(--eci-text-muted);
+  --iiidem-heading-color: var(--eci-primary);
+  --iiidem-muted-color: var(--eci-text-muted);
+  --iiidem-brand-blue: var(--eci-primary);
+  --iiidem-brand-blue-dark: var(--eci-primary-hover);
+  --iiidem-font-size-base: 1rem;
+  --iiidem-line-height-base: 1.7;
+}
+
+/* ---------- Base document ---------- */
+html {
+  font-size: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--eci-bg) !important;
+  color: var(--eci-text);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4, h5, h6,
+.iiidem-section-header__title {
+  color: var(--eci-text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+p, .text-muted,
+.iiidem-section-header__lead {
+  color: var(--eci-text-muted);
+}
+
+/* ---------- Skip to main (first focusable) ---------- */
+/* Must stay out of document flow — otherwise it stacks with navbar padding-top. */
+.eci-skip-link {
+  position: absolute !important;
+  left: 1rem;
+  top: 0;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  background: var(--eci-primary);
+  color: #fff !important;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 0 0 var(--eci-radius) var(--eci-radius);
+  box-shadow: var(--eci-shadow-md);
+  transform: translateY(-160%);
+  transition: transform 0.18s ease;
+}
+
+.eci-skip-link:focus,
+.eci-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: 0 0 0 4px var(--eci-ring), var(--eci-shadow-md);
+}
+
+/* ---------- Global WCAG focus rings ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+.btn:focus-visible,
+.nav-link:focus-visible,
+.dropdown-item:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.custom-select:focus-visible,
+.iiidem-site-header a:focus-visible,
+.iiidem-site-header button:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px var(--eci-focus) !important;
+}
+
+/* ---------- Landmark / page shell ---------- */
+#main-content,
+main[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.iiidem-frontpage,
+.iiidem-marketing-page,
+#page.drawers .main-inner,
+.iiidem-dashboard,
+.iiidem-register-section,
+.iiidem-login-shell {
+  color: var(--eci-text);
+}
+
+.iiidem-page-section {
+  padding-block: var(--eci-space-12) !important;
+}
+
+.iiidem-page-section .container,
+.iiidem-marketing-page .container,
+.iiidem-frontpage .container {
+  padding-inline: var(--eci-space-6);
+}
+
+@media (min-width: 992px) {
+  .iiidem-page-section .container,
+  .iiidem-marketing-page .container {
+    padding-inline: var(--eci-space-8);
+  }
+}
+
+/* ---------- Floating card system (shadcn-like) ---------- */
+.eci-card,
+.iiidem-feature-card,
+.iiidem-register-card.card,
+.iiidem-contact-card,
+.iiidem-courses-section .iiidem-course-card,
+.page-mycourses .iiidem-course-card,
+.iiidem-dashboard .card,
+.admin-dashboard .card,
+.iiidem-student-dashboard .card,
+.iiidem-teacher-dashboard .card,
+.iiidem-dashboard-announcements .card,
+.block .card,
+#region-main .card {
+  background: var(--eci-surface) !important;
+  border: 1px solid var(--eci-border-faint) !important;
+  border-radius: var(--eci-radius-lg) !important;
+  box-shadow: var(--eci-shadow-sm) !important;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.eci-card:hover,
+.iiidem-feature-card:hover,
+.iiidem-courses-section .iiidem-course-card:hover,
+.page-mycourses .iiidem-course-card:hover,
+.admin-dashboard .card:hover {
+  box-shadow: var(--eci-shadow-md) !important;
+  border-color: var(--eci-border) !important;
+}
+
+.eci-card__body,
+.iiidem-feature-card,
+.iiidem-dashboard .card-body,
+.admin-dashboard .card-body,
+.iiidem-register-card .card-body {
+  padding: var(--eci-space-6) !important;
+}
+
+/* Register card must allow the phone country dropdown to paint above City/town. */
+.iiidem-register-card.card,
+.iiidem-register-card.card .card-body {
+  overflow: visible !important;
+}
+
+@media (min-width: 768px) {
+  .eci-card__body,
+  .iiidem-feature-card,
+  .admin-dashboard .card-body,
+  .iiidem-register-card .card-body {
+    padding: var(--eci-space-8) !important;
+  }
+}
+
+.iiidem-dashboard .card-title,
+.admin-dashboard .card-title,
+.iiidem-feature-card__title {
+  color: var(--eci-text) !important;
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  margin-bottom: var(--eci-space-3) !important;
+}
+
+.iiidem-dashboard .card-text,
+.admin-dashboard .card-text,
+.iiidem-feature-card__text {
+  color: var(--eci-text-muted) !important;
+  font-size: 0.975rem !important;
+  margin-bottom: var(--eci-space-6) !important;
+}
+
+/* ---------- Header refinement ---------- */
+.iiidem-site-header.navbar.fixed-top {
+  background-color: var(--eci-primary) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, var(--eci-shadow-sm) !important;
+  padding-inline: var(--eci-space-4) !important;
+}
+
+.iiidem-site-header .nav-link,
+.iiidem-site-header .moremenu .nav-link {
+  font-weight: 500;
+  padding: 0.45rem 0.55rem !important;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.iiidem-site-header .primary-navigation .moremenu .nav-tabs,
+.iiidem-site-header .primary-navigation .moremenu .more-nav {
+  flex-wrap: nowrap !important;
+}
+
+.iiidem-site-header .nav-link:hover,
+.iiidem-site-header .moremenu .nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.iiidem-site-header #usernavigation .iiidem-nav-login,
+.iiidem-site-header #usernavigation .iiidem-nav-signup {
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem !important;
+  border-radius: 0.65rem !important;
+  font-weight: 600;
+}
+
+/* Keep user avatar square — global img height:auto was distorting/breaking it */
+.iiidem-site-header .usermenu .userpicture,
+.iiidem-site-header .usermenu img.userpicture,
+.iiidem-site-header #usernavigation .userpicture {
+  width: 35px !important;
+  height: 35px !important;
+  max-width: 35px !important;
+  max-height: 35px !important;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* ---------- Premium form controls ---------- */
+.iiidem-register-form .felement > .form-control,
+.iiidem-register-form .felement > select.form-control,
+.iiidem-register-form .felement > textarea.form-control,
+.iiidem-loginform__input,
+.login-form .form-control,
+#page-login-index .form-control,
+.path-login .form-control,
+.mform .felement > .form-control,
+.mform .felement > select.form-control,
+.mform .felement > textarea.form-control {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 3rem !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  color: var(--eci-text) !important;
+  background: var(--eci-surface) !important;
+  border: 1px solid var(--eci-border) !important;
+  border-radius: var(--eci-radius) !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Keep dial-code flag clear of the typed number (enterprise padding shorthand fights iti). */
+.iiidem-register-form .iti--show-selected-dial-code input.form-control,
+.iiidem-register-form .iti--show-selected-dial-code input.iiidem-phone-input,
+.iiidem-register-form .iti--show-selected-dial-code input[name="phone1"] {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-right: 2.5rem !important;
+  padding-left: 6.5rem !important;
+}
+
+.iiidem-register-form .iti--show-selected-dial-code .iti__selected-country {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.iiidem-register-form .iti__selected-country .iti__a11y-text,
+.iiidem-register-form .iti__selected-country .iti__country-name {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+}
+
+.iiidem-register-form .form-control:focus,
+.iiidem-loginform__input:focus,
+.mform .form-control:focus,
+.path-login .form-control:focus {
+  border-color: var(--eci-focus) !important;
+  box-shadow: 0 0 0 4px var(--eci-ring) !important;
+}
+
+.iiidem-register-form .col-form-label,
+.mform .col-form-label,
+.iiidem-loginform__label {
+  color: var(--eci-text) !important;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  margin-bottom: 0.4rem;
+}
+
+.iiidem-register-form .fitem {
+  margin-bottom: 1rem !important;
+}
+
+.iiidem-register-card.card {
+  border: 1px solid var(--eci-border-faint) !important;
+  box-shadow: var(--eci-shadow-md) !important;
+}
+
+.iiidem-register-section {
+  background: var(--eci-bg);
+  padding-block: var(--eci-space-10);
+}
+
+/* Buttons — spacious primary actions only (do not resize Moodle icon/collapse controls) */
+.btn:not(.btn-icon):not(.icons-collapse-expand):not(.btn-close):not(.btn-footer-popover):not(.btn-link):not(.tox-tbtn):not(.tox-mbtn),
+.iiidem-btn,
+#id_submitbutton,
+.iiidem-loginform__submit {
+  min-height: 2.875rem;
+  padding: 0.65rem 1.35rem !important;
+  border-radius: 0.65rem !important;
+  font-weight: 600 !important;
+  font-size: 0.975rem !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* Assignment grader / TinyMCE: keep Moodle default control sizes */
+body.iiidem-assign-grader .btn:not(.btn-primary):not(.btn-secondary):not(.btn-danger),
+body.path-mod-assign .tox .btn {
+  min-height: 0 !important;
+  padding: 0.35rem 0.65rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  border-radius: 0.35rem !important;
+}
+
+/* Keep Moodle section collapse chevrons centered in their square control */
+.btn.btn-icon,
+.btn.icons-collapse-expand,
+.mform .ftoggler .btn-icon,
+.mform a.icons-collapse-expand {
+  min-height: 0 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.5rem !important;
+  line-height: 1 !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
+
+/* Respect Moodle expand/collapse visibility (do not force both icons visible) */
+.btn.btn-icon .expanded-icon,
+.btn.icons-collapse-expand .expanded-icon,
+.mform .ftoggler .expanded-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+.btn.btn-icon .collapsed-icon,
+.btn.icons-collapse-expand .collapsed-icon,
+.mform .ftoggler .collapsed-icon {
+  display: none !important;
+}
+
+.btn.btn-icon.collapsed .expanded-icon,
+.btn.icons-collapse-expand.collapsed .expanded-icon,
+.mform .ftoggler .icons-collapse-expand.collapsed .expanded-icon {
+  display: none !important;
+}
+
+.btn.btn-icon.collapsed .collapsed-icon,
+.btn.icons-collapse-expand.collapsed .collapsed-icon,
+.mform .ftoggler .icons-collapse-expand.collapsed .collapsed-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+.btn.btn-icon .icon,
+.btn.icons-collapse-expand .icon,
+.btn.btn-icon .fa,
+.btn.icons-collapse-expand .fa {
+  margin: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle;
+}
+
+.btn-primary,
+#id_submitbutton,
+.iiidem-loginform__submit {
+  background-color: var(--eci-primary) !important;
+  border-color: var(--eci-primary) !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover,
+#id_submitbutton:hover,
+.iiidem-loginform__submit:hover {
+  background-color: var(--eci-primary-hover) !important;
+  border-color: var(--eci-primary-hover) !important;
+}
+
+.btn-outline-primary {
+  color: var(--eci-primary) !important;
+  border-color: var(--eci-primary) !important;
+  background: transparent !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--eci-primary) !important;
+  color: #fff !important;
+}
+
+/* ---------- Dashboard grid breathing room ---------- */
+.iiidem-dashboard,
+.admin-dashboard,
+.iiidem-student-dashboard,
+.iiidem-teacher-dashboard {
+  gap: var(--eci-space-6);
+}
+
+.admin-dashboard.row,
+.iiidem-dashboard .row,
+.iiidem-student-dashboard .row {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 1.5rem;
+}
+
+.admin-dashboard .card .btn {
+  margin-top: 0.25rem;
+}
+
+.iiidem-dashboard-calendar,
+.admin-dashboard-calendar {
+  margin-top: var(--eci-space-6) !important;
+}
+
+/* Calendar / panels inside dashboards */
+.iiidem-dashboard [data-region="calendar"],
+.iiidem-dashboard .calendarwrapper,
+.dashboard-calendar-panel,
+.iiidem-dash-calendar {
+  border-radius: var(--eci-radius-lg);
+  border: 1px solid var(--eci-border-faint);
+  background: var(--eci-surface);
+  box-shadow: var(--eci-shadow-sm);
+  padding: var(--eci-space-6);
+}
+
+/* ---------- Section headers ---------- */
+.iiidem-section-header {
+  margin-bottom: var(--eci-space-8) !important;
+}
+
+.iiidem-section-header__eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--eci-primary);
+  margin-bottom: 0.5rem;
+}
+
+.iiidem-section-header__title {
+  font-size: clamp(1.75rem, 3vw, 2.25rem) !important;
+  color: var(--eci-text) !important;
+}
+
+.iiidem-section-header__lead {
+  max-width: 40rem;
+  margin-inline: auto;
+  font-size: 1.0625rem;
+}
+
+/* ---------- Course cards ---------- */
+.iiidem-courses-section .iiidem-course-card,
+.page-mycourses .iiidem-course-card {
+  border-radius: var(--eci-radius-lg) !important;
+}
+
+.iiidem-courses-section .iiidem-course-card__title .coursename,
+.page-mycourses .iiidem-course-card__title .coursename {
+  color: var(--eci-text) !important;
+  font-weight: 700;
+}
+
+/* ---------- Tables (enterprise) ---------- */
+#region-main table.generaltable,
+.iiidem-dashboard table,
+.path-admin table.generaltable {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--eci-surface);
+  border: 1px solid var(--eci-border-faint);
+  border-radius: var(--eci-radius);
+  overflow: hidden;
+  box-shadow: var(--eci-shadow-sm);
+}
+
+#region-main table.generaltable th,
+.path-admin table.generaltable th {
+  background: #f1f5f9;
+  color: var(--eci-text);
+  font-weight: 650;
+  padding: 0.9rem 1rem !important;
+  border-bottom: 1px solid var(--eci-border);
+}
+
+#region-main table.generaltable td,
+.path-admin table.generaltable td {
+  padding: 0.85rem 1rem !important;
+  color: var(--eci-text-muted);
+  border-bottom: 1px solid var(--eci-border-faint);
+}
+
+/* ---------- Login panel ---------- */
+.iiidem-login-card {
+  background: var(--eci-surface);
+  border: 1px solid var(--eci-border-faint);
+  border-radius: var(--eci-radius-lg);
+  box-shadow: var(--eci-shadow-md);
+  padding: var(--eci-space-8);
+}
+
+.iiidem-login-card__title {
+  color: var(--eci-text) !important;
+  font-weight: 700;
+}
+
+.iiidem-login-card__subtitle {
+  color: var(--eci-text-muted) !important;
+}
+
+/* ---------- 200% zoom safety ---------- */
+@media (min-resolution: 1.5dppx) {
+  .iiidem-header-bar {
+    /* keep single-row header; do not wrap primary nav */
+    flex-wrap: nowrap;
+  }
+}
+
+img:not(.userpicture):not(.icon):not(.logo):not(.emoji),
+svg:not(.icon),
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Student / teacher dashboard surfaces (overlay) ---------- */
+.iiidem-student-panel,
+.iiidem-teacher-panel,
+.iiidem-student-stat,
+.iiidem-teacher-stat,
+.iiidem-teacher-course-card,
+.iiidem-student-course-card,
+.iiidem-teacher-analytic-card,
+.iiidem-student-achievements__item,
+.iiidem-student-mini-stat {
+  background: var(--eci-surface) !important;
+  border: 1px solid var(--eci-border-faint) !important;
+  border-radius: var(--eci-radius-lg) !important;
+  box-shadow: var(--eci-shadow-sm) !important;
+}
+
+.iiidem-student-panel__body,
+.iiidem-teacher-panel__body {
+  padding: var(--eci-space-6) !important;
+}
+
+.iiidem-student-panel__header,
+.iiidem-teacher-panel__header {
+  padding: var(--eci-space-6) var(--eci-space-6) 0 !important;
+}
+
+.iiidem-student-stat,
+.iiidem-teacher-stat {
+  padding: var(--eci-space-6) !important;
+}
+
+.iiidem-student-topbar__title,
+.iiidem-teacher-topbar__title {
+  color: var(--eci-text) !important;
+  font-weight: 700;
+}
+
+.iiidem-student-search .form-control,
+.iiidem-teacher-search .form-control {
+  min-height: 2.75rem !important;
+  border-radius: var(--eci-radius) !important;
+  border: 1px solid var(--eci-border) !important;
+}
+
+.iiidem-dashboard-tabs__btn:focus-visible,
+.iiidem-student-sidebar__item a:focus-visible,
+.iiidem-teacher-sidebar__item a:focus-visible,
+.iiidem-student-icon-btn:focus-visible,
+.iiidem-teacher-icon-btn:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px var(--eci-focus) !important;
+}
+
+.iiidem-dashboard-welcome h1 {
+  color: var(--eci-text);
+  font-weight: 700;
+}
+
+.eci-dash-grid {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 1.5rem;
+}
+
+/* ---------- Marketing / CTA / footer polish ---------- */
+/* Keep hero (and breadcrumb) clear of the fixed header wrap */
+.eci-site-header-wrap ~ main,
+.eci-site-header-wrap ~ .iiidem-frontpage,
+.eci-site-header-wrap ~ .iiidem-marketing-page {
+  padding-top: var(--navbar-height, 72px);
+}
+
+.iiidem-page-hero {
+  padding-block: var(--eci-space-10) !important;
+  color: #ffffff !important;
+}
+
+.iiidem-page-hero__title {
+  font-size: clamp(1.75rem, 3vw, 2.5rem) !important;
+  color: #ffffff !important;
+}
+
+.iiidem-page-hero__lead,
+.iiidem-page-hero .iiidem-breadcrumb,
+.iiidem-page-hero .iiidem-breadcrumb a,
+.iiidem-page-hero .iiidem-breadcrumb span {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.iiidem-page-hero .iiidem-breadcrumb {
+  display: block !important;
+  visibility: visible !important;
+  margin-bottom: 1rem !important;
+  font-size: 0.9rem !important;
+}
+
+/* Navbar brand lockup — black PNG matte clears on royal blue */
+.iiidem-site-header .navbar-brand .logo,
+.iiidem-site-header .navbar-brand img.logo {
+  mix-blend-mode: screen;
+  max-width: min(280px, 32vw) !important;
+  height: 48px !important;
+  max-height: 48px !important;
+}
+
+.iiidem-cta__inner {
+  border-radius: var(--eci-radius-lg);
+  padding: var(--eci-space-10) var(--eci-space-6) !important;
+  box-shadow: var(--eci-shadow-md);
+}
+
+.iiidem-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: var(--eci-space-6);
+}
+
+.iiidem-footer {
+  background-color: #0b3d91 !important;
+  color: #ffffff;
+  padding-top: 3rem;
+}
+
+.iiidem-footer a:focus-visible {
+  box-shadow: 0 0 0 2px #0b3d91, 0 0 0 6px #93c5fd !important;
+}
+
+/* Brand lockup — black PNG matte becomes transparent on royal blue */
+.iiidem-footer .footer-brand {
+  margin-bottom: 1.25rem;
+}
+
+.iiidem-footer .footer-brand__link {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.iiidem-footer .footer-logo {
+  display: block;
+  width: auto;
+  max-width: min(32rem, 100%);
+  height: auto;
+  mix-blend-mode: screen;
+}
+
+.iiidem-footer .footer-brand__desc {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: left !important;
+}
+
+.iiidem-footer .footer-col__heading,
+.iiidem-footer .footer-col--links h2,
+.iiidem-footer .footer-col--links h5 {
+  color: #fff !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 1rem !important;
+}
+
+.iiidem-footer .footer-quick-links a {
+  color: #fff !important;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.iiidem-footer .footer-quick-links a:hover,
+.iiidem-footer .footer-quick-links a:focus-visible {
+  color: #fff !important;
+  text-decoration: underline;
+}
+
+.iiidem-footer .footer-col--contact .loc,
+.iiidem-footer .footer-col--contact .telph,
+.iiidem-footer .footer-col--contact .mail {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  color: #fff;
+  font-size: 0.975rem;
+  line-height: 1.5;
+  text-align: left !important;
+}
+
+.iiidem-footer .footer-col--contact a {
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.iiidem-footer .footer-col--contact a:hover {
+  text-decoration: underline;
+}
+
+.iiidem-footer .footer-col--contact i {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.iiidem-footer .copyRights {
+  background-color: #0a3580 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  padding: 0.85rem 1.5rem !important;
+  margin-top: 0.5rem;
+}
+
+.iiidem-footer .footer-social a {
+  color: #fff !important;
+}
+
+#page-wrapper .iiidem-footer {
+  background-color: #0b3d91 !important;
+  color: #fff;
+}
+
+.iiidem-contact-card .card-body,
+.iiidem-register-card .card-body {
+  padding: var(--eci-space-8) !important;
+}
+
+.iiidem-programme-tenets__card,
+.iiidem-programme-audience__card {
+  border-radius: var(--eci-radius-lg) !important;
+  box-shadow: var(--eci-shadow-sm) !important;
+  border: 1px solid var(--eci-border-faint);
+  padding: var(--eci-space-6) !important;
+}
+
+.iiidem-programme-tenets__grid {
+  gap: var(--eci-space-6) !important;
+}
+
+.eci-main-landmark:focus {
+  outline: none;
+}
+
+/* Login form field spacing */
+.iiidem-loginform__field {
+  margin-bottom: var(--eci-space-6);
+}
+
+.iiidem-loginform__label {
+  display: block;
+}
+
+.iiidem-loginform__submit {
+  width: 100%;
+  min-height: 3rem !important;
+}
+
+.iiidem-loginform__password-toggle:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px var(--eci-focus) !important;
+}
+
+/* Login brand panel — white text on blue (override global slate headings) */
+.iiidem-login-layout__brand,
+.iiidem-login-layout__brand h1,
+.iiidem-login-layout__brand h2,
+.iiidem-login-layout__brand p,
+.iiidem-login-layout__brand li,
+.iiidem-login-layout__brand a,
+.iiidem-login-layout__title,
+.iiidem-login-layout__eyebrow,
+.iiidem-login-layout__features,
+.iiidem-login-layout__features li,
+.iiidem-login-layout__nav a {
+  color: #ffffff !important;
+}
+
+.iiidem-login-layout__logo-text {
+  color: #ffffff !important;
+}
+

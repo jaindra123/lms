@@ -19,6 +19,8 @@ require_once($CFG->dirroot . '/theme/iiidem2/classes/form/register_form.php');
 
 require_sesskey();
 
+\theme_iiidem2\rate_limit::require_json('register_check_phone_ip', 30, 60);
+
 $phone = trim(required_param('phone', PARAM_TEXT));
 $country = optional_param('country', 'IN', PARAM_ALPHA);
 
@@ -26,7 +28,7 @@ $valid = false;
 $exists = false;
 $message = '';
 
-$national = \theme_iiidem2\form\register_form::national_phone_digits($phone);
+$national = \theme_iiidem2\form\register_form::national_phone_digits($phone, $country);
 if ($national === '' || !\theme_iiidem2\form\register_form::is_valid_national_phone($national)) {
     $message = get_string('registerphoneinvalid', 'theme_iiidem2');
 } else {

@@ -56,15 +56,6 @@ function local_iiidem_support_prepare_admin_index_secondary_nav(\moodle_page $pa
         if (empty($child->key)) {
             continue;
         }
-        if (str_contains((string) $child->key, 'support')
-                || $child->key === 'theme_iiidem2_payment'
-                || $child->key === 'payment') {
-            if ($child->key === 'payment') {
-                $child->action = new moodle_url('/admin/category.php', ['category' => 'payment']);
-                $child->tab = null;
-            }
-            continue;
-        }
         $child->action = new moodle_url('/admin/search.php', [], 'link' . $child->key);
         $child->tab = null;
     }
@@ -78,19 +69,7 @@ function local_iiidem_support_prepare_admin_index_secondary_nav(\moodle_page $pa
 function local_iiidem_support_admin_index_head_script(): string {
     return <<<'HTML'
 <script>
-(function(){if(!/\/admin\/index\.php$/i.test(location.pathname)){return;}
-function toSearch(href){if(!href){return null;}
-if(href.indexOf('/admin/search.php')!==-1&&href.indexOf('#link')!==-1){
-return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'/')+href);}
-var hash=href.indexOf('#link')===0?href:null;
-if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));if(c.indexOf('#link')===0){hash=c;}}
-return hash?(location.origin+'/admin/search.php'+hash):null;}
-function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){location.replace(location.origin+'/admin/search.php'+h);}}
-redirectHash();window.addEventListener('hashchange',redirectHash);
-document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');if(!link){return;}
-var target=toSearch(link.getAttribute('href')||'');if(!target){return;}
-e.preventDefault();e.stopImmediatePropagation();location.assign(target);},true);
-document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.secondary-navigation a[href*="#link"]').forEach(function(link){var target=toSearch(link.getAttribute('href')||'');if(target){link.setAttribute('href',target);link.removeAttribute('data-toggle');link.removeAttribute('data-bs-toggle');}});});})();
+(function(){if(!/\/admin\/index\.php$/i.test(location.pathname)){return;}function toSearch(href){if(!href){return null;}if(href.indexOf('/admin/search.php')!==-1&&href.indexOf('#link')!==-1){return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'/')+href);}var hash=href.indexOf('#link')===0?href:null;if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));if(c.indexOf('#link')===0){hash=c;}}return hash?(location.origin+'/admin/search.php'+hash):null;}function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){location.replace(location.origin+'/admin/search.php'+h);}}redirectHash();window.addEventListener('hashchange',redirectHash);document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');if(!link){return;}var target=toSearch(link.getAttribute('href')||'');if(!target){return;}e.preventDefault();e.stopImmediatePropagation();location.assign(target);},true);document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.secondary-navigation a[href*="#link"]').forEach(function(link){var target=toSearch(link.getAttribute('href')||'');if(target){link.setAttribute('href',target);link.removeAttribute('data-toggle');link.removeAttribute('data-bs-toggle');}});});})();
 </script>
 HTML;
 }

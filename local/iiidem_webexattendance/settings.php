@@ -63,12 +63,12 @@ if ($hassiteconfig) {
         : get_string('notconnected', 'local_iiidem_webexattendance');
     $authlink = '';
     if (\local_iiidem_webexattendance\oauth::is_configured()) {
-        $authurl = (new moodle_url('/local/iiidem_webexattendance/oauth.php', [
-            'action' => 'connect',
-            'sesskey' => sesskey(),
-        ]))->out(false);
-        $authlink = '<p><a class="btn btn-primary" href="' . $authurl . '">' .
-            get_string('connectwebex', 'local_iiidem_webexattendance') . '</a></p>';
+        $actionurl = (new moodle_url('/local/iiidem_webexattendance/oauth.php'))->out(false);
+        $authlink = '<form method="post" action="' . s($actionurl) . '" class="mt-2">' .
+            '<input type="hidden" name="action" value="connect" />' .
+            '<input type="hidden" name="sesskey" value="' . s(sesskey()) . '" />' .
+            '<button type="submit" class="btn btn-primary">' .
+            get_string('connectwebex', 'local_iiidem_webexattendance') . '</button></form>';
     }
     $settings->add(new admin_setting_description(
         'local_iiidem_webexattendance/connectionstatus',

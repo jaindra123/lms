@@ -6,6 +6,10 @@ use local_iiidem_support\manager;
 
 require_login();
 
+if (class_exists('\theme_iiidem2\rate_limit')) {
+    \theme_iiidem2\rate_limit::require_allowed('support_ticket_view', 60, 60);
+}
+
 $id = required_param('id', PARAM_INT);
 
 $context = context_system::instance();

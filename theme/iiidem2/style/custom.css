@@ -127,11 +127,12 @@ label.me-2.mb-0 {
   height: 50px;
   max-height: 50px !important;
   width: auto;
-  max-width: min(300px, 40vw);
+  max-width: min(280px, 32vw);
   object-fit: contain;
   border: 0;
   background: transparent;
   padding: 0;
+  mix-blend-mode: screen;
 }
 
 .iiidem-site-header .primary-navigation .moremenu {
@@ -139,10 +140,24 @@ label.me-2.mb-0 {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.iiidem-site-header .primary-navigation .moremenu .nav-tabs {
+.iiidem-site-header .primary-navigation .moremenu .nav-tabs,
+.iiidem-site-header .primary-navigation .moremenu .more-nav,
+.iiidem-site-header .primary-navigation .moremenu .navbar-nav {
+  flex-wrap: nowrap !important;
+  flex-shrink: 1;
+  white-space: nowrap;
   justify-content: center;
+  margin-bottom: 0;
+}
+
+.iiidem-site-header .primary-navigation .moremenu .nav-item,
+.iiidem-site-header .primary-navigation .moremenu .nav-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .iiidem-site-header #usernavigation {
@@ -469,9 +484,15 @@ label.me-2.mb-0 {
   font-size: 0.95rem;
   font-weight: 300;
   line-height: 1;
-  padding: 0 0.55rem 0 0.25rem;
+  padding: 0 0.35rem 0 0.15rem;
   pointer-events: none;
   user-select: none;
+  flex-shrink: 0;
+}
+
+.iiidem-site-header .primary-navigation .moremenu .nav-link {
+  padding-left: 0.55rem !important;
+  padding-right: 0.55rem !important;
 }
 
 .iiidem-site-header #usernavigation .nav-link,
@@ -481,11 +502,43 @@ label.me-2.mb-0 {
   align-items: center;
 }
 
-/* Marketing / front page layouts have no #page; offset main content below fixed header. */
+/*
+ * Skip link sits before the fixed header in the DOM. If it stays in normal flow
+ * (position:static), it pushes main down while padding-top still reserves the
+ * full navbar height — white gap between header and banner on the homepage.
+ * Keep it out of layout until focused (same pattern as enterprise2026.css).
+ */
+.eci-skip-link {
+  position: absolute !important;
+  left: 1rem;
+  top: 0;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  background: var(--iiidem-brand-blue, #0b3d91);
+  color: #fff !important;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  transform: translateY(-160%);
+  transition: transform 0.18s ease;
+}
+
+.eci-skip-link:focus,
+.eci-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+}
+
+/* Marketing / front page layouts have no #page; offset main content below fixed header.
+ * Navbar is wrapped in <header class="eci-site-header-wrap"> — pad siblings of that wrap. */
+.eci-site-header-wrap ~ main,
+.eci-site-header-wrap ~ .iiidem-frontpage,
+.eci-site-header-wrap ~ .iiidem-marketing-page,
 .iiidem-site-header.fixed-top ~ main,
 .iiidem-site-header.fixed-top ~ .iiidem-frontpage,
 .iiidem-site-header.fixed-top ~ .iiidem-marketing-page {
-  padding-top: var(--navbar-height, 60px);
+  padding-top: var(--navbar-height, 72px);
 }
 
 /*
@@ -504,6 +557,9 @@ label.me-2.mb-0 {
     right: 0;
   }
 
+  .eci-site-header-wrap ~ main,
+  .eci-site-header-wrap ~ .iiidem-frontpage,
+  .eci-site-header-wrap ~ .iiidem-marketing-page,
   .iiidem-site-header.fixed-top ~ main,
   .iiidem-site-header.fixed-top ~ .iiidem-frontpage,
   .iiidem-site-header.fixed-top ~ .iiidem-marketing-page {
@@ -533,7 +589,7 @@ label.me-2.mb-0 {
 #page-wrapper .iiidem-footer {
   flex-shrink: 0;
   margin-top: auto;
-  background-color: var(--iiidem-brand-blue) !important;
+  background-color: #0b3d91 !important;
   color: #fff;
 }
 
@@ -543,7 +599,7 @@ label.me-2.mb-0 {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  background-color: var(--iiidem-brand-blue-dark) !important;
+  background-color: #0a3580 !important;
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -1374,12 +1430,39 @@ body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
   padding: 0.5rem 1.35rem 1.15rem;
 }
 
+.iiidem-course-curriculum .iiidem-curriculum-group {
+  margin: 0;
+}
+
+.iiidem-course-curriculum .iiidem-curriculum-group + .iiidem-curriculum-group {
+  margin-top: 0.85rem;
+  padding-top: 0.35rem;
+}
+
+.iiidem-course-curriculum .iiidem-curriculum-group__title {
+  margin: 0.85rem 0 0.35rem;
+  padding: 0 0 0.4rem;
+  color: var(--iiidem-heading-color, #0b3d91);
+  font-family: var(--iiidem-font-family, inherit);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  line-height: 1.3;
+  border-bottom: 2px solid rgba(11, 61, 145, 0.12);
+}
+
+.iiidem-course-curriculum .iiidem-curriculum-group:first-child .iiidem-curriculum-group__title {
+  margin-top: 0.35rem;
+}
+
 .iiidem-course-curriculum .lecture-item {
   padding: 0.85rem 0;
   margin: 0;
   border-bottom: 1px solid #eef1f7;
 }
 
+.iiidem-course-curriculum .iiidem-curriculum-group .lecture-item:last-child,
 .iiidem-course-curriculum .lecture-item:last-child {
   border-bottom: none;
   padding-bottom: 0.25rem;
@@ -1590,6 +1673,16 @@ body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
   gap: 1.5rem;
 }
 
+.iiidem-course-instructors .career-card {
+  transition: box-shadow 0.2s ease;
+}
+
+/* Avoid transform on hover — it breaks nested/fixed popups and causes blink. */
+.iiidem-course-instructors .career-card:hover {
+  transform: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
 .iiidem-course-instructors .career-content {
   padding: 1.25rem;
 }
@@ -1606,7 +1699,7 @@ body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
 
 .iiidem-course-instructors__role {
   display: inline-block;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
   font-family: inherit;
   font-size: var(--iiidem-ui-size);
   font-weight: 500;
@@ -1614,12 +1707,259 @@ body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
   color: var(--iiidem-brand-blue);
 }
 
-.iiidem-course-instructors__bio {
+.iiidem-instructor-photo-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.iiidem-instructor-photo-btn:focus-visible {
+  outline: 3px solid rgba(11, 61, 145, 0.45);
+  outline-offset: 3px;
+}
+
+.iiidem-instructor-photo-btn .instructor-photo {
+  width: 100%;
+}
+
+/* Lock scroll without scrollbar jump / blink */
+body.iiidem-instructor-modal-open {
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+.iiidem-instructor-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.iiidem-instructor-modal[hidden] {
+  display: none !important;
+}
+
+.iiidem-instructor-modal.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.iiidem-instructor-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.iiidem-instructor-modal__dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, calc(100vw - 2rem));
+  max-height: min(86vh, 720px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 28px 56px rgba(15, 23, 42, 0.3);
+  padding: 0;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.18s ease;
+}
+
+.iiidem-instructor-modal.is-visible .iiidem-instructor-modal__dialog {
+  transform: none;
+}
+
+.iiidem-instructor-modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.95rem;
+  z-index: 2;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iiidem-instructor-modal__close:hover,
+.iiidem-instructor-modal__close:focus-visible {
+  background: #e2e8f0;
+  color: #0b3d91;
+  outline: none;
+}
+
+.iiidem-instructor-modal__layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+
+.iiidem-instructor-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  flex-shrink: 0;
+  padding: 1.5rem 3.25rem 1.15rem 1.5rem;
+  border-bottom: 1px solid #e8eef7;
+  background: #f8fafc;
+}
+
+.iiidem-instructor-modal__media {
+  flex-shrink: 0;
+}
+
+.iiidem-instructor-modal__photo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  background: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.iiidem-instructor-modal__identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.iiidem-instructor-modal__name {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0b3d91;
+  line-height: 1.3;
+}
+
+.iiidem-instructor-modal__role {
   margin: 0;
-  font-family: inherit;
-  font-size: var(--iiidem-body-size);
-  line-height: var(--iiidem-line-height-base);
-  color: var(--iiidem-text-color);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.iiidem-instructor-modal__bio {
+  margin: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: #475569;
+  text-align: justify;
+  hyphens: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.iiidem-instructor-modal__bio > *:first-child {
+  margin-top: 0;
+}
+
+.iiidem-instructor-modal__bio > *:last-child {
+  margin-bottom: 0;
+}
+
+.iiidem-instructor-modal__bio p {
+  margin: 0 0 0.85em;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: justify;
+}
+
+.iiidem-instructor-modal__bio h1,
+.iiidem-instructor-modal__bio h2,
+.iiidem-instructor-modal__bio h3,
+.iiidem-instructor-modal__bio h4,
+.iiidem-instructor-modal__bio h5,
+.iiidem-instructor-modal__bio h6 {
+  margin: 0 0 0.55em;
+  color: #0b3d91;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.iiidem-instructor-modal__bio h1 {
+  font-size: 1.15rem;
+}
+
+.iiidem-instructor-modal__bio h2 {
+  font-size: 1.05rem;
+}
+
+.iiidem-instructor-modal__bio h3 {
+  font-size: 0.98rem;
+}
+
+.iiidem-instructor-modal__bio h4,
+.iiidem-instructor-modal__bio h5,
+.iiidem-instructor-modal__bio h6 {
+  font-size: 0.9rem;
+}
+
+.iiidem-instructor-modal__bio ul,
+.iiidem-instructor-modal__bio ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.25rem;
+  text-align: left;
+}
+
+.iiidem-instructor-modal__bio a {
+  color: #0b3d91;
+}
+
+.iiidem-instructor-modal__profile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .iiidem-instructor-modal__header {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.35rem 1.25rem 1rem;
+    gap: 0.85rem;
+  }
+
+  .iiidem-instructor-modal__close {
+    top: 0.65rem;
+    right: 0.65rem;
+  }
+
+  .iiidem-instructor-modal__photo {
+    width: 88px;
+    height: 88px;
+  }
+
+  .iiidem-instructor-modal__bio {
+    padding: 1.1rem 1.15rem 1.35rem;
+    font-size: 0.78rem;
+    text-align: justify;
+  }
 }
 
 @media (max-width: 767px) {
@@ -1919,29 +2259,42 @@ body.pagelayout-marketing #page {
 }
 
 .iiidem-page-hero {
-  padding: 2.5rem 0 2rem;
+  padding: 2.5rem 0 2.25rem;
   background: linear-gradient(135deg, #004274 0%, #0b3d91 55%, #1356c5 100%);
   color: #fff;
+  overflow: visible;
 }
 
 .iiidem-breadcrumb {
+  display: block;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
-  opacity: 0.9;
+  margin: 0 0 1rem;
+  opacity: 0.95;
+  color: #fff;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
 }
 
 .iiidem-breadcrumb a {
-  color: #fff;
+  color: #fff !important;
   text-decoration: none;
 }
 
-.iiidem-breadcrumb a:hover {
+.iiidem-breadcrumb a:hover,
+.iiidem-breadcrumb a:focus-visible {
   text-decoration: underline;
+  color: #fff !important;
 }
 
 .iiidem-breadcrumb span[aria-hidden="true"] {
   margin: 0 0.35rem;
   opacity: 0.7;
+  color: #fff;
+}
+
+.iiidem-breadcrumb > span:last-child {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .iiidem-page-hero__title {
@@ -1949,6 +2302,7 @@ body.pagelayout-marketing #page {
   font-size: var(--iiidem-hero-title-size);
   font-weight: 700;
   margin-bottom: 0.5rem;
+  color: #ffffff !important;
 }
 
 .iiidem-page-hero__lead {
@@ -1958,6 +2312,7 @@ body.pagelayout-marketing #page {
   max-width: 640px;
   margin-bottom: 0;
   opacity: 0.92;
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .iiidem-about-section--page {
@@ -4154,18 +4509,263 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 }
 
 /* ===== Registration (/register/) ===== */
+.iiidem-register-form {
+  overflow: visible;
+}
+
+.iiidem-register-card,
+.iiidem-register-card .card-body {
+  overflow: visible !important;
+}
+
+/* Never style an .fitem wrapper as a Bootstrap control (breaks layout). */
+.iiidem-register-form .fitem.form-control,
+.iiidem-register-form .mb-3.form-control,
+.iiidem-register-form .row.form-control {
+  all: unset;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 1rem !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
 .iiidem-register-form .fitem {
-  margin-bottom: 1rem;
+  margin-bottom: 1rem !important;
+}
+
+/* Moodle full-width-labels (set_display_vertical): label above control. */
+.iiidem-register-form form.mform.full-width-labels .fitem > .col-md-3,
+.iiidem-register-form form.mform.full-width-labels .fitem > .col-form-label,
+.iiidem-register-form form.mform.full-width-labels .fitem > [class*="col-md-3"] {
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  padding-right: 0 !important;
+  text-align: left !important;
+}
+
+.iiidem-register-form form.mform.full-width-labels .fitem > .col-md-9,
+.iiidem-register-form form.mform.full-width-labels .fitem > .felement,
+.iiidem-register-form form.mform.full-width-labels .fitem > [class*="col-md-9"] {
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  padding-left: 0 !important;
 }
 
 .iiidem-register-form .fitem .col-form-label {
   font-weight: 600;
+  justify-content: flex-start !important;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem !important;
+  padding-top: 0 !important;
 }
 
-.iiidem-register-form .fitem input.form-control,
-.iiidem-register-form .fitem select.form-control {
+/* Real inputs only — full width. */
+.iiidem-register-form .felement > input.form-control,
+.iiidem-register-form .felement > select.form-control,
+.iiidem-register-form .felement > textarea.form-control,
+.iiidem-register-form .felement input[type="text"],
+.iiidem-register-form .felement input[type="password"],
+.iiidem-register-form .felement input[type="email"],
+.iiidem-register-form .felement input[type="tel"],
+.iiidem-register-form .felement select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
   border-radius: 8px;
   min-height: 44px;
+}
+
+.iiidem-register-form .fitem.has-danger .form-control-feedback,
+.iiidem-register-form .fitem.has-danger .invalid-feedback,
+.iiidem-register-form .fitem.has-danger .iiidem-field-error,
+.iiidem-register-form .felement > .form-control-feedback,
+.iiidem-register-form #id_error_password2 {
+  display: block !important;
+  visibility: visible !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0.35rem 0 0 !important;
+  padding: 0 !important;
+  color: #dc3545 !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  float: none !important;
+  position: static !important;
+  flex: 0 0 100% !important;
+}
+
+/* Under-field feedback is for screen readers only; visible copy is beside the label. */
+.iiidem-register-form .form-control-feedback.iiidem-feedback-sr,
+.iiidem-register-form .fitem.has-danger .form-control-feedback.iiidem-feedback-sr {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* "City/town * Required" — error sits next to the label */
+.iiidem-register-form .fitem > .col-form-label,
+.iiidem-register-form .fitem > .col-md-3.col-form-label,
+.iiidem-register-form #id_occupationheader .ftoggler {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: baseline !important;
+  gap: 0.35rem 0.5rem;
+}
+
+.iiidem-register-form .iiidem-label-error {
+  display: none;
+  color: #dc3545;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.iiidem-register-form .iiidem-label-has-error > .iiidem-label-error,
+.iiidem-register-form .iiidem-label-error:not(:empty) {
+  display: inline !important;
+}
+
+/* Role heading */
+.iiidem-register-form #id_occupationheader {
+  margin: 0.5rem 0 0.35rem;
+}
+
+.iiidem-register-form #id_occupationheader .ftoggler {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.iiidem-register-form #id_occupationheader .ftoggler::after {
+  content: "*";
+  color: #dc3545;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Role / working-category radios: circle + text on one line. */
+.iiidem-register-form .fitem:has(input[name="occupation"]),
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) {
+  margin-bottom: 0.25rem !important;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) > .col-md-3,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) > .col-md-3 {
+  display: none !important;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .felement,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .felement,
+.iiidem-register-form .fitem:has(input[name="occupation"]) .checkbox,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .checkbox {
+  padding-left: 0.15rem;
+  overflow: visible;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 0.5rem;
+  padding: 0.35rem 0 !important;
+  margin: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check-input,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check-input {
+  position: static !important;
+  float: none !important;
+  margin: 0 !important;
+  flex: 0 0 auto;
+  display: inline-block !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  vertical-align: middle;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check-label,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check-label {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 500;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check > .ms-2,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check > .ms-2,
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check .form-label-addon,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check .form-label-addon,
+.iiidem-register-form .fitem:has(input[name="occupation"]) .iiidem-required-asterisk,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .iiidem-required-asterisk {
+  display: none !important;
+}
+
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check > .ms-2 > div::after,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check > .ms-2 > div::after {
+  content: none !important;
+}
+
+/* Never show Required between radio options — it sits beside the section heading. */
+.iiidem-register-form .fitem:has(input[name="occupation"]) .form-control-feedback,
+.iiidem-register-form .fitem:has(input[name="occupation"]) .invalid-feedback,
+.iiidem-register-form .fitem:has(input[name="occupation"]) .iiidem-field-error,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-control-feedback,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .invalid-feedback,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]) .iiidem-field-error,
+.iiidem-register-form .fitem:has(input[name="occupation"]).has-danger .form-control-feedback,
+.iiidem-register-form .fitem:has(input[name="occupation"]).has-danger .invalid-feedback,
+.iiidem-register-form .fitem:has(input[name="occupation"]).has-danger .iiidem-field-error,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]).has-danger .form-control-feedback,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]).has-danger .invalid-feedback,
+.iiidem-register-form .fitem:has(input[name="workingcategory"]).has-danger .iiidem-field-error {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+  display: block !important;
+  visibility: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+.iiidem-register-form #id_workingheader .ftoggler {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: baseline !important;
+  gap: 0.35rem 0.5rem;
 }
 
 .iiidem-register-password-wrap {
@@ -4173,16 +4773,33 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   width: 100%;
 }
 
-.iiidem-register-password-wrap input.form-control {
+.iiidem-register-password-wrap input.form-control,
+.iiidem-register-password-wrap input.form-control.is-invalid,
+.iiidem-register-form .fitem.has-danger .iiidem-register-password-wrap input.form-control {
   width: 100%;
-  padding-right: 2.75rem;
+  /* Room for the eye toggle only — hide Bootstrap’s invalid icon so it doesn’t overlap. */
+  padding-right: 2.75rem !important;
+  background-image: none !important;
+  background-repeat: no-repeat !important;
+}
+
+.iiidem-register-form .fitem.has-danger .iiidem-field-error,
+.iiidem-register-form .fitem.has-danger .form-control-feedback:not(.iiidem-feedback-sr),
+.iiidem-register-form .fitem.has-danger .invalid-feedback:not(.iiidem-feedback-sr),
+.iiidem-register-form #id_error_password2:not(.iiidem-feedback-sr) {
+  display: block !important;
+  visibility: visible !important;
+  color: #dc3545 !important;
+  font-size: 0.875rem;
+  margin-top: 0.35rem;
+  font-weight: 500;
 }
 
 .iiidem-register-password-toggle {
   position: absolute;
   top: 50%;
   right: 0.55rem;
-  z-index: 3;
+  z-index: 5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4279,14 +4896,32 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   border-color: #198754;
 }
 
-/* Contact number with country code (intl-tel-input). */
+/* Contact number with country code (intl-tel-input v21+). */
 .iiidem-register-form .iti {
   width: 100%;
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
-.iiidem-register-form .iti__flag-container {
+.iiidem-register-form .fitem:has(.iti) {
+  position: relative;
+  z-index: 40;
+  overflow: visible !important;
+}
+
+.iiidem-register-form .felement:has(.iti),
+.iiidem-register-form .iti,
+.iiidem-register-card.card,
+.iiidem-register-card .card-body {
+  overflow: visible !important;
+}
+
+.iiidem-register-form .iti__country-container {
   z-index: 3;
+  width: auto !important;
+  right: auto !important;
+  left: 0 !important;
 }
 
 .iiidem-register-form .iti input.iiidem-phone-input,
@@ -4295,22 +4930,93 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   min-height: 44px;
 }
 
-.iiidem-register-form .iti--separate-dial-code input.iiidem-phone-input,
-.iiidem-register-form .iti--separate-dial-code input[name="phone1"] {
-  /* JS updates this from the country selector's measured width. */
-  padding-left: 6rem;
-  padding-right: 2.5rem;
+.iiidem-register-form .iti--show-selected-dial-code input.iiidem-phone-input,
+.iiidem-register-form .iti--show-selected-dial-code input[name="phone1"],
+.iiidem-register-form .iti--show-selected-dial-code input.form-control {
+  /* Fallback; JS also sets padding from measured flag+dial width. */
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-right: 2.5rem !important;
+  padding-left: 6.5rem !important;
 }
 
-.iiidem-register-form .iti--separate-dial-code .iti__selected-flag {
-  background-color: #f8fafc;
-  border-right: 1px solid #ced4da;
-  border-radius: 7px 0 0 7px;
+.iiidem-register-form .iti--show-selected-dial-code .iti__selected-country {
+  background-color: #f8fafc !important;
+  border: none !important;
+  border-right: 1px solid #ced4da !important;
+  border-radius: 7px 0 0 7px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 100%;
+  padding: 0 8px !important;
+  box-shadow: none !important;
 }
 
-.iiidem-register-form .iti__country-list {
-  z-index: 20;
-  max-width: min(360px, 90vw);
+.iiidem-register-form .iti__selected-country .iti__a11y-text,
+.iiidem-register-form .iti__selected-country .iti__country-name {
+  /* Visually hidden but keep for screen readers / library a11y. */
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Keep list inside the white dropdown panel (do NOT absolute-position the UL). */
+.iiidem-register-form .iti__dropdown-content,
+.iti--container .iti__dropdown-content {
+  background-color: #fff !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18) !important;
+  z-index: 2000 !important;
+  overflow: hidden;
+  min-width: 280px;
+  max-width: min(360px, 92vw);
+}
+
+.iiidem-register-form .iti--inline-dropdown .iti__dropdown-content {
+  position: absolute !important;
+  left: 0;
+  right: auto;
+  z-index: 2000 !important;
+}
+
+.iti--container {
+  z-index: 2000 !important;
+}
+
+.iiidem-register-form .iti__country-list,
+.iti--container .iti__country-list {
+  position: static !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  background: #fff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.iiidem-register-form .iti__country,
+.iti--container .iti__country {
+  background: #fff;
+  color: #0f172a;
+}
+
+.iiidem-register-form .iti__search-input,
+.iti--container .iti__search-input {
+  background: #fff !important;
+  border: 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .iiidem-register-form .fitem.iiidem-field-valid .iti input {
@@ -4339,14 +5045,7 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 
 .iiidem-register-form .fitem:has(input[name="occupation"]),
 .iiidem-register-form .fitem:has(input[name="workingcategory"]) {
-  margin-bottom: 0.35rem;
-}
-
-.iiidem-register-form .fitem:has(input[name="occupation"]) .form-check-input,
-.iiidem-register-form input[name="occupation"],
-.iiidem-register-form .fitem:has(input[name="workingcategory"]) .form-check-input,
-.iiidem-register-form input[name="workingcategory"] {
-  margin-top: 0.35rem;
+  margin-bottom: 0.25rem !important;
 }
 
 .iiidem-register-form #fgroup_id_workingheader,
@@ -4388,10 +5087,47 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 .iiidem-register-form #id_workingheader .ftoggler,
 .iiidem-register-form #id_workingembheader .ftoggler,
 .iiidem-register-form #id_studentheader .ftoggler,
-.iiidem-register-form #id_instructorheader .ftoggler {
+.iiidem-register-form #id_instructorheader .ftoggler,
+.iiidem-register-form #id_passwordheader .ftoggler,
+.iiidem-register-form #id_occupationheader .ftoggler {
   font-size: 1rem;
   font-weight: 700;
   color: #212529;
+}
+
+.iiidem-register-form .ftoggler .btn-icon.icons-collapse-expand,
+.iiidem-register-form .ftoggler a.icons-collapse-expand {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.iiidem-register-form .ftoggler .expanded-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.iiidem-register-form .ftoggler .collapsed-icon {
+  display: none !important;
+}
+
+.iiidem-register-form .ftoggler .icons-collapse-expand.collapsed .expanded-icon {
+  display: none !important;
+}
+
+.iiidem-register-form .ftoggler .icons-collapse-expand.collapsed .collapsed-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
 }
 
 .iiidem-register-form #fitem_id_passwordpolicyinfo .col-form-label {
@@ -5469,48 +6205,393 @@ body.iiidem-register-otp-loading-open {
   color: #fff;
 }
 
-.iiidem-register-pending {
-  max-width: 36rem;
-  margin: 2rem auto;
-  padding: 2rem 1.75rem;
-  text-align: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-}
-.iiidem-register-pending__title {
-  margin: 0 0 0.75rem;
-  color: #0b3d91;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-.iiidem-register-pending__body {
-  margin: 0 0 1.5rem;
-  color: #33415c;
-  line-height: 1.55;
-}
-
-/* Keep pending-registrations action clear of the admin "Save changes" button. */
-.path-admin .settingsform .iiidem-pending-regs-setting {
-  display: block;
-  margin: 1rem 0 1.75rem;
-  padding: 0.85rem 1rem;
-  background: #ffc107;
-  border: 1px solid #d7e0ef;
-  border-radius: 8px;
-}
-.path-admin .settingsform .iiidem-pending-regs-setting .btn {
-  display: inline-block;
-  margin: 0;
-}
-.path-admin .settingsform > .row:has(button[type="submit"]) {
-  margin-top: 1.75rem;
-  padding-top: 0.5rem;
-  clear: both;
-}
-
 /* Temporarily hide homepage chatbot (remove this block to re-enable) */
 .iiidem-home-chatbot {
   display: none !important;
+}
+
+/*
+ * Grader / sticky pagination bar.
+ * Moodle pins #sticky-footer to the viewport bottom; with the large branded
+ * .iiidem-footer that appears as a white "Show N" strip under the site footer.
+ * Keep the bar in document flow so it sits with the report, above the footer.
+ */
+#sticky-footer.stickyfooter {
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  height: auto !important;
+  min-height: 3.5rem;
+  margin-top: 1rem;
+  box-shadow: none;
+  z-index: auto;
+  transition: none;
+}
+
+body.hasstickyfooter #page.drawers,
+#page.drawers.hasstickyfooter {
+  margin-bottom: 0 !important;
+}
+
+/*
+ * Assignment grader (action=grader)
+ * Moodle pins absolute full-viewport panels; IIIDEM header + drawers clash.
+ * Also polish the default sparse/cramped grader chrome.
+ */
+body.iiidem-assign-grader {
+  --iiidem-grader-nav-h: 5.5rem;
+  --iiidem-grader-actions-h: 4rem;
+  background: #eef2f7 !important;
+}
+
+body.iiidem-assign-grader #page.drawers,
+body.iiidem-assign-grader.limitedwidth #page.drawers,
+body.iiidem-assign-grader.mediumwidth #page.drawers {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #eef2f7 !important;
+}
+
+body.iiidem-assign-grader #page.drawers .main-inner,
+body.iiidem-assign-grader.limitedwidth #page.drawers .main-inner,
+body.iiidem-assign-grader.mediumwidth #page.drawers .main-inner {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+body.iiidem-assign-grader #page-content,
+body.iiidem-assign-grader #region-main-box,
+body.iiidem-assign-grader #region-main,
+body.iiidem-assign-grader #region-main div[role="main"] {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+body.iiidem-assign-grader .drawer-toggles,
+body.iiidem-assign-grader .iiidem-footer,
+body.iiidem-assign-grader #page-footer,
+body.iiidem-assign-grader .secondary-navigation,
+body.iiidem-assign-grader .activity-header,
+body.iiidem-assign-grader #page-header,
+body.iiidem-assign-grader .page-context-header {
+  display: none !important;
+}
+
+/* —— Student / assignment top bar —— */
+body.iiidem-assign-grader [data-region="grading-navigation-panel"] {
+  top: var(--navbar-height, 72px) !important;
+  height: var(--iiidem-grader-nav-h) !important;
+  z-index: 20;
+  background: #fff !important;
+  border-bottom: 1px solid #dbe3ef !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+body.iiidem-assign-grader [data-region="grading-navigation"] {
+  align-items: center !important;
+  margin: 0 !important;
+  height: 100%;
+  padding: 0.65rem 0.75rem !important;
+  box-sizing: border-box;
+}
+
+body.iiidem-assign-grader [data-region="grading-navigation"] > [class*="col-"] {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+body.iiidem-assign-grader [data-region="grading-navigation-panel"] > .container-fluid {
+  height: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: none;
+}
+
+body.iiidem-assign-grader [data-region="assignment-info"] {
+  white-space: normal !important;
+  overflow: visible !important;
+  line-height: 1.35;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+body.iiidem-assign-grader [data-region="assignment-info"] a {
+  color: var(--iiidem-brand-blue, #0b3d91);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+body.iiidem-assign-grader [data-region="assignment-info"] a:hover {
+  text-decoration: underline;
+}
+
+body.iiidem-assign-grader [data-region="user-info"] {
+  height: auto !important;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+body.iiidem-assign-grader [data-region="user-info"] .img-rounded,
+body.iiidem-assign-grader [data-region="user-info"] img {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  object-fit: cover;
+  margin: 0 0.75rem 0 0 !important;
+  float: none !important;
+  border: 2px solid #e2e8f0;
+}
+
+body.iiidem-assign-grader [data-region="user-info"] em {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+body.iiidem-assign-grader [data-region="user-info"] em + em,
+body.iiidem-assign-grader [data-region="user-info"] .dimmed_text,
+body.iiidem-assign-grader [data-region="user-info"] small {
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  color: #64748b !important;
+}
+
+body.iiidem-assign-grader [data-region="user-selector"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+body.iiidem-assign-grader [data-region="user-selector"] .form-autocomplete-selection,
+body.iiidem-assign-grader [data-region="user-selector"] input[type="text"] {
+  min-height: 2.25rem;
+  border-radius: 0.5rem !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.iiidem-assign-grader [data-region="user-selector"] a {
+  color: var(--iiidem-brand-blue, #0b3d91);
+  font-weight: 500;
+}
+
+/* —— Review + grade panels —— */
+body.iiidem-assign-grader [data-region="review-panel"],
+body.iiidem-assign-grader [data-region="grade-panel"] {
+  top: calc(var(--navbar-height, 72px) + var(--iiidem-grader-nav-h)) !important;
+  bottom: var(--iiidem-grader-actions-h) !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] {
+  background: #eef2f7 !important;
+  padding: 1.25rem 1.5rem 1.5rem !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"].fullwidth,
+body.iiidem-assign-grader [data-region="review-panel"].collapsed + [data-region="grade-panel"] {
+  left: 0 !important;
+  width: 100% !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] [data-region="grade"],
+body.iiidem-assign-grader [data-region="review-panel"].collapsed + [data-region="grade-panel"] [data-region="grade"],
+body.iiidem-assign-grader [data-region="grade-panel"].fullwidth [data-region="grade"] {
+  max-width: 52rem !important;
+  margin: 0 auto !important;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.85rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  padding: 1.5rem 1.75rem 2rem !important;
+  box-sizing: border-box;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] h3,
+body.iiidem-assign-grader [data-region="grade-panel"] h4 {
+  color: var(--iiidem-brand-blue, #0b3d91);
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e8eef7;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .submissionstatustable,
+body.iiidem-assign-grader [data-region="grade-panel"] .feedback,
+body.iiidem-assign-grader [data-region="grade-panel"] .mform {
+  margin-bottom: 1.5rem;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .submissionstatusgraded,
+body.iiidem-assign-grader [data-region="grade-panel"] .submissiongraded {
+  display: inline-block;
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.65rem !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .submissionstatussubmitted {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .submissionstatusnotsubmitted,
+body.iiidem-assign-grader [data-region="grade-panel"] .submissionnotgraded {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.65rem !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] input[type="text"],
+body.iiidem-assign-grader [data-region="grade-panel"] input[type="number"],
+body.iiidem-assign-grader [data-region="grade-panel"] select,
+body.iiidem-assign-grader [data-region="grade-panel"] textarea {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 0.55rem !important;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem !important;
+  background: #fff !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] input[type="text"]:focus,
+body.iiidem-assign-grader [data-region="grade-panel"] input[type="number"]:focus,
+body.iiidem-assign-grader [data-region="grade-panel"] select:focus,
+body.iiidem-assign-grader [data-region="grade-panel"] textarea:focus {
+  border-color: var(--iiidem-brand-blue, #0b3d91) !important;
+  box-shadow: 0 0 0 3px rgba(11, 61, 145, 0.15) !important;
+  outline: none !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .fitem {
+  margin-bottom: 1rem;
+}
+
+body.iiidem-assign-grader [data-region="grade-panel"] .editor_atto_content,
+body.iiidem-assign-grader [data-region="grade-panel"] .tox-tinymce {
+  border-radius: 0.55rem !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* —— Bottom save bar —— */
+body.iiidem-assign-grader [data-region="grade-actions-panel"] {
+  z-index: 30;
+  height: var(--iiidem-grader-actions-h) !important;
+  background: #0b3d91 !important;
+  border-top: none !important;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.12);
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  height: 100%;
+  padding: 0.5rem 1.25rem !important;
+  color: #fff;
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] label,
+body.iiidem-assign-grader [data-region="grade-actions"] .form-check-label {
+  color: #e2e8f0 !important;
+  margin: 0 !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] .btn-primary,
+body.iiidem-assign-grader [data-region="grade-actions"] input[type="submit"].btn-primary {
+  background: #fff !important;
+  color: #0b3d91 !important;
+  border-color: #fff !important;
+  font-weight: 700 !important;
+  min-height: 2.4rem !important;
+  padding: 0.4rem 1.1rem !important;
+  border-radius: 0.5rem !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] .btn-primary:hover {
+  background: #f1f5f9 !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] .btn-secondary,
+body.iiidem-assign-grader [data-region="grade-actions"] input.btn-secondary {
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  min-height: 2.4rem !important;
+  padding: 0.4rem 1.1rem !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+}
+
+body.iiidem-assign-grader [data-region="grade-actions"] .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Do not inflate TinyMCE / grader chrome buttons */
+body.iiidem-assign-grader .btn:not(.btn-primary):not(.btn-secondary):not(.btn-danger),
+body.iiidem-assign-grader .tox .tox-tbtn,
+body.iiidem-assign-grader .tox .tox-mbtn {
+  min-height: 0 !important;
+  padding: 0.25rem 0.5rem !important;
+  font-size: inherit !important;
+  border-radius: 0.25rem !important;
+  font-weight: inherit !important;
+}
+
+body.iiidem-assign-grader .tox .tox-tbtn,
+body.iiidem-assign-grader .tox .tox-mbtn {
+  padding: 0 !important;
+}
+
+@media (max-width: 991px) {
+  body.iiidem-assign-grader [data-region="grading-navigation-panel"] {
+    height: auto !important;
+    min-height: var(--iiidem-grader-nav-h);
+    position: relative !important;
+    top: 0 !important;
+  }
+
+  body.iiidem-assign-grader [data-region="grading-navigation"] {
+    height: auto;
+    padding: 0.85rem 0 !important;
+  }
+
+  body.iiidem-assign-grader [data-region="review-panel"],
+  body.iiidem-assign-grader [data-region="grade-panel"],
+  body.iiidem-assign-grader [data-region="grade-actions-panel"] {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  body.iiidem-assign-grader #region-main,
+  body.iiidem-assign-grader #region-main div[role="main"] {
+    overflow: visible !important;
+  }
 }
 

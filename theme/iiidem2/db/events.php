@@ -37,4 +37,16 @@ $observers = [
         'eventname' => '\core\event\user_updated',
         'callback' => '\theme_iiidem2\registration_enrolment::user_updated',
     ],
+    [
+        'eventname' => '\core\event\course_module_completion_updated',
+        'callback' => '\theme_iiidem2\certificate_observer::course_module_completion_updated',
+    ],
+    [
+        'eventname' => '\mod_assign\event\submission_graded',
+        'callback' => '\theme_iiidem2\certificate_observer::submission_graded',
+    ],
+    [
+        'eventname' => '\core\event\user_loggedout',
+        'callback' => '\theme_iiidem2\security_headers::user_loggedout',
+    ],
 ];

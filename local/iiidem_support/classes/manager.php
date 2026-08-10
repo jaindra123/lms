@@ -193,15 +193,46 @@ class manager {
      * @return int
      */
     public static function create_ticket(int $userid, \stdClass $data): int {
-        global $DB;
+        global $DB, $CFG;
+
+        require_once($CFG->libdir . '/enrollib.php');
+
+        $courseid = (int) ($data->courseid ?? 0);
+        if ($courseid > 0) {
+            $allowed = enrol_get_users_courses($userid, true, 'id', 'id ASC');
+            if (!isset($allowed[$courseid])) {
+                throw new \moodle_exception('invalidcourseid', 'error');
+            }
+        } else {
+            $courseid = 0;
+        }
+
+        $categories = array_keys(self::get_categories());
+        $category = clean_param((string) ($data->category ?? 'general'), PARAM_ALPHANUMEXT);
+        if (!in_array($category, $categories, true)) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+
+        $subject = trim(clean_param((string) ($data->subject ?? ''), PARAM_TEXT));
+        $message = trim(clean_param((string) ($data->message ?? ''), PARAM_TEXT));
+        if ($subject === '' || \core_text::strlen($subject) > 255
+                || $message === '' || \core_text::strlen($message) > 5000) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+
+        // Rate-limit ticket creation (CDAC missing rate limiting on support tickets).
+        if (class_exists('\theme_iiidem2\rate_limit')) {
+            \theme_iiidem2\rate_limit::require_allowed('support_create_ticket', 5, 600);
+            \theme_iiidem2\rate_limit::require_allowed('support_create_ticket_day', 20, 86400);
+        }
 
         $now = time();
         $record = (object) [
             'userid' => $userid,
-            'courseid' => (int) ($data->courseid ?? 0),
-            'category' => $data->category ?? 'general',
-            'subject' => $data->subject,
-            'message' => $data->message,
+            'courseid' => $courseid,
+            'category' => $category,
+            'subject' => $subject,
+            'message' => $message,
             'status' => self::STATUS_OPEN,
             'timecreated' => $now,
             'timemodified' => $now,
@@ -311,7 +342,22 @@ class manager {
     public static function admin_reply(int $ticketid, string $reply, string $status): void {
         global $DB, $USER;
 
+        $reply = trim(clean_param($reply, PARAM_TEXT));
+        if ($reply === '' || \core_text::strlen($reply) > 5000) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+        $allowed = [self::STATUS_IN_PROGRESS, self::STATUS_RESOLVED, self::STATUS_CLOSED];
+        $status = clean_param($status, PARAM_ALPHANUMEXT);
+        if (!in_array($status, $allowed, true)) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+
         $ticket = $DB->get_record('local_iiidem_support_ticket', ['id' => $ticketid], '*', MUST_EXIST);
+
+        if (class_exists('\theme_iiidem2\rate_limit')) {
+            \theme_iiidem2\rate_limit::require_allowed('support_admin_reply', 30, 600);
+        }
+
         $now = time();
 
         $ticket->adminreply = $reply;

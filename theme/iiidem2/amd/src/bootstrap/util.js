@@ -2,6 +2,8 @@
  * --------------------------------------------------------------------------
  * Bootstrap (v4.6.2): util.js
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
+ * Customised by IIIDEM: getSelectorFromElement only accepts safe #id selectors
+ * (mitigates carousel href XSS findings / CVE-2024-6531 class issues).
  * --------------------------------------------------------------------------
  */
 
@@ -81,6 +83,12 @@ const Util = {
     if (!selector || selector === '#') {
       const hrefAttr = element.getAttribute('href')
       selector = hrefAttr && hrefAttr !== '#' ? hrefAttr.trim() : ''
+    }
+
+    // Hardening (scanner / CVE-2024-6531 class findings): only allow a single
+    // fragment identifier as a CSS selector. Reject javascript:, paths, queries.
+    if (!selector || selector.charAt(0) !== '#' || !/^#[A-Za-z][\w:-]*$/.test(selector)) {
+      return null
     }
 
     try {

@@ -1,0 +1,54 @@
+{{!
+    @template theme_iiidem2/dashboard/student_attendance
+
+    Own attendance only for the logged-in student.
+}}
+<article class="iiidem-student-panel iiidem-student-attendance" id="student-attendance">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-user-check" aria-hidden="true"></span></span>
+            <div>
+                <h2 class="iiidem-student-panel__title mb-0">{{#str}}dashboardstudentattendance, theme_iiidem2{{/str}}</h2>
+                {{#hasattendancesummary}}
+                <p class="iiidem-student-attendance__summary mb-0">{{attendancesummary}}</p>
+                {{/hasattendancesummary}}
+            </div>
+        </div>
+        {{#hasattendanceviewurl}}
+        <a href="{{{attendanceviewurl}}}" class="btn btn-outline-secondary btn-sm">{{#str}}dashboardstudentattendanceview, theme_iiidem2{{/str}}</a>
+        {{/hasattendanceviewurl}}
+    </header>
+    <div class="iiidem-student-panel__body">
+        {{#hasattendancesessions}}
+        <div class="table-responsive">
+            <table class="table table-sm iiidem-student-attendance__table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{#str}}dashboardteacherattendancedate, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancesessioncol, theme_iiidem2{{/str}}</th>
+                        <th>{{#str}}dashboardteacherattendancestatus, theme_iiidem2{{/str}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#attendancesessions}}
+                    <tr>
+                        <td>
+                            <div class="iiidem-student-attendance__date">{{date}}</div>
+                            <div class="iiidem-student-attendance__time">{{time}}</div>
+                            {{#coursename}}
+                            <div class="iiidem-student-attendance__course">{{coursename}}</div>
+                            {{/coursename}}
+                        </td>
+                        <td>{{title}}</td>
+                        <td><span class="iiidem-student-pill iiidem-student-pill--{{statusclass}}">{{statuslabel}}</span></td>
+                    </tr>
+                    {{/attendancesessions}}
+                </tbody>
+            </table>
+        </div>
+        {{/hasattendancesessions}}
+        {{^hasattendancesessions}}
+        <p class="iiidem-student-empty mb-0">{{#str}}dashboardstudentattendancenorecords, theme_iiidem2{{/str}}</p>
+        {{/hasattendancesessions}}
+    </div>
+</article>

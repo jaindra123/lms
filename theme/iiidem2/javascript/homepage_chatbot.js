@@ -125,14 +125,18 @@
         }
 
         function loadHistory(statusMessage) {
-            var email = getEmail();
-            if (!email || email.indexOf('@') < 1) {
-                return;
-            }
-            var url = apiUrl +
-                '?action=history&email=' + encodeURIComponent(email) +
-                '&sesskey=' + encodeURIComponent(sesskey);
-            fetch(url, {credentials: 'same-origin'})
+            // History is authorized server-side from the session email set after ask.
+            // Do not send a client-chosen email (IDOR prevention).
+            // sesskey must not appear in the URL (Referer / proxy logs).
+            var body = new URLSearchParams();
+            body.set('action', 'history');
+            body.set('sesskey', sesskey);
+            fetch(apiUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: body.toString()
+            })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data || !data.success) {
@@ -365,8 +369,15 @@
         }
 
         function loadList() {
-            var url = adminApi + '?action=list&sesskey=' + encodeURIComponent(sesskey);
-            fetch(url, {credentials: 'same-origin'})
+            var body = new URLSearchParams();
+            body.set('action', 'list');
+            body.set('sesskey', sesskey);
+            fetch(adminApi, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: body.toString()
+            })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     renderList((data && data.items) ? data.items : []);

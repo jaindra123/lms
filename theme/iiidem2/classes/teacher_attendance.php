@@ -8,6 +8,9 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Teacher attendance summaries for the instructor dashboard (mod_attendance).
  *
+ * Student lists and session stats are scoped to learners under the viewing
+ * teacher (excludes staff/admins; respects course/activity groups).
+ *
  * @package   theme_iiidem2
  * @copyright 2026 IIIDEM
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -50,6 +53,7 @@ class teacher_attendance {
 
         require_once($CFG->dirroot . '/mod/attendance/locallib.php');
         require_once($CFG->libdir . '/enrollib.php');
+        require_once($CFG->libdir . '/grouplib.php');
 
         foreach ($courses as $course) {
             $coursecontext = \context_course::instance($course->id);
@@ -73,6 +77,10 @@ class teacher_attendance {
                     continue;
                 }
 
+                $students = teacher_students::get_course_students($course, $userid, $cm);
+                $studentids = array_map('intval', array_keys($students));
+                $studentcount = count($studentids);
+
                 $att = new \mod_attendance_structure(
                     $attrecord,
                     $cm->get_course_module_record(),
@@ -80,10 +88,8 @@ class teacher_attendance {
                     null,
                     null
                 );
-                $studentcount = count_enrolled_users($coursecontext, 'mod/attendance:canbelisted');
-                if ($studentcount === 0) {
-                    $studentcount = count_enrolled_users($coursecontext);
-                }
+
+                $allowedgroupids = self::get_teacher_group_ids($course, $cm, $userid);
 
                 $sessions = $DB->get_records_sql(
                     "SELECT *
@@ -92,14 +98,26 @@ class teacher_attendance {
                    ORDER BY sessdate DESC",
                     ['aid' => (int) $attrecord->id],
                     0,
-                    self::SESSION_LIMIT
+                    self::SESSION_LIMIT * 3
                 );
 
                 $sessionrows = [];
                 $takensessionids = [];
 
                 foreach ($sessions as $session) {
-                    $stats = self::get_session_stats((int) $session->id, $studentcount, (int) $session->lasttaken);
+                    if (!self::teacher_can_see_session($session, $allowedgroupids)) {
+                        continue;
+                    }
+                    if (count($sessionrows) >= self::SESSION_LIMIT) {
+                        break;
+                    }
+
+                    $stats = self::get_session_stats(
+                        (int) $session->id,
+                        $studentcount,
+                        (int) $session->lasttaken,
+                        $studentids
+                    );
                     if (!empty($session->lasttaken)) {
                         $takensessionids[] = (int) $session->id;
                     }
@@ -128,12 +146,9 @@ class teacher_attendance {
                 }
 
                 $studentrows = self::get_student_summary_rows(
-                    $course,
-                    $coursecontext,
-                    (int) $attrecord->id,
+                    $students,
                     $takensessionids,
-                    $cm->id,
-                    $userid
+                    $cm->id
                 );
 
                 return [
@@ -151,7 +166,7 @@ class teacher_attendance {
                     'students' => $studentrows,
                     'hassessions' => !empty($sessionrows),
                     'hasstudents' => !empty($studentrows),
-                    'totalsessions' => count($sessions),
+                    'totalsessions' => count($sessionrows),
                 ];
             }
         }
@@ -168,19 +183,21 @@ class teacher_attendance {
     }
 
     /**
-     * Average attendance % across taken sessions (present marks / possible marks).
+     * Average attendance % across taken sessions for this teacher's learners only.
      *
      * @param array $courses
      * @param int $userid
      * @return string Display label e.g. "72%" or "—"
      */
     public static function get_average_percent_label(array $courses, int $userid): string {
-        global $DB;
+        global $CFG, $DB;
 
         $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_attendance');
         if (!$plugin || !$plugin->is_enabled()) {
             return '—';
         }
+
+        require_once($CFG->libdir . '/grouplib.php');
 
         $present = 0;
         $total = 0;
@@ -193,17 +210,32 @@ class teacher_attendance {
             }
 
             foreach ($modinfo->get_instances_of('attendance') as $cm) {
+                $students = teacher_students::get_course_students($course, $userid, $cm);
+                $studentids = array_map('intval', array_keys($students));
+                if (empty($studentids)) {
+                    continue;
+                }
+
+                $allowedgroupids = self::get_teacher_group_ids($course, $cm, $userid);
                 $attendanceid = (int) $cm->instance;
                 $sessions = $DB->get_records_select(
                     'attendance_sessions',
                     'attendanceid = ? AND lasttaken > 0',
                     [$attendanceid],
                     '',
-                    'id, lasttaken'
+                    'id, lasttaken, groupid'
                 );
 
                 foreach ($sessions as $session) {
-                    $stats = self::get_session_stats((int) $session->id, 0, (int) $session->lasttaken);
+                    if (!self::teacher_can_see_session($session, $allowedgroupids)) {
+                        continue;
+                    }
+                    $stats = self::get_session_stats(
+                        (int) $session->id,
+                        count($studentids),
+                        (int) $session->lasttaken,
+                        $studentids
+                    );
                     $present += $stats['present'];
                     $total += $stats['present'] + $stats['absent'] + $stats['notmarked'];
                 }
@@ -219,11 +251,16 @@ class teacher_attendance {
 
     /**
      * @param int $sessionid
-     * @param int $enrolledcount
+     * @param int $enrolledcount Teacher-scoped learner count
      * @param int $lasttaken
+     * @param int[] $studentids Empty = no learner filter (legacy); non-empty = only these users
      * @return array{present: int, absent: int, notmarked: int}
      */
-    protected static function get_session_stats(int $sessionid, int $enrolledcount, int $lasttaken): array {
+    protected static function get_session_stats(
+            int $sessionid,
+            int $enrolledcount,
+            int $lasttaken,
+            array $studentids = []): array {
         global $DB;
 
         if ($lasttaken <= 0) {
@@ -234,13 +271,25 @@ class teacher_attendance {
             ];
         }
 
+        if (empty($studentids)) {
+            return [
+                'present' => 0,
+                'absent' => 0,
+                'notmarked' => 0,
+            ];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($studentids, SQL_PARAMS_NAMED, 'sid');
+        $params['sessionid'] = $sessionid;
+
         $rows = $DB->get_records_sql(
             "SELECT st.grade, COUNT(*) AS cnt
                FROM {attendance_log} al
                JOIN {attendance_statuses} st ON st.id = al.statusid
               WHERE al.sessionid = :sessionid
+                AND al.studentid $insql
            GROUP BY st.grade",
-            ['sessionid' => $sessionid]
+            $params
         );
 
         $present = 0;
@@ -265,33 +314,21 @@ class teacher_attendance {
     }
 
     /**
-     * Per-student attendance across taken sessions.
+     * Per-student attendance across taken sessions (teacher-scoped learners only).
      *
-     * @param \stdClass $course
-     * @param \context_course $coursecontext
-     * @param int $attendanceid
+     * @param array<int,\stdClass> $students
      * @param array $takensessionids
      * @param int $cmid
-     * @param int $viewerid
      * @return array
      */
     protected static function get_student_summary_rows(
-            \stdClass $course,
-            \context_course $coursecontext,
-            int $attendanceid,
+            array $students,
             array $takensessionids,
-            int $cmid,
-            int $viewerid): array {
+            int $cmid): array {
         global $DB;
 
-        if (empty($takensessionids)) {
+        if (empty($takensessionids) || empty($students)) {
             return [];
-        }
-
-        $userfields = teacher_students::get_enrolled_user_fieldlist();
-        $students = get_enrolled_users($coursecontext, 'mod/attendance:canbelisted', 0, $userfields);
-        if (empty($students)) {
-            $students = get_enrolled_users($coursecontext, '', 0, $userfields);
         }
 
         list($insql, $params) = $DB->get_in_or_equal($takensessionids, SQL_PARAMS_NAMED);
@@ -338,5 +375,50 @@ class teacher_attendance {
         });
 
         return $rows;
+    }
+
+    /**
+     * Group ids this teacher may use for attendance (null = all groups / no restriction).
+     *
+     * @param \stdClass $course
+     * @param \cm_info $cm
+     * @param int $teacherid
+     * @return int[]|null null means all sessions/groups are visible
+     */
+    protected static function get_teacher_group_ids(\stdClass $course, \cm_info $cm, int $teacherid): ?array {
+        $modcontext = \context_module::instance($cm->id);
+        if (has_capability('moodle/site:accessallgroups', $modcontext, $teacherid)) {
+            return null;
+        }
+
+        $groupmode = groups_get_activity_groupmode($cm, $course);
+        $mygroups = groups_get_all_groups($course->id, $teacherid, (int) $cm->groupingid);
+
+        if ((int) $groupmode === SEPARATEGROUPS) {
+            return array_map('intval', array_keys($mygroups));
+        }
+
+        if (!empty($mygroups)) {
+            return array_map('intval', array_keys($mygroups));
+        }
+
+        return null;
+    }
+
+    /**
+     * @param \stdClass $session
+     * @param int[]|null $allowedgroupids null = all visible
+     * @return bool
+     */
+    protected static function teacher_can_see_session(\stdClass $session, ?array $allowedgroupids): bool {
+        if ($allowedgroupids === null) {
+            return true;
+        }
+        $groupid = (int) ($session->groupid ?? 0);
+        // Common (all-class) sessions stay visible; group sessions need membership.
+        if ($groupid === 0) {
+            return true;
+        }
+        return in_array($groupid, $allowedgroupids, true);
     }
 }

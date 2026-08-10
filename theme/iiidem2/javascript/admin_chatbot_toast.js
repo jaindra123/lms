@@ -66,14 +66,16 @@
         }
 
         function poll() {
-            if (document.hidden) {
-                return;
-            }
-            var url = config.apiUrl +
-                '?sesskey=' + encodeURIComponent(config.sesskey) +
-                '&sinceid=' + encodeURIComponent(String(sinceId));
+            var body = new URLSearchParams();
+            body.set('sesskey', config.sesskey);
+            body.set('sinceid', String(sinceId));
 
-            fetch(url, {credentials: 'same-origin'})
+            fetch(config.apiUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: body.toString()
+            })
                 .then(function(response) {
                     if (!response.ok) {
                         throw new Error('HTTP ' + response.status);
@@ -96,13 +98,8 @@
                 });
         }
 
-        // Do not poll immediately on every page — wait for interval / visibility.
+        poll();
         setInterval(poll, pollMs);
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-                poll();
-            }
-        });
     }
 
     // Expose for Moodle js_init_code (runs after this file in footer).

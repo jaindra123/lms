@@ -21,7 +21,11 @@ $PAGE->set_pagelayout('incourse');
 $PAGE->set_title(get_string('scheduleliveclass', 'local_iiidem_coursecalendar'));
 $PAGE->set_heading(get_string('scheduleliveclassheading', 'local_iiidem_coursecalendar', format_string($course->fullname)));
 
-if ($cancelid && confirm_sesskey()) {
+if ($cancelid && confirm_sesskey() && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $event = $DB->get_record('local_iiidem_coursecalendar_event', ['id' => $cancelid], 'id, courseid', MUST_EXIST);
+    if ((int) $event->courseid !== $courseid) {
+        throw new moodle_exception('invalidrecord', 'error');
+    }
     manager::cancel_live_class($cancelid, $USER->id);
     redirect($returnurl, get_string('liveclasscancelled', 'local_iiidem_coursecalendar'), null, \core\output\notification::NOTIFY_SUCCESS);
 }
@@ -34,6 +38,8 @@ if ($form->is_cancelled()) {
 
 if ($data = $form->get_data()) {
     try {
+        // Ignore any client-tampered hidden courseid; URL param is capability-checked.
+        $data->courseid = $courseid;
         $record = manager::create_live_class($courseid, $data, $USER->id);
         $a = (object) [
             'count' => (int) $record->attendeecount,
@@ -42,8 +48,8 @@ if ($data = $form->get_data()) {
                 : get_string('liveclassinvitesnotsent', 'local_iiidem_coursecalendar'),
         ];
         redirect($returnurl, get_string('liveclassscheduled', 'local_iiidem_coursecalendar', $a), null, \core\output\notification::NOTIFY_SUCCESS);
-    } catch (\moodle_exception $e) {
-        \core\notification::error($e->getMessage());
+    } catch (\Throwable $e) {
+        \theme_iiidem2\safe_errors::notify($e, 'schedule_live_class', true);
     }
 }
 
@@ -67,12 +73,20 @@ if (!empty($upcoming)) {
         $line = userdate($event->starttime, get_string('strftimedatetimeshort', 'langconfig'))
             . ' — ' . s($event->summary)
             . ' (' . get_string('liveclassattendees', 'local_iiidem_coursecalendar', $event->attendeecount) . ')';
-        $cancelurl = new moodle_url('/local/iiidem_coursecalendar/schedule_event.php', [
-            'courseid' => $courseid,
-            'cancel' => $event->id,
-            'sesskey' => sesskey(),
+        $cancelform = html_writer::start_tag('form', [
+            'method' => 'post',
+            'action' => (new moodle_url('/local/iiidem_coursecalendar/schedule_event.php'))->out(false),
+            'class' => 'd-inline',
         ]);
-        $line .= ' ' . html_writer::link($cancelurl, get_string('cancel'), ['class' => 'text-danger ms-2']);
+        $cancelform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+        $cancelform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'cancel', 'value' => $event->id]);
+        $cancelform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+        $cancelform .= html_writer::tag('button', get_string('cancel'), [
+            'type' => 'submit',
+            'class' => 'btn btn-link text-danger p-0 ms-2 align-baseline',
+        ]);
+        $cancelform .= html_writer::end_tag('form');
+        $line .= ' ' . $cancelform;
         echo html_writer::tag('li', $line);
     }
     echo html_writer::end_tag('ul');

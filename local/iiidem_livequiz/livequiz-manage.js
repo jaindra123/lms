@@ -48,9 +48,16 @@
     }
 
     function refresh() {
-        var url = apiurl + '?action=teacherstats&sessionid=' + encodeURIComponent(sessionid) +
-            '&sesskey=' + encodeURIComponent(sesskey);
-        fetch(url, {credentials: 'same-origin'})
+        var body = new URLSearchParams();
+        body.set('action', 'teacherstats');
+        body.set('sessionid', sessionid);
+        body.set('sesskey', sesskey);
+        fetch(apiurl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: body.toString()
+        })
             .then(function(response) {
                 return response.json();
             })

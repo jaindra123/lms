@@ -93,6 +93,12 @@
             </section>
             {{/hasweekendprogress}}
 
+            {{#hasattendance}}
+            <section class="iiidem-student-section mb-4" id="student-attendance-wrap">
+                {{> theme_iiidem2/dashboard/student_attendance }}
+            </section>
+            {{/hasattendance}}
+
             {{#hassupport}}
             <section class="iiidem-student-section mb-4" id="dashboard-support">
                 {{> theme_iiidem2/dashboard/support_card }}
@@ -250,6 +256,9 @@
 
         {{! —— Achievements —— }}
         <div class="iiidem-dashboard-panel d-none" id="panel-achievements" data-dashboard-panel="achievements" role="tabpanel" aria-labelledby="tab-achievements" hidden>
+            <section class="iiidem-student-section mb-4" id="student-certificates-wrap">
+                {{> theme_iiidem2/dashboard/student_certificates }}
+            </section>
             <section class="row g-4">
                 <div class="col-lg-6">
                     <article class="iiidem-student-panel">

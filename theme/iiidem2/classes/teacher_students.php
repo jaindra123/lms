@@ -240,18 +240,16 @@ class teacher_students {
             throw new \moodle_exception('usernotincourse', 'error');
         }
 
-        if (self::is_teaching_user($coursecontext, $studentid)) {
+        if (self::is_teaching_user($coursecontext, $studentid) || is_siteadmin($studentid)) {
+            throw new \moodle_exception('nopermissions', 'error');
+        }
+
+        $visible = self::get_course_students($course, $teacherid);
+        if (!isset($visible[$studentid])) {
             throw new \moodle_exception('nopermissions', 'error');
         }
     }
 
-    /**
-     * Enrolled learners in a course (excludes teachers / managers).
-     *
-     * @param \stdClass $course
-     * @param int $teacherid
-     * @return array<int,\stdClass>
-     */
     /**
      * User fields for get_enrolled_users() so fullname() has all name parts.
      *
@@ -272,7 +270,20 @@ class teacher_students {
         return implode(', ', $prefixed);
     }
 
-    public static function get_course_students(\stdClass $course, int $teacherid): array {
+    /**
+     * Learners under this teacher in a course (excludes staff / managers).
+     *
+     * When the teacher cannot access all groups: in separate-groups mode only
+     * members of the teacher's groups are returned; if the teacher belongs to
+     * any groups, those members are treated as their cohort even if group mode
+     * is off (multi-teacher courses).
+     *
+     * @param \stdClass $course
+     * @param int $teacherid
+     * @param \cm_info|null $cm Optional activity for group mode / grouping.
+     * @return array<int,\stdClass>
+     */
+    public static function get_course_students(\stdClass $course, int $teacherid, ?\cm_info $cm = null): array {
         $coursecontext = \context_course::instance($course->id);
 
         if (!self::is_teaching_user($coursecontext, $teacherid)) {
@@ -292,10 +303,68 @@ class teacher_students {
             if (!empty($user->deleted) || !empty($user->suspended)) {
                 continue;
             }
+            if (is_siteadmin((int) $user->id)) {
+                continue;
+            }
             if (self::is_teaching_user($coursecontext, (int) $user->id)) {
                 continue;
             }
             $students[(int) $user->id] = $user;
+        }
+
+        return self::filter_students_for_teacher_groups($course, $teacherid, $students, $cm);
+    }
+
+    /**
+     * Restrict learners to groups this teacher is allowed to see.
+     *
+     * @param \stdClass $course
+     * @param int $teacherid
+     * @param array<int,\stdClass> $students
+     * @param \cm_info|null $cm
+     * @return array<int,\stdClass>
+     */
+    public static function filter_students_for_teacher_groups(
+            \stdClass $course,
+            int $teacherid,
+            array $students,
+            ?\cm_info $cm = null): array {
+        if (empty($students)) {
+            return [];
+        }
+
+        $context = $cm
+            ? \context_module::instance($cm->id)
+            : \context_course::instance($course->id);
+
+        if (has_capability('moodle/site:accessallgroups', $context, $teacherid)) {
+            return $students;
+        }
+
+        $groupingid = $cm ? (int) $cm->groupingid : 0;
+        $groupmode = $cm
+            ? groups_get_activity_groupmode($cm, $course)
+            : (int) ($course->groupmode ?? NOGROUPS);
+
+        $mygroups = groups_get_all_groups($course->id, $teacherid, $groupingid);
+
+        // Separate groups without membership ⇒ no visible learners.
+        if ((int) $groupmode === SEPARATEGROUPS && empty($mygroups)) {
+            return [];
+        }
+
+        // Teacher assigned to groups ⇒ only those learners ("under this teacher").
+        if (!empty($mygroups)) {
+            $allowed = [];
+            foreach ($mygroups as $group) {
+                foreach (groups_get_members((int) $group->id, 'u.id') as $member) {
+                    $id = (int) $member->id;
+                    if (isset($students[$id])) {
+                        $allowed[$id] = $students[$id];
+                    }
+                }
+            }
+            return $allowed;
         }
 
         return $students;

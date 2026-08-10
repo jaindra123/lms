@@ -5,7 +5,7 @@
 }}
 {{> theme_iiidem2/navbar }}
 
-<main class="iiidem-marketing-page" id="contact-us-page">
+<main class="iiidem-marketing-page" id="main-content" tabindex="-1">
 
     <section class="iiidem-page-hero">
         <div class="container">
@@ -24,8 +24,8 @@
             <div class="row g-4">
                 {{#hascontactinfo}}
                 <div class="col-lg-5">
-                    <div class="card iiidem-contact-card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
+                    <div class="card iiidem-contact-card eci-card border-0 shadow-sm h-100">
+                        <div class="card-body eci-card__body p-4">
                             <h2 class="h4 mb-4">{{#str}}contactus_getintouch, theme_iiidem2{{/str}}</h2>
                             {{#hasaddress}}
                             <div class="iiidem-contact-item mb-3">

@@ -10,6 +10,8 @@ require(__DIR__ . '/../../config.php');
 require_login();
 require_capability('moodle/site:config', context_system::instance());
 
+global $SESSION;
+
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
 $code = optional_param('code', '', PARAM_RAW_TRIMMED);
 $state = optional_param('state', '', PARAM_RAW_TRIMMED);
@@ -23,23 +25,31 @@ $PAGE->set_title(get_string('pluginname', 'local_iiidem_webexattendance'));
 $returnurl = new moodle_url('/admin/settings.php', ['section' => 'local_iiidem_webexattendance']);
 
 if ($error !== '') {
-    redirect($returnurl, get_string('oauth_error', 'local_iiidem_webexattendance', $error), null, \core\output\notification::NOTIFY_ERROR);
+    // Provider error codes may be verbose; never echo raw query values to the UI.
+    error_log('local_iiidem_webexattendance oauth provider error: ' . substr(clean_param($error, PARAM_TEXT), 0, 200));
+    redirect($returnurl, get_string('oauth_error_generic', 'local_iiidem_webexattendance'), null, \core\output\notification::NOTIFY_ERROR);
 }
 
 if ($code !== '') {
-    // State was set to sesskey() when starting authorize.
-    if ($state === '' || $state !== sesskey()) {
+    // State must match the opaque value stored when starting authorize (not sesskey).
+    $expected = (string) ($SESSION->local_iiidem_webexattendance_oauth_state ?? '');
+    unset($SESSION->local_iiidem_webexattendance_oauth_state);
+    if ($expected === '' || $state === '' || !hash_equals($expected, $state)) {
         throw new moodle_exception('invalidsesskey', 'error');
     }
     try {
         \local_iiidem_webexattendance\oauth::exchange_code($code);
         redirect($returnurl, get_string('oauth_success', 'local_iiidem_webexattendance'), null, \core\output\notification::NOTIFY_SUCCESS);
     } catch (Throwable $e) {
-        redirect($returnurl, get_string('oauth_error', 'local_iiidem_webexattendance', $e->getMessage()), null, \core\output\notification::NOTIFY_ERROR);
+        error_log('local_iiidem_webexattendance oauth exchange: ' . $e->getMessage());
+        redirect($returnurl, get_string('oauth_error_generic', 'local_iiidem_webexattendance'), null, \core\output\notification::NOTIFY_ERROR);
     }
 }
 
 if ($action === 'connect') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new moodle_exception('invalidrequest', 'error');
+    }
     require_sesskey();
     if (!\local_iiidem_webexattendance\oauth::is_configured()) {
         redirect($returnurl, get_string('oauth_missingconfig', 'local_iiidem_webexattendance'), null, \core\output\notification::NOTIFY_ERROR);

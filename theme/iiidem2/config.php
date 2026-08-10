@@ -28,13 +28,13 @@ require_once(__DIR__ . '/lib.php');
 
 $THEME->name = 'iiidem2';
 $THEME->parents = ['boost']; 
-$THEME->sheets = ['custom', 'responsive'];
+$THEME->sheets = ['custom', 'responsive', 'intltelinput', 'enterprise2026'];
 $string['pluginname'] = 'IIIDEM 2';
 
 $THEME->editor_sheets = [];
 $THEME->editor_scss = ['editor'];
 $THEME->usefallback = true;
-$THEME->javascripts_footer = [];
+$THEME->javascripts_footer = ['enterprise_a11y'];
 $THEME->scss = function($theme) {
     return theme_iiidem2_get_main_scss_content($theme);
 };

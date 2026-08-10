@@ -29,11 +29,6 @@ class registration_profile {
             'name' => 'Occupation',
             'param1' => "working\nstudent\ninstructor",
         ],
-        'iiidem_reg_status' => [
-            'datatype' => 'menu',
-            'name' => 'Registration approval',
-            'param1' => "pending\napproved\nrejected",
-        ],
         'iiidem_emb' => [
             'datatype' => 'checkbox',
             'name' => 'Allow without payment course',
@@ -222,6 +217,16 @@ class registration_profile {
     }
 
     /**
+     * User registered with occupation "Professor / Instructor".
+     *
+     * @param int $userid
+     * @return bool
+     */
+    public static function user_is_instructor(int $userid): bool {
+        return self::get_profile_value($userid, 'iiidem_occupation') === 'instructor';
+    }
+
+    /**
      * User registered with occupation "University student".
      *
      * @param int $userid
@@ -234,18 +239,16 @@ class registration_profile {
     /**
      * Whether the user must pay the course fee.
      *
-     * Students and working professionals (Policymaker / Journalist /
-     * Researcher) pay, unless an administrator has checked
-     * "Allow without payment course". Instructors remain exempt.
+     * Self-registration never grants a fee waiver. Only an administrator
+     * setting profile field "Allow without payment course" (iiidem_emb)
+     * exempts the user. Client-chosen occupation (including instructor /
+     * workingemb) does not authorize free access.
      *
      * @param int $userid
      * @return bool
      */
     public static function user_requires_course_fee_payment(int $userid): bool {
-        $occupation = self::get_profile_value($userid, 'iiidem_occupation');
-        $ispayingoccupation = $occupation === 'student' || $occupation === 'working';
-
-        return $ispayingoccupation && !self::user_allowed_without_course_payment($userid);
+        return !self::user_allowed_without_course_payment($userid);
     }
 
     /**
@@ -316,7 +319,6 @@ class registration_profile {
 
         $desired = [
             'iiidem_occupation',
-            'iiidem_reg_status',
             'iiidem_emb',
             'iiidem_policymaker',
             'iiidem_journalist',
@@ -355,24 +357,21 @@ class registration_profile {
     }
 
     /**
-     * Read a submitted registration value from form data or POST.
+     * Read a submitted registration value from validated form data only.
      *
      * @param \stdClass $data
      * @param string $field
      * @return string
      */
     public static function get_submitted_value(\stdClass $data, string $field): string {
-        if (isset($_POST[$field]) && $_POST[$field] !== '') {
-            $value = $_POST[$field];
-            if (is_array($value)) {
-                $value = end($value);
-            }
-            return (string) $value;
+        if (!isset($data->{$field}) || $data->{$field} === '' || $data->{$field} === null) {
+            return '';
         }
-        if (isset($data->{$field}) && $data->{$field} !== '' && $data->{$field} !== null) {
-            return (string) $data->{$field};
+        $value = trim(clean_param((string) $data->{$field}, PARAM_TEXT));
+        if (\core_text::strlen($value) > 255) {
+            $value = \core_text::substr($value, 0, 255);
         }
-        return '';
+        return $value;
     }
 
     /**
@@ -404,15 +403,7 @@ class registration_profile {
      * @return bool
      */
     private static function is_checked_raw(\stdClass $data, string $field): bool {
-        if (isset($_POST[$field])) {
-            $value = $_POST[$field];
-            if (is_array($value)) {
-                $value = end($value);
-            }
-            if ((string) $value === '1') {
-                return true;
-            }
-        }
+        // Trust validated form/object data only — never raw $_POST (parameter tampering).
         if (isset($data->{$field})) {
             return (string) $data->{$field} === '1' || (int) $data->{$field} === 1;
         }
@@ -429,10 +420,7 @@ class registration_profile {
         $allowed = ['working', 'workingemb', 'student', 'instructor'];
 
         $value = '';
-        if (isset($_POST['occupation'])) {
-            $raw = $_POST['occupation'];
-            $value = is_array($raw) ? (string) end($raw) : (string) $raw;
-        } else if (isset($data->occupation)) {
+        if (isset($data->occupation)) {
             $value = (string) $data->occupation;
         }
 
@@ -468,10 +456,9 @@ class registration_profile {
         self::ensure_fields();
 
         $occupation = self::get_occupation_type($data);
-        // Reuse the existing "working" menu value and identify EMB users through
-        // the dedicated profile flag, avoiding a profile-field schema migration.
+        // Reuse the existing "working" menu value for EMB applicants. Fee waiver
+        // (iiidem_emb) is NEVER set from self-registration — admins only.
         $storedoccupation = $occupation === 'workingemb' ? 'working' : $occupation;
-        $isemb = $occupation === 'workingemb' || self::is_checked($data, 'emb');
 
         $organization = self::get_submitted_value($data, 'organization');
         $jobprofile = self::get_submitted_value($data, 'jobprofile');
@@ -485,8 +472,7 @@ class registration_profile {
         $profile = (object) [
             'id' => $userid,
             'profile_field_iiidem_occupation' => $storedoccupation,
-            'profile_field_iiidem_reg_status' => 'pending',
-            'profile_field_iiidem_emb' => $isemb ? '1' : '0',
+            'profile_field_iiidem_emb' => '0',
             'profile_field_iiidem_policymaker' => self::is_checked($data, 'policymaker') ? '1' : '0',
             'profile_field_iiidem_journalist' => self::is_checked($data, 'journalist') ? '1' : '0',
             'profile_field_iiidem_electoral_practitioner' => self::is_checked($data, 'electoralpractitioner') ? '1' : '0',
@@ -502,25 +488,6 @@ class registration_profile {
             'profile_field_iiidem_presentcountry' => self::get_submitted_value($data, 'presentcountry'),
         ];
 
-        profile_save_data($profile);
-    }
-
-    /**
-     * Set a custom profile field value for a user.
-     *
-     * @param int $userid
-     * @param string $shortname
-     * @param string $value
-     */
-    public static function set_profile_value(int $userid, string $shortname, string $value): void {
-        global $CFG;
-
-        require_once($CFG->dirroot . '/user/profile/lib.php');
-        self::ensure_fields();
-        $profile = (object) [
-            'id' => $userid,
-            'profile_field_' . $shortname => $value,
-        ];
         profile_save_data($profile);
     }
 }

@@ -622,6 +622,31 @@ body.iiidem-student-dashboard-page #page-navbar {
     color: #475569;
 }
 
+.iiidem-student-attendance__summary {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.iiidem-student-attendance__date {
+    font-weight: 600;
+    color: #0b3d91;
+}
+
+.iiidem-student-attendance__time,
+.iiidem-student-attendance__course {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.iiidem-student-attendance__table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+}
+
 .iiidem-student-empty {
     color: #64748b;
     padding: 1rem 0.75rem;

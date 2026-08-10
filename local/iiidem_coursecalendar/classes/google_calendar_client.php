@@ -186,28 +186,36 @@ class google_calendar_client {
 
     /**
      * Cancel/delete a Google Calendar event.
+     *
+     * @param string $googleeventid
+     * @param bool $notifyattendees
+     * @param int $timeoutsecs Short timeout for delete-on-CM-remove (staging may block Google).
      */
-    public function delete_event(string $googleeventid, bool $notifyattendees = true): void {
+    public function delete_event(string $googleeventid, bool $notifyattendees = true, int $timeoutsecs = 8): void {
         if ($googleeventid === '') {
             return;
         }
         $calendarid = self::get_calendar_id();
         $query = $notifyattendees ? '?sendUpdates=all' : '';
         $url = self::API_BASE . '/calendars/' . rawurlencode($calendarid) . '/events/' . rawurlencode($googleeventid) . $query;
-        $this->api_request('DELETE', $url);
+        $this->api_request('DELETE', $url, null, $timeoutsecs);
     }
 
     /**
      * @param string $method GET|POST|PATCH|DELETE
      * @param string $url Full API URL
      * @param array|null $body JSON body for POST/PATCH
+     * @param int $timeoutsecs Request timeout (connect uses min(5, timeout)).
      * @return array Decoded JSON response (empty for DELETE)
      */
-    private function api_request(string $method, string $url, ?array $body = null): array {
+    private function api_request(string $method, string $url, ?array $body = null, int $timeoutsecs = 30): array {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        $token = $this->get_access_token();
+        $timeoutsecs = max(3, $timeoutsecs);
+        $connecttimeout = min(5, $timeoutsecs);
+
+        $token = $this->get_access_token($timeoutsecs);
         $payload = $body !== null ? json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
 
         $headers = [
@@ -224,7 +232,8 @@ class google_calendar_client {
             $opts = [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_TIMEOUT => 30,
+                CURLOPT_CONNECTTIMEOUT => $connecttimeout,
+                CURLOPT_TIMEOUT => $timeoutsecs,
                 CURLOPT_CUSTOMREQUEST => $method,
             ];
             if ($method === 'POST' || $method === 'PATCH' || $method === 'PUT') {
@@ -242,7 +251,10 @@ class google_calendar_client {
         } else {
             $curl = new \curl();
             $curl->setHeader($headers);
-            $options = ['CURLOPT_TIMEOUT' => 30];
+            $options = [
+                'CURLOPT_TIMEOUT' => $timeoutsecs,
+                'CURLOPT_CONNECTTIMEOUT' => $connecttimeout,
+            ];
             if ($method === 'DELETE') {
                 $options['CURLOPT_CUSTOMREQUEST'] = 'DELETE';
                 $raw = $curl->get($url, null, $options);
@@ -272,10 +284,14 @@ class google_calendar_client {
 
     /**
      * OAuth access token via service account JWT.
+     *
+     * @param int $timeoutsecs
      */
-    private function get_access_token(): string {
+    private function get_access_token(int $timeoutsecs = 30): string {
         $creds = $this->load_credentials();
         $now = time();
+        $timeoutsecs = max(3, $timeoutsecs);
+        $connecttimeout = min(5, $timeoutsecs);
 
         $header = ['alg' => 'RS256', 'typ' => 'JWT'];
         if (!empty($creds['private_key_id'])) {
@@ -310,7 +326,8 @@ class google_calendar_client {
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
                 CURLOPT_POSTFIELDS => $body,
-                CURLOPT_TIMEOUT => 30,
+                CURLOPT_CONNECTTIMEOUT => $connecttimeout,
+                CURLOPT_TIMEOUT => $timeoutsecs,
             ]);
             $response = curl_exec($ch);
             $errno = curl_errno($ch);
@@ -324,7 +341,10 @@ class google_calendar_client {
             require_once($CFG->libdir . '/filelib.php');
             $curl = new \curl();
             $curl->setHeader(['Content-Type: application/x-www-form-urlencoded']);
-            $response = $curl->post($tokenuri, $body);
+            $response = $curl->post($tokenuri, $body, [
+                'CURLOPT_TIMEOUT' => $timeoutsecs,
+                'CURLOPT_CONNECTTIMEOUT' => $connecttimeout,
+            ]);
         }
 
         $data = json_decode((string) $response, true);

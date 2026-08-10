@@ -39,8 +39,17 @@ class course_fee_amount {
     }
 
     public static function get_payment_amount(int $feeinstanceid, float $fallback): float {
-        $amount = self::get_for_fee_instance($feeinstanceid);
-        return $amount ?? $fallback;
+        // Charge amount is always the Moodle payable (enrol_fee cost). Gateway
+        // coursefeeamount may sync enrol.cost via admin/CLI, but must never
+        // undercharge by overriding a higher payable with a lower config value.
+        $configured = self::get_for_fee_instance($feeinstanceid);
+        if ($configured === null) {
+            return $fallback > 0 ? $fallback : 0.0;
+        }
+        if ($fallback > 0) {
+            return max($configured, $fallback);
+        }
+        return $configured;
     }
 
     /**

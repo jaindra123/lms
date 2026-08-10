@@ -50,8 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && confirm_sesskey()) {
     $action = required_param('action', PARAM_ALPHANUMEXT);
 
     if ($action === 'createsession') {
-        $name = required_param('sessionname', PARAM_TEXT);
+        $name = trim(clean_param(required_param('sessionname', PARAM_TEXT), PARAM_TEXT));
         $cmid = required_param('cmid', PARAM_INT);
+        if ($name === '' || core_text::strlen($name) > 255) {
+            throw new moodle_exception('invalidparameter', 'error');
+        }
         $newid = manager::create_session($courseid, $cmid, $name, (int) $USER->id);
         redirect(new moodle_url('/local/iiidem_livequiz/manage.php', [
             'courseid' => $courseid,
@@ -67,14 +70,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && confirm_sesskey()) {
 
     switch ($action) {
         case 'addquestion':
-            $text = required_param('questiontext', PARAM_TEXT);
+            $text = trim(clean_param(required_param('questiontext', PARAM_TEXT), PARAM_TEXT));
             $options = [
-                required_param('opt0', PARAM_TEXT),
-                required_param('opt1', PARAM_TEXT),
-                optional_param('opt2', '', PARAM_TEXT),
-                optional_param('opt3', '', PARAM_TEXT),
+                trim(clean_param(required_param('opt0', PARAM_TEXT), PARAM_TEXT)),
+                trim(clean_param(required_param('opt1', PARAM_TEXT), PARAM_TEXT)),
+                trim(clean_param(optional_param('opt2', '', PARAM_TEXT), PARAM_TEXT)),
+                trim(clean_param(optional_param('opt3', '', PARAM_TEXT), PARAM_TEXT)),
             ];
             $correctindex = required_param('correctindex', PARAM_INT);
+            if ($text === '' || core_text::strlen($text) > 2000) {
+                throw new moodle_exception('invalidparameter', 'error');
+            }
+            foreach ($options as $opt) {
+                if ($opt !== '' && core_text::strlen($opt) > 255) {
+                    throw new moodle_exception('invalidparameter', 'error');
+                }
+            }
+            if ($options[0] === '' || $options[1] === '' || $correctindex < 0 || $correctindex > 3) {
+                throw new moodle_exception('invalidparameter', 'error');
+            }
             manager::add_question($sessionid, $text, $options, $correctindex);
             redirect(new moodle_url('/local/iiidem_livequiz/manage.php', [
                 'courseid' => $courseid,
@@ -145,6 +159,7 @@ if (!$sessionid) {
         'id' => 'sessionname',
         'name' => 'sessionname',
         'required' => 'required',
+        'maxlength' => 255,
         'placeholder' => 'Week 1 live check-in',
     ]);
 
@@ -191,17 +206,21 @@ if ($status === manager::STATUS_DRAFT) {
         'class' => 'form-control mb-2',
         'rows' => 2,
         'required' => 'required',
+        'maxlength' => 2000,
     ]);
 
     for ($i = 0; $i < 4; $i++) {
-        $required = $i < 2 ? 'required' : '';
-        echo html_writer::tag('label', get_string('option', 'local_iiidem_livequiz', $i + 1));
-        echo html_writer::empty_tag('input', [
+        $attrs = [
             'type' => 'text',
             'name' => 'opt' . $i,
             'class' => 'form-control mb-2',
-            $required => $required,
-        ]);
+            'maxlength' => 255,
+        ];
+        if ($i < 2) {
+            $attrs['required'] = 'required';
+        }
+        echo html_writer::tag('label', get_string('option', 'local_iiidem_livequiz', $i + 1));
+        echo html_writer::empty_tag('input', $attrs);
     }
 
     echo html_writer::tag('label', get_string('correctoption', 'local_iiidem_livequiz'));

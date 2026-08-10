@@ -173,11 +173,11 @@ class core_renderer extends \core_renderer {
                             $userbuttons['togglecontact'] = array(
                                 'buttontype' => 'togglecontact',
                                 'title' => get_string($contacttitle, 'message'),
+                                // No sesskey in the href (AJAX uses M.cfg.sesskey). Avoids token-in-URL.
                                 'url' => new moodle_url('/message/index.php', array(
                                         'user1' => $USER->id,
                                         'user2' => $user->id,
-                                        $contacturlaction => $user->id,
-                                        'sesskey' => sesskey())
+                                        $contacturlaction => $user->id)
                                 ),
                                 'image' => $contactimage,
                                 'linkattributes' => $linkattributes,

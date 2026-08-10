@@ -24,6 +24,7 @@ $PAGE->set_pagelayout('mydashboard');
 $PAGE->set_url(new moodle_url('/theme/iiidem2/dashboard/index.php'));
 $PAGE->set_title(get_string('dashboard', 'theme_iiidem2'));
 $PAGE->set_heading('');
+$PAGE->set_secondary_navigation(false);
 $PAGE->activityheader->disable();
 
 try {

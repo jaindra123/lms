@@ -9,6 +9,10 @@ require_login();
 require_capability('local/iiidem_support:manage', context_system::instance());
 require_once($CFG->libdir . '/adminlib.php');
 
+if (class_exists('\theme_iiidem2\rate_limit')) {
+    \theme_iiidem2\rate_limit::require_allowed('support_manage_page', 120, 60);
+}
+
 $context = context_system::instance();
 $ticketid = optional_param('ticketid', 0, PARAM_INT);
 $edit = optional_param('edit', 0, PARAM_BOOL);
@@ -49,8 +53,8 @@ if ($ticketid) {
     ]);
 
     if ($showreplyform && ($data = $form->get_data())) {
-        $reply = trim($data->adminreply ?? '');
-        if ($reply !== '') {
+        $reply = trim(clean_param((string) ($data->adminreply ?? ''), PARAM_TEXT));
+        if ($reply !== '' && \core_text::strlen($reply) <= 5000) {
             manager::admin_reply((int) $data->ticketid, $reply, $data->status);
             redirect(
                 new moodle_url('/local/iiidem_support/manage.php', ['ticketid' => $ticketid]),

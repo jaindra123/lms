@@ -73,14 +73,13 @@ body.iiidem-teacher-dashboard-page .page-context-header,
 body.iiidem-teacher-dashboard-page .page-header-headings,
 body.iiidem-teacher-dashboard-page .page-header-image,
 body.iiidem-teacher-dashboard-page .header-button-group,
-.pagelayout-mydashboard.iiidem-teacher-dashboard-page #page-header,
-.pagelayout-mydashboard.iiidem-teacher-dashboard-page .page-context-header {
-    display: none !important;
-}
-
+body.iiidem-teacher-dashboard-page .secondary-navigation,
+body.iiidem-teacher-dashboard-page #page-navbar,
 body.iiidem-teacher-dashboard-page .drawer-toggles,
-body.iiidem-teacher-dashboard-page #page-navbar {
-    display: none !important;
+.pagelayout-mydashboard.iiidem-teacher-dashboard-page #page-header,
+.pagelayout-mydashboard.iiidem-teacher-dashboard-page .page-context-header,
+.pagelayout-mydashboard.iiidem-teacher-dashboard-page .secondary-navigation {
+  display: none !important;
 }
 
 .pagelayout-mydashboard.iiidem-teacher-dashboard-page #page.drawers .main-inner {
@@ -879,3 +878,63 @@ body.iiidem-teacher-dashboard-page #page-navbar {
     color: #64748b;
     margin: 0;
 }
+
+/* Teacher materials upload page */
+.iiidem-teacher-main--solo {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 2.5rem;
+}
+
+.iiidem-teacher-materials__back {
+    color: #0b3d91;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.iiidem-teacher-materials__back:hover,
+.iiidem-teacher-materials__back:focus {
+    text-decoration: underline;
+}
+
+.iiidem-teacher-materials__form .fitem {
+    margin-bottom: 1rem;
+}
+
+.iiidem-teacher-materials__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.iiidem-teacher-materials__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.iiidem-teacher-materials__item:last-child {
+    border-bottom: 0;
+}
+
+.iiidem-teacher-materials__item-title {
+    font-weight: 600;
+    color: #0a2540;
+    text-decoration: none;
+}
+
+.iiidem-teacher-materials__item-title:hover {
+    color: #0b3d91;
+}
+
+.iiidem-teacher-materials__item-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+

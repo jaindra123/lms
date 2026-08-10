@@ -13,6 +13,13 @@ header('Content-Type: application/json; charset=utf-8');
 $action = required_param('action', PARAM_ALPHANUMEXT);
 
 try {
+    // Polling endpoints are chatty — enforce a per-user floor.
+    if ($action === 'getactive' || $action === 'teacherstats') {
+        \theme_iiidem2\rate_limit::require_json('livequiz_poll', 40, 60);
+    } else if ($action === 'submit') {
+        \theme_iiidem2\rate_limit::require_json('livequiz_submit', 10, 60);
+    }
+
     switch ($action) {
         case 'getactive':
             $courseid = required_param('courseid', PARAM_INT);
@@ -80,6 +87,9 @@ try {
             require_sesskey();
             $sessionid = required_param('sessionid', PARAM_INT);
             $answersraw = required_param('answers', PARAM_RAW);
+            if (!is_string($answersraw) || strlen($answersraw) > 4096) {
+                throw new moodle_exception('invalidaction', 'local_iiidem_livequiz');
+            }
 
             $session = manager::get_session($sessionid);
             if (!$session) {
@@ -92,14 +102,19 @@ try {
                 throw new moodle_exception('notenrolled', 'local_iiidem_livequiz');
             }
 
-            $decoded = json_decode($answersraw, true);
-            if (!is_array($decoded)) {
+            $decoded = json_decode($answersraw, true, 32);
+            if (!is_array($decoded) || count($decoded) > 50) {
                 throw new moodle_exception('invalidaction', 'local_iiidem_livequiz');
             }
 
             $choices = [];
             foreach ($decoded as $questionid => $choiceindex) {
-                $choices[(int) $questionid] = (int) $choiceindex;
+                $qid = (int) $questionid;
+                $choice = (int) $choiceindex;
+                if ($qid <= 0 || $choice < 0 || $choice > 3) {
+                    throw new moodle_exception('invalidaction', 'local_iiidem_livequiz');
+                }
+                $choices[$qid] = $choice;
             }
 
             if (!manager::submit_answers($sessionid, (int) $USER->id, $choices)) {
@@ -137,7 +152,7 @@ try {
             throw new moodle_exception('invalidaction', 'local_iiidem_livequiz');
     }
 } catch (Exception $e) {
-    debugging($e->getMessage(), DEBUG_DEVELOPER);
+    error_log('local_iiidem_livequiz api: ' . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => get_string('error'),

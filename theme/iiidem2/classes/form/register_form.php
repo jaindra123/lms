@@ -28,17 +28,25 @@ class register_form extends \moodleform {
         global $CFG;
 
         $mform = $this->_form;
+        // Labels above fields — avoids huge empty label column on wide screens.
+        $this->set_display_vertical();
 
-        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'));
+        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'), ['maxlength' => 100]);
         $mform->setType('firstname', PARAM_TEXT);
         $mform->addRule('firstname', get_string('required'), 'required', null, 'client');
+        $mform->addRule('firstname', get_string('required'), 'required', null, 'server');
+        $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
+        $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'));
+        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'), ['maxlength' => 100]);
         $mform->setType('middlename', PARAM_TEXT);
+        $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
+        $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'));
+        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'), ['maxlength' => 100]);
         $mform->setType('lastname', PARAM_TEXT);
-        $mform->addRule('lastname', get_string('required'), 'required', null, 'client');
+        $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
+        $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
         $mform->addElement('text', 'email', get_string('email'), [
             'data-email-check-url' => (new \moodle_url('/register/check_email.php'))->out(false),
@@ -56,7 +64,7 @@ class register_form extends \moodleform {
         $mform->setForceLtr('email');
 
         $mform->addElement('text', 'phone1', get_string('registercontact', 'theme_iiidem2'), [
-            'maxlength' => 16,
+            'maxlength' => 15,
             'autocomplete' => 'tel',
             'inputmode' => 'numeric',
             'data-phone-check-url' => (new \moodle_url('/register/check_phone.php'))->out(false),
@@ -79,9 +87,13 @@ class register_form extends \moodleform {
             $mform->setDefault('country', 'IN');
         }
 
-        $mform->addElement('text', 'city', get_string('city'));
+        $mform->addElement('text', 'city', get_string('city'), [
+            'maxlength' => 120,
+            'autocomplete' => 'address-level2',
+        ]);
         $mform->setType('city', \core_user::get_property_type('city'));
         $mform->addRule('city', get_string('required'), 'required', null, 'client');
+        $mform->addRule('city', get_string('required'), 'required', null, 'server');
 
         $mform->addElement('header', 'occupationheader', get_string('registeroccupation', 'theme_iiidem2'));
 
@@ -179,6 +191,34 @@ class register_form extends \moodleform {
             $mform->setExpanded($header, false);
         }
 
+        // Own section so password fields are not nested under Instructor / Student / Working.
+        $mform->addElement('header', 'passwordheader', get_string('registerpasswordheader', 'theme_iiidem2'));
+        $mform->setExpanded('passwordheader', true);
+
+        if (!empty($CFG->passwordpolicy)) {
+            $mform->addElement(
+                'static',
+                'passwordpolicyinfo',
+                get_string('registerpasswordshouldbe', 'theme_iiidem2'),
+                print_password_policy()
+            );
+        }
+
+        $mform->addElement('password', 'password', get_string('password'), [
+            'maxlength' => MAX_PASSWORD_CHARACTERS,
+            'autocomplete' => 'new-password',
+        ]);
+        $mform->setType('password', \core_user::get_property_type('password'));
+        $mform->addRule('password', get_string('required'), 'required', null, 'client');
+
+        $mform->addElement('password', 'password2', get_string('password') . ' (' . get_string('again') . ')', [
+            'maxlength' => MAX_PASSWORD_CHARACTERS,
+            'autocomplete' => 'new-password',
+            'data-password-mismatch' => get_string('registerpasswordsmustmatch', 'theme_iiidem2'),
+        ]);
+        $mform->setType('password2', \core_user::get_property_type('password'));
+        $mform->addRule('password2', get_string('required'), 'required', null, 'client');
+
         $this->add_action_buttons(true, get_string('registercreateaccount', 'theme_iiidem2'));
     }
 
@@ -198,44 +238,83 @@ class register_form extends \moodleform {
     }
 
     /**
+     * Country calling codes (ISO 3166-1 alpha-2 => dial digits).
+     *
+     * @return array<string,string>
+     */
+    public static function dial_codes(): array {
+        return [
+            'IN' => '91', 'US' => '1', 'CA' => '1', 'GB' => '44', 'AE' => '971', 'SG' => '65',
+            'AU' => '61', 'DE' => '49', 'FR' => '33', 'NP' => '977', 'BD' => '880', 'LK' => '94',
+            'PK' => '92', 'ZA' => '27', 'GE' => '995', 'UZ' => '998', 'KZ' => '7', 'RU' => '7',
+            'UA' => '380', 'TR' => '90', 'SA' => '966', 'QA' => '974', 'KW' => '965', 'BH' => '973',
+            'OM' => '968', 'EG' => '20', 'NG' => '234', 'KE' => '254', 'GH' => '233', 'TZ' => '255',
+            'UG' => '256', 'ET' => '251', 'MA' => '212', 'IT' => '39', 'ES' => '34', 'PT' => '351',
+            'NL' => '31', 'BE' => '32', 'CH' => '41', 'AT' => '43', 'SE' => '46', 'NO' => '47',
+            'DK' => '45', 'FI' => '358', 'IE' => '353', 'PL' => '48', 'CZ' => '420', 'RO' => '40',
+            'HU' => '36', 'GR' => '30', 'BG' => '359', 'HR' => '385', 'RS' => '381', 'AM' => '374',
+            'AZ' => '994', 'BY' => '375', 'MD' => '373', 'LT' => '370', 'LV' => '371', 'EE' => '372',
+            'JP' => '81', 'KR' => '82', 'CN' => '86', 'HK' => '852', 'TW' => '886', 'MY' => '60',
+            'TH' => '66', 'VN' => '84', 'PH' => '63', 'ID' => '62', 'NZ' => '64', 'MX' => '52',
+            'BR' => '55', 'AR' => '54', 'CL' => '56', 'CO' => '57', 'PE' => '51', 'IL' => '972',
+            'JO' => '962', 'LB' => '961', 'IQ' => '964', 'IR' => '98', 'AF' => '93', 'MV' => '960',
+            'BT' => '975', 'MM' => '95', 'KH' => '855', 'LA' => '856', 'MN' => '976',
+        ];
+    }
+
+    /**
      * Digits only from a phone value (national or E.164).
      *
      * @param string $phone
+     * @param string $countryiso2 Optional ISO country used to strip the dial code.
      * @return string
      */
-    public static function national_phone_digits(string $phone): string {
+    public static function national_phone_digits(string $phone, string $countryiso2 = ''): string {
         $digits = preg_replace('/\D+/', '', $phone);
         if ($digits === null || $digits === '') {
             return '';
         }
-        // Strip common trunk / India country prefixes when value looks like E.164.
-        if (strlen($digits) > 10 && str_starts_with($digits, '91')) {
+
+        $countryiso2 = strtoupper(trim($countryiso2));
+        $dialcodes = self::dial_codes();
+        $dial = $dialcodes[$countryiso2] ?? '';
+
+        // Strip known dial code when value was submitted as E.164 / international.
+        if ($dial !== '' && str_starts_with($digits, $dial) && strlen($digits) > strlen($dial) + 3) {
+            $digits = substr($digits, strlen($dial));
+        } else if (strlen($digits) > 10 && str_starts_with($digits, '91')) {
+            // Legacy India E.164 without country context.
             $digits = substr($digits, 2);
-        } else if (strlen($digits) >= 11 && str_starts_with($digits, '0')) {
+        }
+
+        // Trunk prefix 0….
+        if (str_starts_with($digits, '0') && strlen($digits) > 6) {
             $digits = substr($digits, 1);
         }
-        // Keep within practical national length (not forced to 10).
+
+        // E.164 national numbers are at most 15 digits.
         if (strlen($digits) > 15) {
             $digits = substr($digits, 0, 15);
         }
+
         return $digits;
     }
 
     /**
-     * Contact number must be digits only (length varies by country).
+     * Contact number: digits only, flexible international length (not India-only 10).
      *
      * @param string $national
      * @return bool
      */
     public static function is_valid_national_phone(string $national): bool {
-        return (bool) preg_match('/^[0-9]{6,15}$/', $national);
+        return (bool) preg_match('/^[0-9]{4,15}$/', $national);
     }
 
     /**
      * Whether this phone is already registered on a local user account.
      *
-     * @param string $normalized E.164 form e.g. +919876543210
-     * @param string $national National number digits
+     * @param string $normalized E.164 form e.g. +995555123456
+     * @param string $national National digits
      * @return bool
      */
     public static function phone_exists(string $normalized, string $national = ''): bool {
@@ -250,9 +329,11 @@ class register_form extends \moodleform {
             $normalized,
             $national,
             '0' . $national,
-            '91' . $national,
-            '+91' . $national,
         ])));
+        if (preg_match('/^\+([1-9]\d{0,3})(\d+)$/', $normalized, $m)) {
+            $candidates[] = $m[1] . $m[2];
+            $candidates[] = '+' . $m[1] . $m[2];
+        }
 
         list($insql, $inparams) = $DB->get_in_or_equal($candidates, SQL_PARAMS_NAMED, 'phone');
         $params = $inparams + ['mnet' => $CFG->mnet_localhost_id];
@@ -265,13 +346,16 @@ class register_form extends \moodleform {
             return true;
         }
 
-        // Match stored values that end with the same national digits.
-        $nlen = strlen($national);
+        // Ends-with match via parameterized LIKE (no SQL string interpolation).
+        $phoneexpr = "REPLACE(REPLACE(REPLACE(phone1, '+', ''), ' ', ''), '-', '')";
+        $likesql = $DB->sql_like($phoneexpr, ':phoneend', false, false);
         return $DB->record_exists_select(
             'user',
-            "deleted = 0 AND mnethostid = :mnet AND phone1 <> ''
-             AND RIGHT(REPLACE(REPLACE(REPLACE(phone1, '+', ''), ' ', ''), '-', ''), :nlen) = :national",
-            ['mnet' => $CFG->mnet_localhost_id, 'nlen' => $nlen, 'national' => $national]
+            "deleted = 0 AND mnethostid = :mnet AND phone1 <> '' AND {$likesql}",
+            [
+                'mnet' => $CFG->mnet_localhost_id,
+                'phoneend' => '%' . $DB->sql_like_escape($national),
+            ]
         );
     }
 
@@ -290,18 +374,16 @@ class register_form extends \moodleform {
             return '';
         }
 
-        if (!str_starts_with($phone, '+')) {
-            $dialcodes = [
-                'IN' => '91', 'US' => '1', 'GB' => '44', 'AE' => '971', 'SG' => '65',
-                'AU' => '61', 'CA' => '1', 'DE' => '49', 'FR' => '33', 'NP' => '977',
-                'BD' => '880', 'LK' => '94', 'PK' => '92', 'ZA' => '27',
-            ];
-            if ($countryiso2 === 'IN' && preg_match('/^0[6-9]\d{9}$/', $phone)) {
-                $phone = substr($phone, 1);
-            }
-            if (isset($dialcodes[$countryiso2]) && preg_match('/^\d{6,14}$/', $phone)) {
-                $phone = '+' . $dialcodes[$countryiso2] . $phone;
-            }
+        if (str_starts_with($phone, '+')) {
+            return $phone;
+        }
+
+        $dialcodes = self::dial_codes();
+        if ($countryiso2 === 'IN' && preg_match('/^0[6-9]\d{9}$/', $phone)) {
+            $phone = substr($phone, 1);
+        }
+        if (isset($dialcodes[$countryiso2]) && preg_match('/^\d{4,15}$/', $phone)) {
+            $phone = '+' . $dialcodes[$countryiso2] . $phone;
         }
 
         return $phone;
@@ -316,6 +398,15 @@ class register_form extends \moodleform {
         global $CFG, $DB;
 
         $errors = parent::validation($data, $files);
+
+        foreach (['firstname' => true, 'lastname' => false, 'middlename' => false] as $field => $required) {
+            $value = trim((string) ($data[$field] ?? ''));
+            if ($required && $value === '') {
+                $errors[$field] = get_string('required');
+            } else if (\core_text::strlen($value) > 100) {
+                $errors[$field] = get_string('maximumchars', '', 100);
+            }
+        }
 
         if (!validate_email($data['email'])) {
             $errors['email'] = get_string('invalidemail');
@@ -333,18 +424,37 @@ class register_form extends \moodleform {
             }
         }
 
-        $national = self::national_phone_digits((string) ($data['phone1'] ?? ''));
-        if ($national === '') {
+        if (trim((string) ($data['city'] ?? '')) === '') {
+            $errors['city'] = get_string('required');
+        }
+
+        $rawphone = trim((string) ($data['phone1'] ?? ''));
+        $country = (string) ($data['country'] ?? '');
+        $cleaned = preg_replace('/[\s\-()]/', '', $rawphone) ?? '';
+        $national = self::national_phone_digits($rawphone, $country);
+
+        if ($cleaned === '' || $national === '') {
             $errors['phone1'] = get_string('required');
         } else if (!self::is_valid_national_phone($national)) {
             $errors['phone1'] = get_string('registerphoneinvalid', 'theme_iiidem2');
         } else {
-            $phone = self::normalize_phone($national, (string) ($data['country'] ?? ''));
+            // Prefer already-normalised E.164 from the client widget.
+            if (preg_match('/^\+[1-9]\d{6,14}$/', $cleaned)) {
+                $phone = $cleaned;
+            } else {
+                $phone = self::normalize_phone($national, $country);
+            }
             if ($phone === '' || !preg_match('/^\+[1-9]\d{6,14}$/', $phone)) {
                 $errors['phone1'] = get_string('registerphoneinvalid', 'theme_iiidem2');
             } else if (self::phone_exists($phone, $national)) {
                 $errors['phone1'] = get_string('registerphoneexists', 'theme_iiidem2');
             }
+        }
+
+        if ((string) ($data['password'] ?? '') !== (string) ($data['password2'] ?? '')) {
+            $errors['password2'] = get_string('registerpasswordsmustmatch', 'theme_iiidem2');
+        } else if (!check_password_policy($data['password'], $errmsg)) {
+            $errors['password'] = $errmsg;
         }
 
         $formdata = (object) $data;
@@ -356,26 +466,38 @@ class register_form extends \moodleform {
                 $errors['workingcategory'] = get_string('registerworkingcategoryrequired', 'theme_iiidem2');
             }
             foreach (['organization', 'jobprofile', 'jobpostingcountry'] as $field) {
-                if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
+                $val = trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field));
+                if ($val === '') {
                     $errors[$field] = get_string('required');
+                } else if (\core_text::strlen($val) > 255) {
+                    $errors[$field] = get_string('maximumchars', '', 255);
                 }
             }
         } else if ($occupation === 'workingemb') {
             foreach (['emb_organization', 'emb_designation', 'emb_country'] as $field) {
-                if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
+                $val = trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field));
+                if ($val === '') {
                     $errors[$field] = get_string('required');
+                } else if (\core_text::strlen($val) > 255) {
+                    $errors[$field] = get_string('maximumchars', '', 255);
                 }
             }
         } else if ($occupation === 'student') {
             foreach (['university', 'position', 'specialization'] as $field) {
-                if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
+                $val = trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field));
+                if ($val === '') {
                     $errors[$field] = get_string('required');
+                } else if (\core_text::strlen($val) > 255) {
+                    $errors[$field] = get_string('maximumchars', '', 255);
                 }
             }
         } else if ($occupation === 'instructor') {
             foreach (['instructor_university', 'instructor_course', 'presentcountry'] as $field) {
-                if (trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field)) === '') {
+                $val = trim(\theme_iiidem2\registration_profile::get_submitted_value($formdata, $field));
+                if ($val === '') {
                     $errors[$field] = get_string('required');
+                } else if (\core_text::strlen($val) > 255) {
+                    $errors[$field] = get_string('maximumchars', '', 255);
                 }
             }
         }

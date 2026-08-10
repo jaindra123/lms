@@ -37,6 +37,8 @@ class get_redirect_form extends external_api {
 
         require_login();
 
+        \theme_iiidem2\rate_limit::require_allowed('paygw_icici_checkout', 5, 600);
+
         if (!fee_access::user_can_pay_course_fee((int) $USER->id)) {
             throw new \moodle_exception('paymentnotallowed', 'paygw_icici');
         }
@@ -46,6 +48,10 @@ class get_redirect_form extends external_api {
         $surcharge = helper::get_gateway_surcharge('icici');
         $amount = helper::get_rounded_cost($payable->get_amount(), $payable->get_currency(), $surcharge);
         $currency = $payable->get_currency();
+
+        if ($amount <= 0) {
+            throw new \moodle_exception('paymentfailed', 'paygw_icici');
+        }
 
         $txnref = icici_helper::generate_txnref();
         $returnurl = (new \moodle_url('/payment/gateway/icici/return.php'))->out(false);

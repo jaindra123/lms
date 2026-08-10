@@ -55,11 +55,22 @@ class student_dashboard {
         $supportcontext = self::get_support_context($userid);
         $livequizcontext = self::get_livequiz_results_context($userid);
         $notificationmeta = self::get_notification_meta($userid);
+        $attendancecontext = student_attendance::get_dashboard_context($courses, $userid);
+        $issuedcertificates = certificate_issuer::get_user_issues($userid);
+        $certificatepanel = [
+            'issuedcertificates' => $issuedcertificates,
+            'hasissuedcertificates' => !empty($issuedcertificates),
+        ];
 
         return array_merge([
             'firstname' => $user->firstname,
             'dashboardurl' => \theme_iiidem2_get_dashboard_url()->out(false),
-            'sidenav' => self::get_sidebar_nav($courses, $userid),
+            'sidenav' => self::get_sidebar_nav(
+                $courses,
+                $userid,
+                !empty($attendancecontext['hasattendance']),
+                true
+            ),
             'dashboardtabs' => self::get_dashboard_tabs(!empty($livequizcontext['haslivequizresults'])),
             'progresscards' => self::get_learning_progress_cards($courses, $userid),
             'coursecards' => $coursecards,
@@ -96,7 +107,7 @@ class student_dashboard {
             'hasunreadnotifications' => $notificationmeta['unreadcount'] > 0,
             'profileurl' => (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false),
             'searchurl' => (new \moodle_url('/course/search.php'))->out(false),
-        ], $calendarcontext, $supportcontext, $livequizcontext);
+        ], $calendarcontext, $supportcontext, $livequizcontext, $attendancecontext, $certificatepanel);
     }
 
     /**
@@ -548,9 +559,18 @@ class student_dashboard {
     protected static function count_user_certificates(int $userid): int {
         global $DB, $CFG;
 
+        $count = 0;
+        if ($DB->get_manager()->table_exists('theme_iiidem2_cert_issues')) {
+            $count += (int) $DB->count_records('theme_iiidem2_cert_issues', ['userid' => $userid]);
+        }
+
         $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_customcert');
         if ($plugin && $plugin->is_enabled() && $DB->get_manager()->table_exists('customcert_issues')) {
-            return (int) $DB->count_records('customcert_issues', ['userid' => $userid]);
+            $count += (int) $DB->count_records('customcert_issues', ['userid' => $userid]);
+        }
+
+        if ($count > 0) {
+            return $count;
         }
 
         return (int) $DB->count_records_select(
@@ -568,17 +588,21 @@ class student_dashboard {
     protected static function get_certificates_url(array $courses, int $userid): \moodle_url {
         global $CFG;
 
+        $issued = certificate_issuer::get_user_issues($userid);
+        if (!empty($issued)) {
+            $url = \theme_iiidem2_get_dashboard_url();
+            $url->set_anchor('student-certificates');
+            return $url;
+        }
+
         $plugin = \core_plugin_manager::instance()->get_plugin_info('mod_customcert');
         if ($plugin && $plugin->is_enabled() && is_readable($CFG->dirroot . '/mod/customcert/my_certificates.php')) {
             return new \moodle_url('/mod/customcert/my_certificates.php');
         }
 
-        $primary = self::get_primary_course($courses);
-        if ($primary) {
-            return new \moodle_url('/grade/report/user/index.php', ['id' => $primary->id]);
-        }
-
-        return new \moodle_url('/grade/report/overview/index.php');
+        $url = \theme_iiidem2_get_dashboard_url();
+        $url->set_anchor('student-certificates');
+        return $url;
     }
 
     /**
@@ -892,9 +916,16 @@ class student_dashboard {
     /**
      * @param array $courses
      * @param int $userid
+     * @param bool $hasattendance Whether attendance activity is available for this learner.
+     * @param bool $hascertificates Whether certificates nav should show.
      * @return array
      */
-    protected static function get_sidebar_nav(array $courses, int $userid): array {
+    protected static function get_sidebar_nav(
+        array $courses,
+        int $userid,
+        bool $hasattendance = false,
+        bool $hascertificates = false
+    ): array {
         $dashboardbase = \theme_iiidem2_get_dashboard_url()->out(false);
 
         $items = [
@@ -925,6 +956,22 @@ class student_dashboard {
                 'isinpage' => false,
                 'active' => false,
             ],
+        ];
+
+        if ($hasattendance) {
+            $items[] = [
+                'key' => 'attendance',
+                'icon' => 'fa-user-check',
+                'label' => theme_iiidem2_str('dashboardnavattendance', null, 'My attendance'),
+                'url' => $dashboardbase,
+                'panel' => 'overview',
+                'section' => 'student-attendance',
+                'isinpage' => true,
+                'active' => false,
+            ];
+        }
+
+        $items = array_merge($items, [
             [
                 'key' => 'discussions',
                 'icon' => 'fa-comments',
@@ -956,9 +1003,10 @@ class student_dashboard {
                 'key' => 'certificate',
                 'icon' => 'fa-certificate',
                 'label' => get_string('dashboardnavcertificate', 'theme_iiidem2'),
-                'url' => self::get_certificates_url($courses, $userid)->out(false),
+                'url' => $dashboardbase,
                 'panel' => 'achievements',
-                'isinpage' => false,
+                'section' => 'student-certificates',
+                'isinpage' => true,
                 'active' => false,
             ],
             [
@@ -971,7 +1019,7 @@ class student_dashboard {
                 'isinpage' => true,
                 'active' => false,
             ],
-        ];
+        ]);
 
         return $items;
     }

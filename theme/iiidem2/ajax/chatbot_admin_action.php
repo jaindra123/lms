@@ -42,6 +42,8 @@ try {
         exit;
     }
 
+    \theme_iiidem2\rate_limit::require_json('chatbot_admin_action', 60, 3600);
+
     $action = required_param('action', PARAM_ALPHANUMEXT);
 
     if ($action === 'list') {
@@ -57,7 +59,15 @@ try {
 
     if ($action === 'reply') {
         $id = required_param('id', PARAM_INT);
-        $reply = required_param('reply', PARAM_TEXT);
+        $reply = trim(clean_param(required_param('reply', PARAM_TEXT), PARAM_TEXT));
+        if ($reply === '' || \core_text::strlen($reply) > 5000) {
+            ob_end_clean();
+            echo json_encode([
+                'success' => false,
+                'message' => get_string('invalidparameter', 'error'),
+            ]);
+            exit;
+        }
         $result = theme_iiidem2_chatbot_reply($id, $reply, (int) $USER->id);
         ob_end_clean();
         echo json_encode($result);
@@ -68,8 +78,5 @@ try {
     echo json_encode(['success' => false, 'message' => 'Invalid action']);
 } catch (Throwable $e) {
     ob_end_clean();
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error: ' . $e->getMessage(),
-    ]);
+    echo json_encode(\theme_iiidem2\safe_errors::json($e, 'chatbot_admin_action', true));
 }

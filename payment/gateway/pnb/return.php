@@ -8,16 +8,14 @@ global $DB, $USER, $PAGE;
 
 require_login();
 
-$params = array_merge($_GET, $_POST);
-foreach ($params as $key => $value) {
-    if (is_string($value)) {
-        $params[strtoupper($key)] = $value;
-    }
-}
+$params = \theme_iiidem2\input_validation::clean_payment_params(array_merge($_GET, $_POST));
 
-$txnref = $params['TXNREFNO'] ?? '';
-$status = $params['STATUS'] ?? '';
-$bankref = $params['BANKREF'] ?? '';
+$txnref = (string) ($params['TXNREFNO'] ?? '');
+$status = (string) ($params['STATUS'] ?? '');
+$bankref = (string) ($params['BANKREF'] ?? '');
+if (\core_text::strlen($bankref) > 255) {
+    $bankref = \core_text::substr($bankref, 0, 255);
+}
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/payment/gateway/pnb/return.php'));
@@ -101,7 +99,20 @@ $verified = pnb_helper::verify_return($config, $params);
 $returnedamount = $params['AMOUNT'] ?? $params['amount'] ?? '';
 $success = $verified && pnb_helper::is_success_status($status);
 
-if ($verified && $returnedamount !== '' && !pnb_helper::amounts_match($returnedamount, (float) $txn->amount)) {
+// Fail closed: amount must be present and match the server-stored txn amount.
+if (!$returnedamount || !pnb_helper::amounts_match($returnedamount, (float) $txn->amount)) {
+    $show_return_message(
+        'error',
+        get_string('paymentresultfailheading', 'paygw_pnb'),
+        get_string('amountmismatch', 'paygw_pnb'),
+        $defaultcontinue
+    );
+}
+
+try {
+    // Re-validate against current course fee before enrolment (blocks stale underpaid txns).
+    pnb_helper::assert_txn_matches_payable($txn);
+} catch (moodle_exception $e) {
     $show_return_message(
         'error',
         get_string('paymentresultfailheading', 'paygw_pnb'),
@@ -155,7 +166,7 @@ try {
 
     redirect($redirecturl, get_string('paymentsuccess', 'paygw_pnb'), null, 'success');
 } catch (Exception $e) {
-    debugging('PNB payment completion error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    error_log('PNB payment completion error: ' . $e->getMessage());
     $show_return_message(
         'error',
         get_string('paymentresultfailheading', 'paygw_pnb'),

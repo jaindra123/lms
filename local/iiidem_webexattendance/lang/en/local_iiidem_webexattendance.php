@@ -33,6 +33,7 @@ $string['privacy:metadata'] = 'Stores Webex meeting IDs linked to attendance ses
 $string['tasksync'] = 'Sync Webex meeting attendance into Moodle';
 $string['oauth_success'] = 'Webex connected successfully. Attendance sync can run after live classes end.';
 $string['oauth_error'] = 'Webex authorization failed: {$a}';
+$string['oauth_error_generic'] = 'Webex authorization failed. Please try again or check the integration settings.';
 $string['oauth_missingconfig'] = 'Save Client ID and Client Secret first.';
 $string['notconnected_exception'] = 'Webex is not connected. Open plugin settings and click Connect Webex.';
 $string['syncmanual'] = 'Sync now';

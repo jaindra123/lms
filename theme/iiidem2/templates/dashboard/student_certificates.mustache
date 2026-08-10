@@ -1,0 +1,32 @@
+{{!
+    @template theme_iiidem2/dashboard/student_certificates
+
+    Issued IIIDEM certificates for the logged-in student.
+}}
+<article class="iiidem-student-panel iiidem-student-certificates" id="student-certificates">
+    <header class="iiidem-student-panel__header">
+        <div class="iiidem-student-panel__title-wrap">
+            <span class="iiidem-student-panel__icon"><span class="fa fa-certificate" aria-hidden="true"></span></span>
+            <h2 class="iiidem-student-panel__title mb-0">{{#str}}dashboardstudentcertificates, theme_iiidem2{{/str}}</h2>
+        </div>
+    </header>
+    <div class="iiidem-student-panel__body">
+        {{#hasissuedcertificates}}
+        <ul class="iiidem-student-list list-unstyled mb-0">
+            {{#issuedcertificates}}
+            <li class="iiidem-student-list__item">
+                <div class="iiidem-student-list__content">
+                    <div class="iiidem-student-list__type">{{studentname}}</div>
+                    <div class="iiidem-student-list__title">{{coursename}}</div>
+                    <div class="iiidem-student-list__meta">{{#str}}dashboardstudentcertificateissued, theme_iiidem2, {{issuedatelabel}}{{/str}}</div>
+                </div>
+                <a href="{{{downloadurl}}}" class="btn btn-sm btn-primary">{{#str}}dashboardstudentcertificatedownload, theme_iiidem2{{/str}}</a>
+            </li>
+            {{/issuedcertificates}}
+        </ul>
+        {{/hasissuedcertificates}}
+        {{^hasissuedcertificates}}
+        <p class="iiidem-student-empty mb-0">{{#str}}dashboardstudentcertificatesempty, theme_iiidem2{{/str}}</p>
+        {{/hasissuedcertificates}}
+    </div>
+</article>

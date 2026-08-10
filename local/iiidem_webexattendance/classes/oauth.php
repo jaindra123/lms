@@ -28,12 +28,18 @@ class oauth {
     }
 
     public static function authorize_url(): string {
+        global $SESSION;
+
+        // Opaque OAuth state (not Moodle sesskey / session id) — never put session tokens in URLs.
+        $state = bin2hex(random_bytes(16));
+        $SESSION->local_iiidem_webexattendance_oauth_state = $state;
+
         $params = [
             'client_id' => trim((string) get_config('local_iiidem_webexattendance', 'clientid')),
             'response_type' => 'code',
             'redirect_uri' => self::redirect_uri(),
             'scope' => self::SCOPES,
-            'state' => sesskey(),
+            'state' => $state,
         ];
         return self::AUTH_URL . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     }

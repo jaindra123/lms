@@ -37,6 +37,14 @@ class get_checkout_data extends external_api {
 
         require_login();
 
+        \theme_iiidem2\rate_limit::require_allowed('paygw_razorpay_checkout', 5, 600);
+        \theme_iiidem2\rate_limit::require_allowed(
+            'paygw_razorpay_checkout_ip',
+            20,
+            3600,
+            'ip:' . \theme_iiidem2\rate_limit::client_ip()
+        );
+
         if (!fee_access::user_can_pay_course_fee((int) $USER->id)) {
             throw new \moodle_exception('paymentnotallowed', 'paygw_razorpay');
         }
@@ -47,6 +55,10 @@ class get_checkout_data extends external_api {
         $baseamount = course_fee_amount::get_payment_amount($itemid, $payable->get_amount());
         $amount = helper::get_rounded_cost($baseamount, $payable->get_currency(), $surcharge);
         $currency = $payable->get_currency();
+
+        if ($amount <= 0) {
+            throw new \moodle_exception('paymentfailed', 'paygw_razorpay');
+        }
 
         $txnref = razorpay_helper::generate_txnref();
         $order = razorpay_helper::create_order($config, $txnref, $amount, $currency);

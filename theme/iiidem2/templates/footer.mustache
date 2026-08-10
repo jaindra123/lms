@@ -1,11 +1,8 @@
 {{!
     @template theme_iiidem2/footer
 
-    Shared site footer (IIIDEM branding + Moodle footer popover).
-    Include on every layout via partial theme_iiidem2/footer.
-
-    Required context: output, config.wwwroot
-    Optional: copyrighttext, footerdescription, address, email, social URLs, footerlogo
+    Shared site footer — IIIDEM royal-blue brand lockup (logo + about + links + contact).
+    Same markup on every layout via theme_iiidem2/page_end.
 }}
 {{#hasenrollmodal}}
 {{!
@@ -32,52 +29,37 @@
 </div>
 {{/hasenrollmodal}}
 
-<footer class="iiidem-footer">
+<footer class="iiidem-footer" role="contentinfo">
     <div class="container-fluid footer-full">
-        <div class="row footer-contact">
-            <div class="col-12 footer-logo-wrap">
-                <a href="{{{ config.wwwroot }}}">
-                    {{#footerlogo}}
-                        <img src="{{footerlogo}}" alt="{{sitename}}" class="footer-logo">
-                    {{/footerlogo}}
-                    {{^footerlogo}}
-                        <img src="{{config.wwwroot}}/theme/iiidem2/pix/iiidem-white-logo-footer.png" alt="IIIDEM" class="footer-logo">
-                    {{/footerlogo}}
-                </a>
+        <div class="row footer-contact g-4 g-lg-5">
+            <div class="col-12 col-md-5 footer-col footer-col--about">
+                <div class="footer-brand">
+                    <a href="{{{ config.wwwroot }}}" class="footer-brand__link">
+                        <img src="{{{footerlogourl}}}" alt="{{#str}}footerinstitutename, theme_iiidem2{{/str}}" class="footer-logo">
+                    </a>
+                </div>
+                <p class="footer-brand__desc">{{{footeraboutdesc}}}</p>
             </div>
 
-            <div class="col-md-5 footer-col footer-col--about">
-                {{#footerdescription}}
-                    <p>{{{footerdescription}}}</p>
-                {{/footerdescription}}
-                
-            </div>
-
-            <div class="col-md-3 footer-col footer-col--links">
-                <h5>Quick Links</h5>
+            <div class="col-12 col-md-3 footer-col footer-col--links">
+                <h2 class="footer-col__heading">{{#str}}footerquicklinks, theme_iiidem2{{/str}}</h2>
                 <ul class="footer-quick-links list-unstyled">
                     <li><a href="{{{ config.wwwroot }}}">{{#str}}home{{/str}}</a></li>
                     <li><a href="{{{ config.wwwroot }}}/about-us/">{{#str}}aboutus, theme_iiidem2{{/str}}</a></li>
                     <li><a href="{{{ config.wwwroot }}}/contact-us/">{{#str}}contactus, theme_iiidem2{{/str}}</a></li>
                     <li><a href="{{{ config.wwwroot }}}/course/index.php">{{#str}}mycourses{{/str}}</a></li>
-                    <!-- {{#isloggedin}}
-                    <li><a href="{{{footerlogouturl}}}">{{#str}}logout{{/str}}</a></li>
-                    {{/isloggedin}}
-                    {{^isloggedin}}
-                    <li><a href="{{{footerloginurl}}}">{{#str}}login{{/str}}</a></li>
-                    {{/isloggedin}} -->
                 </ul>
             </div>
 
-            <div class="col-md-4 footer-col footer-col--contact">
-               {{#address}}
-                    <div class="loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> {{{address}}}</div>
+            <div class="col-12 col-md-4 footer-col footer-col--contact">
+                {{#address}}
+                <div class="loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <span>{{{address}}}</span></div>
                 {{/address}}
                 {{#phone}}
-                <div class="telph"><i class="fa-solid fa-phone-volume" aria-hidden="true"></i> {{{phone}}}</div>
+                <div class="telph"><i class="fa-solid fa-phone-volume" aria-hidden="true"></i> <a href="{{phoneurl}}">{{{phone}}}</a></div>
                 {{/phone}}
                 {{#email}}
-                    <div class="mail"><i class="fa-regular fa-envelope" aria-hidden="true"></i> {{{email}}}</div>
+                <div class="mail"><i class="fa-regular fa-envelope" aria-hidden="true"></i> <a href="{{emailurl}}">{{{email}}}</a></div>
                 {{/email}}
             </div>
         </div>
@@ -98,7 +80,6 @@
                     <li><a href="{{youtubeurl}}" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a></li>
                 {{/youtubeurl}}
             </ul>
-          <!--   <span class="footer-version">V 1.2 22042026</span> -->
         </div>
     </div>
 </footer>
@@ -106,7 +87,7 @@
 <footer id="page-footer" class="footer-popover bg-white d-none" aria-hidden="true">
     <div data-region="footer-container-popover" class="d-none">
         {{#output.has_communication_links}}
-            <button type="button" onclick="window.open('{{output.communication_url}}', '_blank', 'noreferrer')" class="btn btn-icon bg-primary text-white icon-no-margin btn-footer-communication" aria-label="{{#str}}communicationroomlink, course{{/str}}">
+            <button type="button" onclick="window.open('{{output.communication_url}}', '_blank', 'noreferrer')" class="btn icon-no-margin btn-footer-communication bg-primary text-white" aria-label="{{#str}}communicationroomlink, course{{/str}}">
                 {{#pix}}t/messages-o, core{{/pix}}
             </button>
         {{/output.has_communication_links}}
@@ -114,7 +95,7 @@
     {{!
         Moodle system footer (login info, data retention, mobile app,
         switch theme, powered by Moodle) — hidden from the public UI.
-        Keep standard_end_of_body_html for required Moodle JS.
+        Page JS is output from theme_iiidem2/page_end (standard_end_of_body_html).
     }}
     <div class="footer-content-popover container d-none" data-region="footer-content-popover" hidden>
         <div class="footer-section p-3 border-bottom">
@@ -129,11 +110,4 @@
             {{/output.moodle_release}}
         </div>
     </div>
-    {{{ output.standard_end_of_body_html }}}
 </footer>
-
-{{#js}}
-require(['theme_iiidem2/footer-popover'], function(FooterPopover) {
-    FooterPopover.init();
-});
-{{/js}}

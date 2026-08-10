@@ -33,6 +33,17 @@ class report_payment_failure extends external_api {
 
         require_login();
 
+        \theme_iiidem2\rate_limit::require_allowed('paygw_razorpay_report_failure', 5, 900);
+
+        $orderid = trim(clean_param($orderid, PARAM_ALPHANUMEXT));
+        $reason = trim(clean_param($reason, PARAM_TEXT));
+        if ($orderid === '' || \core_text::strlen($orderid) > 64) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+        if (\core_text::strlen($reason) > 500) {
+            $reason = \core_text::substr($reason, 0, 500);
+        }
+
         $txn = $DB->get_record('paygw_razorpay_txn', ['orderid' => $orderid]);
         if (!$txn) {
             throw new \moodle_exception('txnnotfound', 'paygw_razorpay');
@@ -50,7 +61,7 @@ class report_payment_failure extends external_api {
             return ['status' => 'failed'];
         }
 
-        razorpay_helper::mark_transaction_failed($txn, trim($reason));
+        razorpay_helper::mark_transaction_failed($txn, $reason);
 
         return ['status' => 'failed'];
     }

@@ -15,6 +15,11 @@
 {{> theme_iiidem2/homepage_chatbot }}
 {{/showadminchatbot}}
 {{{ output.standard_after_main_region_html }}}
+{{!
+    Required Moodle JS (AMD, $PAGE->requires->js, etc.). Must sit outside
+    <footer> so production CDNs / markup filters cannot drop it.
+}}
+{{{ output.standard_end_of_body_html }}}
 {{#js}}
 M.util.js_pending('theme_iiidem2/loader');
 require(['theme_iiidem2/loader'], function() {

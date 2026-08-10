@@ -33,6 +33,8 @@ try {
     require_login(null, false, null, false, true);
     require_sesskey();
 
+    \theme_iiidem2\rate_limit::require_json('chatbot_admin_poll', 30, 60);
+
     if (!is_siteadmin()) {
         ob_end_clean();
         echo json_encode(['success' => true, 'items' => []]);
@@ -46,5 +48,7 @@ try {
     echo json_encode(['success' => true, 'items' => array_values($items)]);
 } catch (Throwable $e) {
     ob_end_clean();
-    echo json_encode(['success' => false, 'items' => [], 'error' => $e->getMessage()]);
+    $payload = \theme_iiidem2\safe_errors::json($e, 'chatbot_admin_poll', false);
+    $payload['items'] = [];
+    echo json_encode($payload);
 }

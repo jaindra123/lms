@@ -21,6 +21,7 @@ $string['paywithrazorpay'] = 'Pay with Razorpay';
 $string['paymentfailed'] = 'Payment could not be completed. Please try again or contact support.';
 $string['paymentsuccess'] = 'Payment successful. You are now enrolled in the course.';
 $string['invalidsignature'] = 'Payment verification failed (invalid signature).';
+$string['amountmismatch'] = 'The payment amount does not match the course fee. Please start the payment again from the course page.';
 $string['txnnotfound'] = 'Transaction reference not found.';
 $string['ordercreatefailed'] = 'Could not create Razorpay order. Check your API keys and try again.';
 $string['apiconnectionfailed'] = 'Could not reach Razorpay. Check your internet connection and try again.';

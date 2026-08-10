@@ -10,6 +10,8 @@
 
 {{{ output.standard_top_of_body_html }}}
 
+{{> theme_iiidem2/a11y_skip }}
+
 <div id="page-wrapper" class="iiidem-login-shell">
     <div class="iiidem-login-layout"{{#hasloginbackground}} style="--iiidem-login-bg-image: url('{{loginbackgroundurl}}')"{{/hasloginbackground}}>
         <aside class="iiidem-login-layout__brand" aria-label="{{#str}}loginbrandpanel, theme_iiidem2{{/str}}">
@@ -39,8 +41,8 @@
             </nav>
         </aside>
 
-        <main class="iiidem-login-layout__panel" id="region-main">
-            <div class="iiidem-login-card">
+        <main class="iiidem-login-layout__panel" id="main-content" tabindex="-1">
+            <div class="iiidem-login-card eci-card">
                 <header class="iiidem-login-card__header">
                     <h2 class="iiidem-login-card__title">{{loginwelcome}}</h2>
                     <p class="iiidem-login-card__subtitle">{{loginsubtitle}}</p>

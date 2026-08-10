@@ -33,6 +33,17 @@ class verify_payment extends external_api {
 
         require_login();
 
+        \theme_iiidem2\rate_limit::require_allowed('paygw_razorpay_verify', 20, 600);
+
+        $orderid = trim(clean_param($orderid, PARAM_ALPHANUMEXT));
+        $paymentid = trim(clean_param($paymentid, PARAM_ALPHANUMEXT));
+        $signature = trim(clean_param($signature, PARAM_ALPHANUMEXT));
+        if ($orderid === '' || \core_text::strlen($orderid) > 64
+                || $paymentid === '' || \core_text::strlen($paymentid) > 64
+                || $signature === '' || \core_text::strlen($signature) > 128) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
+
         $txn = $DB->get_record('paygw_razorpay_txn', ['orderid' => $orderid]);
         if (!$txn) {
             throw new \moodle_exception('txnnotfound', 'paygw_razorpay');
@@ -57,12 +68,22 @@ class verify_payment extends external_api {
         );
 
         $ismock = strpos($orderid, 'order_mock_') === 0;
+        if ($ismock && !razorpay_helper::mock_payments_allowed()) {
+            throw new \moodle_exception('nopermissions', 'error', '', 'mock payment');
+        }
+
         $verified = $ismock
             ? razorpay_helper::verify_mock_signature($orderid, $paymentid, $signature)
             : razorpay_helper::verify_signature($orderid, $paymentid, $signature, $config->keysecret ?? '');
 
         if (!$verified) {
             throw new \moodle_exception('invalidsignature', 'paygw_razorpay');
+        }
+
+        // Server-side amount validation (never trust client / signature alone).
+        razorpay_helper::assert_txn_matches_payable($txn);
+        if (!$ismock) {
+            razorpay_helper::assert_remote_payment_matches_txn($config, $txn, $paymentid);
         }
 
         razorpay_helper::complete_transaction($txn, $paymentid);

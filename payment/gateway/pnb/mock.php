@@ -8,9 +8,14 @@ require_once(__DIR__ . '/../../../config.php');
 use core_payment\helper as payment_helper;
 use paygw_pnb\pnb_helper;
 
-global $DB, $USER, $PAGE, $OUTPUT;
+global $DB, $USER, $PAGE, $OUTPUT, $CFG;
 
 require_login();
+
+$host = strtolower((string) (parse_url($CFG->wwwroot ?? '', PHP_URL_HOST) ?: ''));
+if (in_array($host, ['iiidemlms.eci.gov.in', 'lms.eci.gov.in'], true)) {
+    throw new moodle_exception('nopermissions', 'error', '', 'mock payment');
+}
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/payment/gateway/pnb/mock.php'));

@@ -121,6 +121,7 @@ body.iiidem-login-page #page-content {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     opacity: 0.85;
+    color: #ffffff !important;
 }
 
 .iiidem-login-layout__title {
@@ -129,6 +130,7 @@ body.iiidem-login-page #page-content {
     font-weight: 700;
     line-height: 1.25;
     max-width: 22ch;
+    color: #ffffff !important;
 }
 
 .iiidem-login-layout__features {
@@ -137,6 +139,7 @@ body.iiidem-login-page #page-content {
     padding: 0;
     display: grid;
     gap: 1rem;
+    color: #ffffff;
 }
 
 .iiidem-login-layout__features li {
@@ -146,6 +149,7 @@ body.iiidem-login-page #page-content {
     font-size: 0.98rem;
     line-height: 1.45;
     opacity: 0.95;
+    color: #ffffff !important;
 }
 
 .iiidem-login-layout__features .fa {

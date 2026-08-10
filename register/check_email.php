@@ -15,6 +15,8 @@ require_once(__DIR__ . '/../config.php');
 
 require_sesskey();
 
+\theme_iiidem2\rate_limit::require_json('register_check_email_ip', 30, 60);
+
 $email = core_text::strtolower(trim(required_param('email', PARAM_EMAIL)));
 $exists = false;
 

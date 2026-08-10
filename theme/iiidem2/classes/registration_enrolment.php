@@ -70,7 +70,7 @@ final class registration_enrolment {
                     self::suspend_manual_enrolment($userid, $course);
                     $results[$courseid] = self::create_pending_fee_enrolment($userid, $course);
                 } else {
-                    // Admin "Allow without payment course" (or EMB/instructor):
+                    // Admin "Allow without payment course" only:
                     // grant active access and drop any pending fee enrolment.
                     self::remove_pending_fee_enrolment($userid, $course);
                     $results[$courseid] = self::create_active_manual_enrolment($userid, $course);
@@ -149,7 +149,10 @@ final class registration_enrolment {
     }
 
     /**
-     * Add an active manual enrolment for an exempt user.
+     * Add an active manual enrolment for a fee-waived user (admin-authorized).
+     *
+     * Always enrols as student. Teaching roles must be assigned by an
+     * administrator — never derived from self-selected occupation.
      *
      * @param int $userid
      * @param \stdClass $course
@@ -174,19 +177,47 @@ final class registration_enrolment {
             return 'skipped';
         }
 
-        $roleid = (int) $manualinstance->roleid;
+        $roleid = self::resolve_enrolment_role_id($userid, $manualinstance);
         if ($roleid <= 0) {
-            $studentroles = get_archetype_roles('student');
-            $studentrole = reset($studentroles);
-            $roleid = $studentrole ? (int) $studentrole->id : 0;
-        }
-        if ($roleid <= 0) {
-            self::log_skip($userid, (int) $course->id, 'student role is not configured');
+            self::log_skip($userid, (int) $course->id, 'enrolment role is not configured');
             return 'skipped';
         }
 
         $manualplugin->enrol_user($manualinstance, $userid, $roleid, 0, 0, ENROL_USER_ACTIVE);
+
         return 'active';
+    }
+
+    /**
+     * Role to assign on manual enrolment (always student archetype from instance).
+     *
+     * @param int $userid
+     * @param \stdClass $manualinstance
+     * @return int
+     */
+    private static function resolve_enrolment_role_id(int $userid, \stdClass $manualinstance): int {
+        unset($userid); // Reserved for future policy; role is never client-driven.
+
+        $roleid = (int) $manualinstance->roleid;
+        if ($roleid > 0) {
+            return $roleid;
+        }
+
+        $studentroles = get_archetype_roles('student');
+        $studentrole = reset($studentroles);
+        return $studentrole ? (int) $studentrole->id : 0;
+    }
+
+    /**
+     * No-op: teaching roles are never auto-assigned from registration profile.
+     *
+     * Kept for call-site compatibility. Admins must assign editingteacher via
+     * Moodle enrolments / role assignments after verifying the applicant.
+     *
+     * @param int $userid
+     */
+    public static function ensure_instructor_roles(int $userid): void {
+        unset($userid);
     }
 
     /**

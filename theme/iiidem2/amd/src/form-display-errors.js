@@ -23,6 +23,60 @@
  */
 define(['jquery', 'core_form/events'], function($, FormEvent) {
     let focusedAlready = false;
+
+    /**
+     * Place validation text beside the label, e.g. "City/town * Required".
+     * For Role radios, place it beside the Role heading (not between options).
+     *
+     * @param {jQuery} parent
+     * @param {String} msg
+     */
+    const syncLabelError = (parent, msg) => {
+        let labelWrap = parent.children('.col-form-label, .col-md-3').first();
+        if (!labelWrap.length) {
+            labelWrap = parent.find('> .col-form-label, > .col-md-3').first();
+        }
+
+        const isOccupation = parent.find('input[name="occupation"]').length > 0;
+        const isWorkingCategory = parent.find('input[name="workingcategory"]').length > 0;
+        if (isOccupation) {
+            // Always attach Role error to the section heading — never between radios.
+            labelWrap = $('#id_occupationheader .ftoggler').first();
+            if (!labelWrap.length) {
+                labelWrap = $('#id_occupationheader h3').first();
+            }
+        } else if (isWorkingCategory) {
+            labelWrap = $('#id_workingheader .ftoggler').first();
+            if (!labelWrap.length) {
+                labelWrap = $('#id_workingheader h3').first();
+            }
+        } else if (!labelWrap.length || !$.trim(labelWrap.clone().children('.iiidem-label-error').remove().end().text())) {
+            labelWrap = parent.find('.col-form-label').first();
+        }
+
+        if (!labelWrap.length) {
+            return;
+        }
+
+        let near = labelWrap.find('> .iiidem-label-error');
+        if (!near.length) {
+            near = $('<span class="iiidem-label-error" role="status"></span>');
+            labelWrap.append(near);
+        }
+        if (msg) {
+            near.text(msg).attr('hidden', false).show();
+            labelWrap.addClass('iiidem-label-has-error');
+        } else {
+            near.text('').hide();
+            labelWrap.removeClass('iiidem-label-has-error');
+        }
+    };
+
+    const clearLabelErrors = (parent) => {
+        parent.find('.iiidem-label-error').remove();
+        parent.find('.iiidem-label-has-error').removeClass('iiidem-label-has-error');
+    };
+
     return {
         /**
          * Enhance the supplied element to handle form field errors.
@@ -34,8 +88,6 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
         enhance: function(elementid) {
             var element = document.getElementById(elementid);
             if (!element) {
-                // Some elements (e.g. static) don't have a form field.
-                // Hence there is no validation. So, no setup required here.
                 return;
             }
 
@@ -47,27 +99,21 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
                 var feedback = parent.find('.form-control-feedback');
                 const feedbackId = feedback.attr('id');
 
-                // Get current aria-describedby value.
                 let describedBy = $(element).attr('aria-describedby');
                 if (typeof describedBy === "undefined") {
                     describedBy = '';
                 }
-                // Split aria-describedby attribute into an array of IDs if necessary.
                 let describedByIds = [];
                 if (describedBy.length) {
                     describedByIds = describedBy.split(" ");
                 }
-                // Find the the feedback container in the aria-describedby attribute.
                 const feedbackIndex = describedByIds.indexOf(feedbackId);
 
                 if (element.tagName === 'TEXTAREA') {
-                    // Check if the textarea is backed by a contenteditable div.
                     const contentEditable = parent.find('[contenteditable]');
                     if (contentEditable.length > 0) {
-                        // Use the contenteditable div as the target element.
                         element = contentEditable[0];
                     } else {
-                        // Use the TinyMCE iframe as the target element if it exists.
                         element = document.getElementById(`${element.id}_ifr`) || element;
                     }
                 }
@@ -76,24 +122,21 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
                     parent.addClass('has-danger');
                     parent.data('client-validation-error', true);
                     $(element).addClass('is-invalid');
-                    // Append the feedback ID to the aria-describedby attribute if it doesn't exist yet.
                     if (feedbackIndex === -1) {
                         describedByIds.push(feedbackId);
                         $(element).attr('aria-describedby', describedByIds.join(" "));
                     }
                     $(element).attr('aria-invalid', true);
                     feedback.html(msg);
-                    feedback.show();
+                    // Hide under-field copy; show beside label instead.
+                    feedback.addClass('iiidem-feedback-sr');
+                    syncLabelError(parent, msg);
 
-                    // If we haven't focused anything yet, focus this one.
                     if (!focusedAlready) {
                         element.scrollIntoView({behavior: "smooth", block: "center"});
                         focusedAlready = true;
                         setTimeout(()=> {
-                            // Actual focus happens later in case we need to do this in response to
-                            // a change event which happens in the middle of changing focus.
                             element.focus({preventScroll: true});
-                            // Let it focus again next time they submit the form.
                             focusedAlready = false;
                         }, 0);
                     }
@@ -103,22 +146,26 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
                         parent.removeClass('has-danger');
                         parent.data('client-validation-error', false);
                         $(element).removeClass('is-invalid');
-                        // If the aria-describedby attribute contains the error container's ID, remove it.
                         if (feedbackIndex > -1) {
                             describedByIds.splice(feedbackIndex, 1);
                         }
-                        // Check the remaining element IDs in the aria-describedby attribute.
                         if (describedByIds.length) {
-                            // If there's at least one, combine them with a blank space and update the aria-describedby attribute.
                             describedBy = describedByIds.join(" ");
-                            // Put back the new describedby attribute.
                             $(element).attr('aria-describedby', describedBy);
                         } else {
-                            // If there's none, remove the aria-describedby attribute.
                             $(element).removeAttr('aria-describedby');
                         }
                         $(element).attr('aria-invalid', false);
-                        feedback.hide();
+                        feedback.hide().removeClass('iiidem-feedback-sr');
+                        clearLabelErrors(parent);
+                        if (parent.find('input[name="occupation"]').length) {
+                            $('#id_occupationheader .iiidem-label-error').remove();
+                            $('#id_occupationheader .iiidem-label-has-error').removeClass('iiidem-label-has-error');
+                        }
+                        if (parent.find('input[name="workingcategory"]').length) {
+                            $('#id_workingheader .iiidem-label-error').remove();
+                            $('#id_workingheader .iiidem-label-has-error').removeClass('iiidem-label-has-error');
+                        }
                     }
                 }
             });
@@ -126,9 +173,19 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
             var form = element.closest('form');
             if (form && !('iiidem2FormErrorsEnhanced' in form.dataset)) {
                 form.addEventListener('submit', function() {
-                    var visibleError = $('.form-control-feedback:visible');
+                    var visibleError = $('.iiidem-label-error:visible');
                     if (visibleError.length) {
-                        visibleError[0].focus();
+                        visibleError[0].scrollIntoView({behavior: "smooth", block: "center"});
+                    }
+                });
+                // Server-rendered errors: mirror beside labels on load.
+                $(form).find('.fitem').each(function() {
+                    const item = $(this);
+                    const text = $.trim(item.find('.form-control-feedback').first().text());
+                    if (text) {
+                        item.addClass('has-danger');
+                        item.find('.form-control-feedback').addClass('iiidem-feedback-sr');
+                        syncLabelError(item, text);
                     }
                 });
                 form.dataset.iiidem2FormErrorsEnhanced = 1;

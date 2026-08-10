@@ -15,6 +15,12 @@ $callbacks = [
         'priority' => 100,
     ],
     [
+        // Reject .php / script uploads at file-storage (repository AJAX + Private files).
+        'hook' => \core_files\hook\before_file_created::class,
+        'callback' => [\theme_iiidem2\hook_listener::class, 'before_file_created'],
+        'priority' => 100,
+    ],
+    [
         'hook' => \core_user\hook\after_login_completed::class,
         'callback' => [\theme_iiidem2\hook_listener::class, 'after_login_completed'],
         'priority' => 100,

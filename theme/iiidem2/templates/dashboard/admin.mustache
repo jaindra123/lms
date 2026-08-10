@@ -1,45 +1,50 @@
-<div class="row g-4 admin-dashboard">
-    <div class="col-md-3">
-        <div class="card h-100 shadow-sm border-dark">
-            <div class="card-body">
+{{!
+    @template theme_iiidem2/dashboard/admin
+
+    Admin dashboard cards — presentation only; URLs/strings unchanged.
+}}
+<div class="row g-4 admin-dashboard eci-dash-grid">
+    <div class="col-12 col-md-6 col-xl-3">
+        <article class="card h-100 eci-card shadow-sm border-0">
+            <div class="card-body eci-card__body d-flex flex-column">
                 <h2 class="h5 card-title">{{#str}}dashboardusers, theme_iiidem2{{/str}}</h2>
-                <p class="card-text text-muted">{{#str}}dashboardusers_desc, theme_iiidem2{{/str}}</p>
-                <a class="btn btn-dark" href="{{usersurl}}">{{#str}}view{{/str}}</a>
+                <p class="card-text text-muted flex-grow-1">{{#str}}dashboardusers_desc, theme_iiidem2{{/str}}</p>
+                <a class="btn btn-primary align-self-start" href="{{usersurl}}">{{#str}}view{{/str}}</a>
             </div>
-        </div>
+        </article>
     </div>
-    <div class="col-md-3">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body">
+    <div class="col-12 col-md-6 col-xl-3">
+        <article class="card h-100 eci-card shadow-sm border-0">
+            <div class="card-body eci-card__body d-flex flex-column">
                 <h2 class="h5 card-title">{{#str}}dashboardcourses, theme_iiidem2{{/str}}</h2>
-                <p class="card-text text-muted">{{#str}}dashboardcourses_desc, theme_iiidem2{{/str}}</p>
-                <a class="btn btn-primary" href="{{coursesurl}}">{{#str}}view{{/str}}</a>
+                <p class="card-text text-muted flex-grow-1">{{#str}}dashboardcourses_desc, theme_iiidem2{{/str}}</p>
+                <a class="btn btn-primary align-self-start" href="{{coursesurl}}">{{#str}}view{{/str}}</a>
             </div>
-        </div>
+        </article>
     </div>
-    <div class="col-md-3">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body">
+    <div class="col-12 col-md-6 col-xl-3">
+        <article class="card h-100 eci-card shadow-sm border-0">
+            <div class="card-body eci-card__body d-flex flex-column">
                 <h2 class="h5 card-title">{{#str}}dashboardsiteadmin, theme_iiidem2{{/str}}</h2>
-                <p class="card-text text-muted">{{#str}}dashboardsiteadmin_desc, theme_iiidem2{{/str}}</p>
-                <a class="btn btn-outline-primary" href="{{siteadminurl}}">{{#str}}view{{/str}}</a>
+                <p class="card-text text-muted flex-grow-1">{{#str}}dashboardsiteadmin_desc, theme_iiidem2{{/str}}</p>
+                <a class="btn btn-outline-primary align-self-start" href="{{siteadminurl}}">{{#str}}view{{/str}}</a>
             </div>
-        </div>
+        </article>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-md-6 col-xl-3">
         {{#hasreports}}
-        <div class="card h-100 shadow-sm">
-            <div class="card-body">
+        <article class="card h-100 eci-card shadow-sm border-0">
+            <div class="card-body eci-card__body d-flex flex-column">
                 <h2 class="h5 card-title">{{#str}}dashboardreports, theme_iiidem2{{/str}}</h2>
-                <p class="card-text text-muted">{{#str}}dashboardreports_desc, theme_iiidem2{{/str}}</p>
-                <a class="btn btn-outline-secondary" href="{{reportsurl}}">{{#str}}view{{/str}}</a>
+                <p class="card-text text-muted flex-grow-1">{{#str}}dashboardreports_desc, theme_iiidem2{{/str}}</p>
+                <a class="btn btn-outline-primary align-self-start" href="{{reportsurl}}">{{#str}}view{{/str}}</a>
             </div>
-        </div>
+        </article>
         {{/hasreports}}
     </div>
 </div>
 
-<section class="row g-4 mt-2 admin-dashboard-calendar">
+<section class="row g-4 mt-2 admin-dashboard-calendar" aria-label="{{#str}}dashboardcalendartitle, theme_iiidem2{{/str}}">
     <div class="col-12">
         {{> theme_iiidem2/dashboard/calendar_panel }}
     </div>

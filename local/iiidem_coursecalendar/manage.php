@@ -22,7 +22,7 @@ $PAGE->set_heading(get_string('manageheading', 'local_iiidem_coursecalendar', fo
 $returnurl = new moodle_url('/course/view.php', ['id' => $courseid]);
 $existing = manager::get_by_course($courseid);
 
-if ($delete && confirm_sesskey()) {
+if ($delete && confirm_sesskey() && $_SERVER['REQUEST_METHOD'] === 'POST') {
     manager::delete_calendar($courseid);
     redirect($returnurl, get_string('deleted', 'local_iiidem_coursecalendar'), null, \core\output\notification::NOTIFY_SUCCESS);
 }
@@ -52,19 +52,21 @@ echo html_writer::div(
 );
 
 if ($existing) {
-    $deleteurl = new moodle_url('/local/iiidem_coursecalendar/manage.php', [
-        'courseid' => $courseid,
-        'delete' => 1,
-        'sesskey' => sesskey(),
+    $deleteform = html_writer::start_tag('form', [
+        'method' => 'post',
+        'action' => (new moodle_url('/local/iiidem_coursecalendar/manage.php'))->out(false),
+        'class' => 'local-iiidem-coursecalendar-manage-actions d-inline',
     ]);
-    echo html_writer::div(
-        html_writer::link(
-            $deleteurl,
-            get_string('deletecalendar', 'local_iiidem_coursecalendar'),
-            ['class' => 'btn btn-outline-danger mb-3']
-        ),
-        'local-iiidem-coursecalendar-manage-actions'
-    );
+    $deleteform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+    $deleteform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'delete', 'value' => 1]);
+    $deleteform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+    $deleteform .= html_writer::empty_tag('input', [
+        'type' => 'submit',
+        'class' => 'btn btn-outline-danger mb-3',
+        'value' => get_string('deletecalendar', 'local_iiidem_coursecalendar'),
+    ]);
+    $deleteform .= html_writer::end_tag('form');
+    echo html_writer::div($deleteform, 'local-iiidem-coursecalendar-manage-actions');
 
     $events = manager::get_upcoming_events($existing, 5);
     if (!empty($events)) {

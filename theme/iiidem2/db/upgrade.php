@@ -200,11 +200,212 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100894, 'theme', 'iiidem2');
     }
 
-    if ($oldversion < 2024100902) {
-        // Registration approval status profile field + deferred enrolment flow.
-        \theme_iiidem2\registration_profile::ensure_fields();
+    // Sync disk version → DB after CSS/a11y/perf theme bumps (rebuilds admin/plugin caches).
+    if ($oldversion < 2024100911) {
         purge_all_caches();
-        upgrade_plugin_savepoint(true, 2024100902, 'theme', 'iiidem2');
+        upgrade_plugin_savepoint(true, 2024100911, 'theme', 'iiidem2');
+    }
+
+    // Register form validation + contact-number padding fix.
+    if ($oldversion < 2024100912) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100912, 'theme', 'iiidem2');
+    }
+
+    // Production: ensure intl-tel-input / Moodle end-of-body JS loads on register.
+    if ($oldversion < 2024100913) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100913, 'theme', 'iiidem2');
+    }
+
+    // Teacher materials upload page for student-visible File resources.
+    if ($oldversion < 2024100914) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100914, 'theme', 'iiidem2');
+    }
+
+    // Teacher create-assignment page (no course Edit mode).
+    if ($oldversion < 2024100915) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100915, 'theme', 'iiidem2');
+    }
+
+    // Sticky grader pagination: keep above branded site footer (not fixed under it).
+    if ($oldversion < 2024100916) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100916, 'theme', 'iiidem2');
+    }
+
+    // Teacher attendance: scope student list to learners under that teacher.
+    if ($oldversion < 2024100917) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100917, 'theme', 'iiidem2');
+    }
+
+    // Create assignment page no longer depends on teacher_materials class.
+    if ($oldversion < 2024100918) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100918, 'theme', 'iiidem2');
+    }
+
+    // Materials upload size display + AMD popover fix for file picker pages.
+    if ($oldversion < 2024100919) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100919, 'theme', 'iiidem2');
+    }
+
+    // Teacher materials upload capped at ~5 MB.
+    if ($oldversion < 2024100920) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100920, 'theme', 'iiidem2');
+    }
+
+    // Instructors (occupation) get teacher role + teacher dashboard.
+    if ($oldversion < 2024100921) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100921, 'theme', 'iiidem2');
+    }
+
+    // Teacher sub-pages keep Professors sidebar; refresh lang cache for maxsize string.
+    if ($oldversion < 2024100922) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100922, 'theme', 'iiidem2');
+    }
+
+    // Hide course secondary nav (Home / Content bank) on teacher dashboard pages.
+    if ($oldversion < 2024100923) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100923, 'theme', 'iiidem2');
+    }
+
+    // Skip-link out of flow (header/banner white gap).
+    if ($oldversion < 2024100924) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100924, 'theme', 'iiidem2');
+    }
+
+    // Rename bootstrap/popover AMD → bs4popover (live WAF/empty file broke every page JS).
+    if ($oldversion < 2024100925) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100925, 'theme', 'iiidem2');
+    }
+
+    // Curriculum in-section group headings (Reading material, Quizzes, …).
+    if ($oldversion < 2024100926) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100926, 'theme', 'iiidem2');
+    }
+
+    // Student dashboard: own attendance only; teachers keep full roster.
+    if ($oldversion < 2024100927) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100927, 'theme', 'iiidem2');
+    }
+
+    // Certificate of completion issued after assignment completion.
+    if ($oldversion < 2024100928) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('theme_iiidem2_cert_issues');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('code', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('studentname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('coursename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('city', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('issuedate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('userid_courseid_uq', XMLDB_INDEX_UNIQUE, ['userid', 'courseid']);
+        $table->add_index('userid_issuedate', XMLDB_INDEX_NOTUNIQUE, ['userid', 'issuedate']);
+        $table->add_index('code_uq', XMLDB_INDEX_UNIQUE, ['code']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        set_config('certificateenabled', '1', 'theme_iiidem2');
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100928, 'theme', 'iiidem2');
+    }
+
+    // Account lockout: temporary lock after failed logins (also forced in config.php).
+    if ($oldversion < 2024100951) {
+        // Mirror config.php defaults into mdl_config for admin UI visibility.
+        // Values in config.php remain authoritative (forced settings).
+        if ((int) get_config('core', 'lockoutthreshold') <= 0) {
+            set_config('lockoutthreshold', 5);
+        }
+        if ((int) get_config('core', 'lockoutwindow') <= 0) {
+            set_config('lockoutwindow', 30 * 60);
+        }
+        if ((int) get_config('core', 'lockoutduration') <= 0) {
+            set_config('lockoutduration', 30 * 60);
+        }
+        set_config('displayloginfailures', 1);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100951, 'theme', 'iiidem2');
+    }
+
+    // Session fixation: ensure hooks/caches refreshed after session_security helper.
+    if ($oldversion < 2024100952) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100952, 'theme', 'iiidem2');
+    }
+
+    // Password change must invalidate other active sessions + WS tokens.
+    if ($oldversion < 2024100953) {
+        set_config('passwordchangelogout', 1);
+        set_config('passwordchangetokendeletion', 1);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100953, 'theme', 'iiidem2');
+    }
+
+    // Security response headers (CSP, nosniff, XSS, Referrer, CORS, Clear-Site-Data).
+    if ($oldversion < 2024100954) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100954, 'theme', 'iiidem2');
+    }
+
+    // Suppress Server / X-Powered-By version disclosure headers.
+    if ($oldversion < 2024100955) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100955, 'theme', 'iiidem2');
+    }
+
+    // One concurrent browser session per user (new login invalidates previous).
+    if ($oldversion < 2024100962) {
+        set_config('limitconcurrentlogins', 1);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100962, 'theme', 'iiidem2');
+    }
+
+    // MFA required for privileged accounts (admins / managers / teachers).
+    if ($oldversion < 2024100963) {
+        \theme_iiidem2\mfa_privileged::enable();
+        upgrade_plugin_savepoint(true, 2024100963, 'theme', 'iiidem2');
+    }
+
+    // Profile IDOR: students cannot open other users via /user/profile.php?id=.
+    if ($oldversion < 2024100964) {
+        set_config('forcelogin', 1);
+        set_config('forceloginforprofiles', 1);
+        set_config('profilesforenrolledusersonly', 1);
+        set_config(
+            'hiddenuserfields',
+            'email,city,country,address,phone1,phone2,icq,skype,yahoo,aim,msn,lastaccess,firstaccess,description'
+        );
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100964, 'theme', 'iiidem2');
+    }
+
+    // Private files: block executable/script uploads (CWE-434 /user/files.php).
+    if ($oldversion < 2024100965) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100965, 'theme', 'iiidem2');
     }
 
     return true;

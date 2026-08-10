@@ -1,3 +1,8 @@
+{{!
+    @template theme_iiidem2/course/instructors
+
+    Course professors — photo opens bio in a popup (bio is not shown under the card).
+}}
 <section class="iiidem-course-section iiidem-course-instructors">
     <div class="container">
         <header class="iiidem-course-section__header">
@@ -8,22 +13,154 @@
             {{#instructordata}}
             <div class="career-card">
                 <div class="career-image">
-                    {{#profileurl}}
-                    <a href="{{{profileurl}}}">
-                        <img src="{{{image}}}" alt="{{name}}" class="instructor-photo">
-                    </a>
-                    {{/profileurl}}
-                    {{^profileurl}}
-                    <img src="{{{image}}}" alt="{{name}}" class="instructor-photo">
-                    {{/profileurl}}
+                    <button type="button"
+                            class="iiidem-instructor-photo-btn"
+                            data-action="open-instructor-modal"
+                            data-modal-id="iiidem-instructor-modal-{{id}}"
+                            aria-haspopup="dialog"
+                            aria-controls="iiidem-instructor-modal-{{id}}"
+                            aria-label="{{#str}}courseinstructorviewbio, theme_iiidem2{{/str}} {{name}}">
+                        <img src="{{{image}}}" alt="{{name}}" class="instructor-photo" loading="lazy">
+                    </button>
                 </div>
                 <div class="career-content">
                     <h3 class="iiidem-course-instructors__name">{{name}}</h3>
                     <span class="iiidem-course-instructors__role">{{role}}</span>
-                    <p class="iiidem-course-instructors__bio">{{bio}}</p>
                 </div>
             </div>
             {{/instructordata}}
         </div>
     </div>
+
+    {{! Modals must sit outside .career-card — card hover uses transform, which breaks position:fixed and causes blink. }}
+    {{#instructordata}}
+    <div class="iiidem-instructor-modal"
+         id="iiidem-instructor-modal-{{id}}"
+         hidden
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="iiidem-instructor-modal-title-{{id}}">
+        <div class="iiidem-instructor-modal__backdrop" data-action="close-instructor-modal" tabindex="-1"></div>
+        <div class="iiidem-instructor-modal__dialog" role="document">
+            <button type="button"
+                    class="iiidem-instructor-modal__close"
+                    data-action="close-instructor-modal"
+                    aria-label="{{#str}}closebuttontitle, core{{/str}}">&times;</button>
+            <div class="iiidem-instructor-modal__layout">
+                <header class="iiidem-instructor-modal__header">
+                    <div class="iiidem-instructor-modal__media">
+                        <img src="{{{image}}}" alt="" class="iiidem-instructor-modal__photo">
+                    </div>
+                    <div class="iiidem-instructor-modal__identity">
+                        <h3 id="iiidem-instructor-modal-title-{{id}}" class="iiidem-instructor-modal__name">{{name}}</h3>
+                        <p class="iiidem-instructor-modal__role">{{role}}</p>
+                    </div>
+                </header>
+                <div class="iiidem-instructor-modal__bio">{{{bio}}}</div>
+            </div>
+        </div>
+    </div>
+    {{/instructordata}}
 </section>
+{{#js}}
+(function() {
+    if (window.iiidemInstructorModalBound) {
+        return;
+    }
+    window.iiidemInstructorModalBound = true;
+
+    var lastFocus = null;
+    var openId = null;
+    var scrollY = 0;
+
+    function getOpenModal() {
+        return openId ? document.getElementById(openId) : null;
+    }
+
+    function unlockBody() {
+        if (!document.body.classList.contains('iiidem-instructor-modal-open')) {
+            return;
+        }
+        document.body.classList.remove('iiidem-instructor-modal-open');
+        document.body.style.removeProperty('top');
+        document.body.style.removeProperty('width');
+        window.scrollTo(0, scrollY);
+    }
+
+    function lockBody() {
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        document.body.style.top = '-' + scrollY + 'px';
+        document.body.style.width = '100%';
+        document.body.classList.add('iiidem-instructor-modal-open');
+    }
+
+    function closeAll() {
+        var modal = getOpenModal();
+        if (modal) {
+            modal.hidden = true;
+            modal.classList.remove('is-visible');
+        }
+        openId = null;
+        unlockBody();
+        if (lastFocus && typeof lastFocus.focus === 'function') {
+            lastFocus.focus({preventScroll: true});
+        }
+        lastFocus = null;
+    }
+
+    function openModal(id, trigger) {
+        var modal = document.getElementById(id);
+        if (!modal) {
+            return;
+        }
+        if (openId === id) {
+            return;
+        }
+        if (openId) {
+            var prev = document.getElementById(openId);
+            if (prev) {
+                prev.hidden = true;
+                prev.classList.remove('is-visible');
+            }
+            openId = null;
+        } else {
+            lockBody();
+        }
+        lastFocus = trigger || document.activeElement;
+        openId = id;
+        // Append to body so no parent transform/overflow can affect fixed positioning.
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.hidden = false;
+        // Next frame: fade/scale in without fighting card hover.
+        requestAnimationFrame(function() {
+            modal.classList.add('is-visible');
+        });
+        var closeBtn = modal.querySelector('.iiidem-instructor-modal__close');
+        if (closeBtn) {
+            closeBtn.focus({preventScroll: true});
+        }
+    }
+
+    document.addEventListener('click', function(event) {
+        var openBtn = event.target.closest('[data-action="open-instructor-modal"]');
+        if (openBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            openModal(openBtn.getAttribute('data-modal-id'), openBtn);
+            return;
+        }
+        if (event.target.closest('[data-action="close-instructor-modal"]')) {
+            event.preventDefault();
+            closeAll();
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && openId) {
+            closeAll();
+        }
+    });
+}());
+{{/js}}

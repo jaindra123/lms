@@ -29,10 +29,9 @@ $PAGE->set_pagelayout('register');
 $PAGE->set_cacheable(false);
 $PAGE->set_title(get_string('registerpagetitle', 'theme_iiidem2'));
 $PAGE->set_heading(get_string('registerpagetitle', 'theme_iiidem2'));
-// intl-tel-input CSS is loaded via theme sheet "intltelinput" (local flag sprites).
-// Load JS in footer; register inline script waits until window.intlTelInput exists.
-$PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), false);
-$PAGE->requires->css(new moodle_url('/theme/iiidem2/style/intltelinput.css'));
+// intl-tel-input CSS stays in $THEME->sheets so Moodle rewrites [[pix:]] flag sprites.
+// Load library in <head> so it is available before the register inline init.
+$PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), true);
 $PAGE->requires->js_call_amd('theme_iiidem2/register_occupation', 'init');
 
 $form = new \theme_iiidem2\form\register_form();
@@ -43,7 +42,9 @@ if ($form->is_cancelled()) {
 
 if ($data = $form->get_data()) {
     try {
-        $submission = (object) array_merge((array) $_POST, (array) $data);
+        // Use validated form data only — never merge raw $_POST (blocks privilege
+        // tampering via hidden fields such as emb=1).
+        $submission = $data;
         $email = \core_text::strtolower(trim((string) ($submission->email ?? '')));
         if (!\theme_iiidem2\registration_otp::is_verified($email)) {
             throw new \moodle_exception('registerotprequired', 'theme_iiidem2');
@@ -52,33 +53,19 @@ if ($data = $form->get_data()) {
         \theme_iiidem2\registration_otp::clear();
         $user = core_user::get_user($userid);
         theme_iiidem2_send_registration_emails($user, $submission);
-        redirect(new moodle_url('/register/', ['pending' => 1]));
-    } catch (moodle_exception $e) {
-        \core\notification::error($e->getMessage());
+        // Privilege elevation: complete_user_login regenerates the session id
+        // (core + theme_iiidem2 session_security via after_login_completed).
+        complete_user_login($user);
+        $redirecturl = new moodle_url('/course/view.php', ['id' => 4, 'registered' => 1]);
+        $SESSION->wantsurl = $redirecturl->out(false);
+        redirect($redirecturl);
+    } catch (Throwable $e) {
+        // Validation moodle_exceptions stay user-facing; unexpected errors stay generic.
+        \theme_iiidem2\safe_errors::notify($e, 'register_submit', true);
     }
 }
 
-$pending = optional_param('pending', 0, PARAM_INT);
-
 echo $OUTPUT->header();
-
-if ($pending) {
-    echo html_writer::start_div('iiidem-register-pending');
-    echo html_writer::tag('h2', get_string('registerpendingtitle', 'theme_iiidem2'), [
-        'class' => 'iiidem-register-pending__title',
-    ]);
-    echo html_writer::tag('p', get_string('registerpendingbody', 'theme_iiidem2'), [
-        'class' => 'iiidem-register-pending__body',
-    ]);
-    echo html_writer::link(
-        new moodle_url('/login/index.php'),
-        get_string('registerpendinglogin', 'theme_iiidem2'),
-        ['class' => 'btn btn-primary']
-    );
-    echo html_writer::end_div();
-    echo $OUTPUT->footer();
-    exit;
-}
 
 // Embed flag sprite as a data-URI so flags never depend on CDN / image.php.
 $flagfile = $CFG->dirroot . '/theme/iiidem2/pix/intl-tel-input/flags.png';
@@ -93,32 +80,62 @@ $flag2xdata = is_readable($flag2xfile)
 if ($flagdata !== '') {
     echo html_writer::tag('style', '
 /* Flag sprite (local, embedded). Do not hide dial-code text. */
+.iiidem-register-page .iti__flag,
 .iiidem-register-form .iti__flag {
   background-image: url(' . json_encode($flagdata, JSON_UNESCAPED_SLASHES) . ') !important;
   background-repeat: no-repeat !important;
   background-color: transparent !important;
 }
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .iiidem-register-page .iti__flag,
   .iiidem-register-form .iti__flag {
     background-image: url(' . json_encode($flag2xdata, JSON_UNESCAPED_SLASHES) . ') !important;
   }
 }
-.iiidem-register-form .iti__selected-flag {
-  display: flex !important;
+.iiidem-register-page .iti__selected-country,
+.iiidem-register-form .iti__selected-country {
+  display: inline-flex !important;
   align-items: center !important;
+  flex-wrap: nowrap !important;
   gap: 6px;
   font-size: 14px !important;
   line-height: 1.2 !important;
   color: #212529 !important;
+  height: 100% !important;
   min-height: 42px;
+  max-height: 100% !important;
   padding: 0 8px !important;
+  width: auto !important;
+  max-width: none !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
 }
-.iiidem-register-form .iti__selected-flag .iti__flag {
+.iiidem-register-page .iti__country-container,
+.iiidem-register-form .iti__country-container {
+  width: auto !important;
+  max-width: none !important;
+  right: auto !important;
+  left: 0 !important;
+}
+.iiidem-register-page .iti__selected-country .iti__country-name,
+.iiidem-register-form .iti__selected-country .iti__country-name,
+.iiidem-register-page .iti__selected-country .iti__a11y-text,
+.iiidem-register-form .iti__selected-country .iti__a11y-text {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+}
+.iiidem-register-page .iti__selected-country .iti__flag,
+.iiidem-register-form .iti__selected-country .iti__flag {
   display: inline-block !important;
   flex: 0 0 auto !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
+.iiidem-register-page .iti__selected-dial-code,
 .iiidem-register-form .iti__selected-dial-code {
   display: inline-block !important;
   font-size: 14px !important;
@@ -127,18 +144,59 @@ if ($flagdata !== '') {
   visibility: visible !important;
   opacity: 1 !important;
   white-space: nowrap !important;
+  max-width: none !important;
+  overflow: visible !important;
 }
+.iiidem-register-page .iti__arrow,
 .iiidem-register-form .iti__arrow {
   border-top-color: #555 !important;
   margin-left: 4px !important;
+  flex: 0 0 auto !important;
 }
+/* v21: list must stay in-flow inside .iti__dropdown-content (absolute collapses/clips it). */
+.iiidem-register-page .iti__dropdown-content,
+.iiidem-register-form .iti__dropdown-content {
+  background-color: #fff !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18) !important;
+  z-index: 3000 !important;
+  overflow: hidden !important;
+  min-width: 280px !important;
+  max-width: min(360px, 92vw) !important;
+}
+.iiidem-register-page .iti__country-list,
+.iiidem-register-form .iti__country-list {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  z-index: auto !important;
+  background: #fff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.iiidem-register-page .iti__country-list .iti__flag,
 .iiidem-register-form .iti__country-list .iti__flag {
   display: inline-block !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
+.iiidem-register-page .fitem:has(.iti),
+.iiidem-register-form .fitem:has(.iti) {
+  z-index: 40 !important;
+  overflow: visible !important;
+}
 ', ['id' => 'iiidem-iti-flags']);
 }
+
+// Explicit library tag: production must not depend only on footer JS queue timing.
+$itijsurl = (new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'))->out(false);
+echo '<script src="' . s($itijsurl) . '" data-iiidem-iti="1"></script>';
 
 $form->display();
 
@@ -154,14 +212,14 @@ $otpstrings = [
     'intro' => $otpstring('registerotpmodalintro', 'Enter the 6-digit verification code we sent to your email address.'),
     'label' => $otpstring('registerotplabel', 'Verification code'),
     'placeholder' => $otpstring('registerotpplaceholder', '6-digit code'),
-    'verify' => $otpstring('registerotpverify', 'Verify & submit'),
+    'verify' => $otpstring('registerotpverify', 'Verify & create account'),
     'resend' => $otpstring('registerotpresend', 'Resend code'),
     'close' => get_string('closebuttontitle'),
     'sending' => $otpstring('registerotpsending', 'Sending verification code…'),
     'verifying' => $otpstring('registerotpverifying', 'Verifying code…'),
     'required' => $otpstring('registerotprequiredcode', 'Enter the 6-digit verification code.'),
     'loadingtitle' => $otpstring('registerotploadingtitle', 'Verifying your email'),
-    'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and submit your registration…'),
+    'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and create your account…'),
 ];
 ?>
 <div id="iiidem-register-otp-modal" class="iiidem-register-otp-modal" hidden aria-hidden="true">
@@ -238,6 +296,12 @@ window.IIIDEM_REGISTER_OTP = {
         || 'This contact number is already registered.';
     var invalidPhoneMsg = (phoneInput && phoneInput.getAttribute('data-invalid-phone'))
         || 'Enter a valid contact number (digits only).';
+    var passwordInput = document.getElementById('id_password');
+    var password2Input = document.getElementById('id_password2');
+    var cityInput = document.getElementById('id_city');
+    var passwordMismatchMsg = (password2Input && password2Input.getAttribute('data-password-mismatch'))
+        || 'both should be Same';
+    var requiredFieldMsg = 'Required';
     var approvedPhone = '';
     var phoneCheckSequence = 0;
     var bypassPhoneCheck = false;
@@ -332,11 +396,8 @@ window.IIIDEM_REGISTER_OTP = {
         input.setAttribute('data-password-toggle-ready', '1');
     }
 
-    // Password fields were removed; login credentials are emailed after admin approval.
-    if (document.getElementById('id_password')) {
-        addPasswordToggle('id_password');
-        addPasswordToggle('id_password2');
-    }
+    addPasswordToggle('id_password');
+    addPasswordToggle('id_password2');
 
     function syncOccupationSections() {
         var selected = form.querySelector('input[name="occupation"]:checked');
@@ -383,6 +444,19 @@ window.IIIDEM_REGISTER_OTP = {
     // Initial state: all profile sections hidden until an occupation is chosen.
     syncOccupationSections();
 
+    function passwordsMatch() {
+        if (!passwordInput || !password2Input) {
+            return true;
+        }
+        var pass = String(passwordInput.value || '');
+        var pass2 = String(password2Input.value || '');
+        // Empty confirm is handled by the required check.
+        if (pass === '' || pass2 === '') {
+            return true;
+        }
+        return pass === pass2;
+    }
+
     function clearFeedback(field) {
         var item = field && field.closest ? field.closest('.fitem') : null;
         if (!item) {
@@ -393,11 +467,73 @@ window.IIIDEM_REGISTER_OTP = {
         field.removeAttribute('data-phone-status');
         item.classList.remove('has-danger');
         var feedback = document.getElementById('id_error_' + field.name)
-            || item.querySelector('.form-control-feedback, .invalid-feedback');
+            || item.querySelector('.form-control-feedback, .invalid-feedback, .iiidem-field-error');
         if (feedback) {
             feedback.textContent = '';
             feedback.style.display = 'none';
         }
+        clearRadioHeadingError(field);
+    }
+
+    /**
+     * Radio groups have no real label column — show Required beside the section heading.
+     *
+     * @param {HTMLElement} field
+     * @returns {HTMLElement|null}
+     */
+    function getRadioHeadingWrap(field) {
+        if (!field || !field.name) {
+            return null;
+        }
+        var map = {
+            occupation: 'id_occupationheader',
+            workingcategory: 'id_workingheader'
+        };
+        var headerId = map[field.name];
+        if (!headerId) {
+            return null;
+        }
+        var header = document.getElementById(headerId);
+        if (!header) {
+            return null;
+        }
+        return header.querySelector('.ftoggler') || header.querySelector('h3') || header;
+    }
+
+    /**
+     * @param {HTMLElement} field
+     * @param {string} message
+     */
+    function syncRadioHeadingError(field, message) {
+        var wrap = getRadioHeadingWrap(field);
+        if (!wrap) {
+            return false;
+        }
+        var near = wrap.querySelector(':scope > .iiidem-label-error');
+        if (!near) {
+            near = document.createElement('span');
+            near.className = 'iiidem-label-error';
+            near.setAttribute('role', 'status');
+            wrap.appendChild(near);
+        }
+        if (message) {
+            near.textContent = message;
+            near.removeAttribute('hidden');
+            near.style.display = '';
+            wrap.classList.add('iiidem-label-has-error');
+        } else {
+            near.textContent = '';
+            near.style.display = 'none';
+            wrap.classList.remove('iiidem-label-has-error');
+        }
+        return true;
+    }
+
+    /**
+     * @param {HTMLElement} field
+     */
+    function clearRadioHeadingError(field) {
+        syncRadioHeadingError(field, '');
     }
 
     function setFeedback(field, message) {
@@ -412,17 +548,39 @@ window.IIIDEM_REGISTER_OTP = {
         }
         item.classList.add('has-danger');
         item.classList.remove('iiidem-field-valid');
+        item.classList.add('iiidem-field-empty');
+
+        // Radios: Required beside section heading, never between options.
+        if (field.type === 'radio' && syncRadioHeadingError(field, message)) {
+            var radioFeedback = document.getElementById('id_error_' + field.name)
+                || item.querySelector('.form-control-feedback, .invalid-feedback, .iiidem-field-error');
+            if (radioFeedback) {
+                radioFeedback.textContent = message;
+                radioFeedback.classList.add('iiidem-feedback-sr');
+                radioFeedback.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;';
+            }
+            return;
+        }
+
         var feedback = document.getElementById('id_error_' + field.name)
-            || item.querySelector('.form-control-feedback, .invalid-feedback');
+            || item.querySelector('.form-control-feedback, .invalid-feedback, .iiidem-field-error');
         if (!feedback) {
             feedback = document.createElement('div');
-            feedback.className = 'form-control-feedback invalid-feedback';
+            feedback.className = 'form-control-feedback invalid-feedback iiidem-field-error';
             feedback.id = 'id_error_' + field.name;
             var felement = item.querySelector('.felement') || item;
-            felement.appendChild(feedback);
+            var passwordWrap = field.closest('.iiidem-register-password-wrap');
+            if (passwordWrap && passwordWrap.parentNode) {
+                passwordWrap.parentNode.insertBefore(feedback, passwordWrap.nextSibling);
+            } else {
+                felement.appendChild(feedback);
+            }
         }
+        feedback.classList.add('iiidem-field-error', 'invalid-feedback', 'form-control-feedback');
         feedback.textContent = message;
-        feedback.style.display = 'block';
+        feedback.removeAttribute('hidden');
+        feedback.setAttribute('role', 'alert');
+        feedback.style.cssText = 'display:block!important;visibility:visible!important;color:#dc3545!important;font-size:0.875rem;margin-top:0.35rem;font-weight:500;';
     }
 
     function showRegisterToast(title, body) {
@@ -554,7 +712,7 @@ window.IIIDEM_REGISTER_OTP = {
     }
 
     /**
-     * National number only (dial code from the +91 selector must not count).
+     * National number only (dial code from the country selector must not count).
      */
     function getNationalPhoneDigits() {
         if (!phoneInput) {
@@ -563,12 +721,12 @@ window.IIIDEM_REGISTER_OTP = {
         var digits = String(phoneInput.value || '').replace(/\D/g, '');
         var dial = getSelectedDialCode();
 
-        // Pasted / widget E.164: strip selected dial code when present.
-        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
+        // Pasted / widget E.164: dial + national.
+        if (dial && digits.length > dial.length + 3 && digits.indexOf(dial) === 0) {
             digits = digits.substring(dial.length);
         }
-        // Trunk prefix 0XXXXXXXXXX.
-        if (digits.length >= 11 && digits.charAt(0) === '0') {
+        // Trunk prefix 0….
+        if (digits.length > 6 && digits.charAt(0) === '0') {
             digits = digits.substring(1);
         }
         if (digits.length > 15) {
@@ -581,14 +739,14 @@ window.IIIDEM_REGISTER_OTP = {
         if (!phoneInput) {
             return;
         }
-        // Digits only; length varies by country (not forced to 10).
-        phoneInput.setAttribute('maxlength', '16');
+        // Allow international lengths (not India-only 10 digits).
+        phoneInput.setAttribute('maxlength', '15');
         var digits = String(phoneInput.value || '').replace(/\D/g, '');
         var dial = getSelectedDialCode();
-        if (dial && digits.length > dial.length && digits.indexOf(dial) === 0) {
+        if (dial && digits.length > dial.length + 3 && digits.indexOf(dial) === 0) {
             digits = digits.substring(dial.length);
         }
-        if (digits.length >= 11 && digits.charAt(0) === '0') {
+        if (digits.length > 6 && digits.charAt(0) === '0') {
             digits = digits.substring(1);
         }
         var national = digits.slice(0, 15);
@@ -598,7 +756,7 @@ window.IIIDEM_REGISTER_OTP = {
     }
 
     function isPhoneValid() {
-        return /^[0-9]{6,15}$/.test(getNationalPhoneDigits());
+        return /^[0-9]{4,15}$/.test(getNationalPhoneDigits());
     }
 
     function checkPhoneAvailability() {
@@ -608,7 +766,7 @@ window.IIIDEM_REGISTER_OTP = {
 
         sanitizePhoneInputValue();
         var national = getNationalPhoneDigits();
-        if (!/^[0-9]{6,15}$/.test(national)) {
+        if (!/^[0-9]{4,15}$/.test(national)) {
             approvedPhone = '';
             if (String(phoneInput.value || '').trim() !== '') {
                 setFeedback(phoneInput, invalidPhoneMsg);
@@ -694,12 +852,23 @@ window.IIIDEM_REGISTER_OTP = {
         if (!item) {
             return;
         }
+
+        // Password mismatch must stay visible; do not clear just because the field has text.
+        if ((field === passwordInput || field === password2Input) && !passwordsMatch()) {
+            item.classList.remove('iiidem-field-valid');
+            item.classList.add('iiidem-field-empty');
+            if (password2Input) {
+                setFeedback(password2Input, passwordMismatchMsg);
+            }
+            return;
+        }
+
         var ok = hasValue(field);
         // Keep server-side errors (for example, "Email already exists") visible
         // after a rejected submission. They may be cleared once the user edits
         // the field, but never by the initial green-check rendering.
         var existingFeedback = document.getElementById('id_error_' + field.name)
-            || item.querySelector('.form-control-feedback, .invalid-feedback');
+            || item.querySelector('.form-control-feedback, .invalid-feedback, .iiidem-field-error');
         var hasServerError = field.classList.contains('is-invalid')
             || field.getAttribute('aria-invalid') === 'true'
             || item.classList.contains('has-danger')
@@ -725,7 +894,7 @@ window.IIIDEM_REGISTER_OTP = {
                 // Keep Moodle required messaging for empty.
                 return;
             }
-            // Format-valid must not wipe a duplicate-phone error.
+            // Format-valid numbers must not wipe a duplicate-phone error.
             if (ok) {
                 if (allowFeedbackClear && field.getAttribute('data-phone-status') !== 'error') {
                     clearFeedback(field);
@@ -776,15 +945,18 @@ window.IIIDEM_REGISTER_OTP = {
         phoneInput.setAttribute('type', 'tel');
         phoneInput.setAttribute('autocomplete', 'tel');
         phoneInput.setAttribute('inputmode', 'numeric');
-        // National length varies by country; sanitizePhoneInputValue() keeps digits only.
-        phoneInput.setAttribute('maxlength', '16');
+        // National number length varies by country (up to 15 digits).
+        phoneInput.setAttribute('maxlength', '15');
         phoneInput.removeAttribute('pattern');
         phoneInput.classList.add('iiidem-phone-input');
 
         phoneIti = window.intlTelInput(phoneInput, {
             initialCountry: initialCountry || 'in',
             preferredCountries: ['in', 'us', 'gb', 'ae', 'sg'],
-            separateDialCode: true,
+            showSelectedDialCode: true,
+            // No combobox role → Moodle aria.js will not rewrite the button.
+            countrySearch: false,
+            // Keep dropdown inside .iti (card overflow is visible) for reliable open/position.
             nationalMode: true,
             autoPlaceholder: 'aggressive',
             formatOnDisplay: false,
@@ -793,20 +965,56 @@ window.IIIDEM_REGISTER_OTP = {
                 : '') + '/theme/iiidem2/javascript/intl-tel-input/utils.js'
         });
 
+        /**
+         * intl-tel-input v21: button.iti__selected-country holds flag + dial + arrow.
+         * Only adjust padding / dial label — do not rebuild DOM (breaks click handlers).
+         */
+        function getSelectedCountryBtn() {
+            var wrapper = phoneInput.closest('.iti');
+            return wrapper ? wrapper.querySelector('.iti__selected-country') : null;
+        }
+
         function syncPhoneInputPadding() {
             var wrapper = phoneInput.closest('.iti');
-            var selector = wrapper ? wrapper.querySelector('.iti__flag-container') : null;
-            if (!selector) {
+            var selected = getSelectedCountryBtn();
+            if (!wrapper || !selected) {
                 return;
             }
-            // Country dial-code widths vary (+1, +971, etc.). Keep the typed
-            // number clear of the selector instead of relying on fixed padding.
-            var selectorWidth = Math.ceil(selector.getBoundingClientRect().width);
-            phoneInput.style.setProperty('padding-left', (selectorWidth + 14) + 'px', 'important');
+
+            var data = (phoneIti && typeof phoneIti.getSelectedCountryData === 'function')
+                ? phoneIti.getSelectedCountryData()
+                : null;
+            var dial = (data && data.dialCode) ? String(data.dialCode) : '91';
+            var dialEl = selected.querySelector('.iti__selected-dial-code');
+            if (dialEl && dialEl.textContent !== ('+' + dial)) {
+                dialEl.textContent = '+' + dial;
+            }
+
+            var measured = Math.ceil(selected.getBoundingClientRect().width);
+            var estimated = 52 + (dial.length * 9) + 28;
+            var left = Math.min(140, Math.max(92, measured || estimated, estimated)) + 12;
+            phoneInput.style.setProperty(
+                'padding',
+                '0.75rem 2.5rem 0.75rem ' + left + 'px',
+                'important'
+            );
         }
+
+        phoneInput.addEventListener('countrychange', function() {
+            window.setTimeout(syncPhoneInputPadding, 0);
+        });
+        phoneInput.addEventListener('open:countrydropdown', function() {
+            // Ensure panel paints above following fields.
+            var panel = document.querySelector('.iti__dropdown-content:not(.iti__hide)');
+            if (panel) {
+                panel.style.zIndex = '3000';
+            }
+        });
 
         phoneInput.setAttribute('data-iti-ready', '1');
         window.requestAnimationFrame(syncPhoneInputPadding);
+        setTimeout(syncPhoneInputPadding, 50);
+        setTimeout(syncPhoneInputPadding, 250);
 
         phoneInput.addEventListener('input', function () {
             sanitizePhoneInputValue();
@@ -816,6 +1024,9 @@ window.IIIDEM_REGISTER_OTP = {
         });
 
         phoneInput.addEventListener('countrychange', function () {
+            syncPhoneInputPadding();
+            window.setTimeout(syncPhoneInputPadding, 0);
+            window.setTimeout(syncPhoneInputPadding, 50);
             if (!countrySelect || !phoneIti) {
                 return;
             }
@@ -830,9 +1041,6 @@ window.IIIDEM_REGISTER_OTP = {
                     }
                 }
             }
-            // Keep national digits only in the input (no dial-code / country name).
-            sanitizePhoneInputValue();
-            window.requestAnimationFrame(syncPhoneInputPadding);
             paint(phoneInput);
         });
 
@@ -841,7 +1049,6 @@ window.IIIDEM_REGISTER_OTP = {
                 if (phoneIti && countrySelect.value) {
                     phoneIti.setCountry(String(countrySelect.value).toLowerCase());
                 }
-                sanitizePhoneInputValue();
                 window.requestAnimationFrame(syncPhoneInputPadding);
                 paint(phoneInput);
             });
@@ -852,16 +1059,66 @@ window.IIIDEM_REGISTER_OTP = {
         return true;
     }
 
+    function loadIntlTelInputLibrary(callback) {
+        if (typeof window.intlTelInput === 'function') {
+            callback();
+            return;
+        }
+        var existing = document.querySelector('script[data-iiidem-iti]');
+        if (existing) {
+            var onReady = function() {
+                existing.removeEventListener('load', onReady);
+                callback();
+            };
+            existing.addEventListener('load', onReady);
+            // Already in-flight / cached: poll briefly.
+            var tries = 0;
+            var timer = window.setInterval(function() {
+                tries++;
+                if (typeof window.intlTelInput === 'function' || tries > 50) {
+                    window.clearInterval(timer);
+                    callback();
+                }
+            }, 100);
+            return;
+        }
+        var src = (window.M && M.cfg && M.cfg.wwwroot ? M.cfg.wwwroot : '')
+            + '/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js';
+        var script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.setAttribute('data-iiidem-iti', '1');
+        script.onload = function() {
+            callback();
+        };
+        script.onerror = function() {
+            if (window.console && console.error) {
+                console.error('IIIDEM: failed to load intlTelInput from', src);
+            }
+            callback();
+        };
+        document.head.appendChild(script);
+    }
+
     function ensurePhoneWidget(attempt) {
         attempt = attempt || 0;
         if (initPhoneWidget()) {
             paint(phoneInput);
             return;
         }
-        if (attempt < 40) {
+        if (attempt === 0 || attempt === 5) {
+            loadIntlTelInputLibrary(function() {
+                if (initPhoneWidget()) {
+                    paint(phoneInput);
+                }
+            });
+        }
+        if (attempt < 80) {
             setTimeout(function () {
                 ensurePhoneWidget(attempt + 1);
             }, 100);
+        } else if (window.console && console.warn) {
+            console.warn('IIIDEM: phone country dropdown failed to initialise (intlTelInput missing).');
         }
     }
 
@@ -877,6 +1134,19 @@ window.IIIDEM_REGISTER_OTP = {
                 if (e.target === phoneInput) {
                     approvedPhone = '';
                     phoneCheckSequence++;
+                }
+                if (e.target === passwordInput || e.target === password2Input) {
+                    if (passwordInput && password2Input) {
+                        var pass = String(passwordInput.value || '');
+                        var pass2 = String(password2Input.value || '');
+                        if (pass2 !== '' && pass !== '' && pass !== pass2) {
+                            setFeedback(password2Input, passwordMismatchMsg);
+                            return;
+                        }
+                        if (pass2 !== '' && pass === pass2) {
+                            clearFeedback(password2Input);
+                        }
+                    }
                 }
                 paint(e.target, true);
             }
@@ -908,6 +1178,176 @@ window.IIIDEM_REGISTER_OTP = {
         phoneInput.addEventListener('blur', function () {
             checkPhoneAvailability();
         });
+    }
+
+    function validateRequiredBeforeSubmit() {
+        var firstInvalid = null;
+
+        function requireFilled(field, message) {
+            if (!field) {
+                return true;
+            }
+            var value = String(field.value || '').trim();
+            if (value !== '') {
+                clearFeedback(field);
+                paint(field, true);
+                return true;
+            }
+            setFeedback(field, message || requiredFieldMsg);
+            if (!firstInvalid) {
+                firstInvalid = field;
+            }
+            return false;
+        }
+
+        function requireRadioGroup(name, message) {
+            var checked = form.querySelector('input[name="' + name + '"]:checked');
+            if (checked) {
+                var checkedItem = checked.closest('.fitem');
+                if (checkedItem) {
+                    checkedItem.classList.remove('has-danger');
+                }
+                return true;
+            }
+            var field = form.querySelector('input[name="' + name + '"]');
+            if (!field) {
+                return true;
+            }
+            setFeedback(field, message || requiredFieldMsg);
+            if (!firstInvalid) {
+                firstInvalid = field;
+            }
+            return false;
+        }
+
+        function expandOccupationSection(occupation) {
+            syncOccupationSections();
+            var map = {
+                working: 'id_workingheader',
+                workingemb: 'id_workingembheader',
+                student: 'id_studentheader',
+                instructor: 'id_instructorheader'
+            };
+            var fieldset = document.getElementById(map[occupation] || '');
+            if (!fieldset) {
+                return;
+            }
+            var container = fieldset.querySelector('.fcontainer.collapseable, .fcontainer.collapse');
+            var toggle = fieldset.querySelector('a.fheader, .ftoggler a');
+            if (container) {
+                container.classList.add('show');
+            }
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'true');
+                toggle.classList.remove('collapsed');
+            }
+        }
+
+        var roleFieldsByOccupation = {
+            working: ['organization', 'jobprofile', 'jobpostingcountry'],
+            workingemb: ['emb_organization', 'emb_designation', 'emb_country'],
+            student: ['university', 'position', 'specialization'],
+            instructor: ['instructor_university', 'instructor_course', 'presentcountry']
+        };
+
+        var ok = true;
+        ok = requireFilled(firstnameInput, requiredFieldMsg) && ok;
+        ok = requireFilled(emailInput, requiredFieldMsg) && ok;
+        if (phoneInput && !isPhoneValid()) {
+            setFeedback(phoneInput, invalidPhoneMsg);
+            ok = false;
+            if (!firstInvalid) {
+                firstInvalid = phoneInput;
+            }
+        }
+        ok = requireFilled(countrySelect, requiredFieldMsg) && ok;
+        ok = requireFilled(cityInput, requiredFieldMsg) && ok;
+
+        var occupationChecked = form.querySelector('input[name="occupation"]:checked');
+        if (!occupationChecked) {
+            ok = requireRadioGroup('occupation', requiredFieldMsg) && ok;
+        } else {
+            var occupation = String(occupationChecked.value || '');
+            expandOccupationSection(occupation);
+            if (occupation === 'working') {
+                ok = requireRadioGroup('workingcategory', requiredFieldMsg) && ok;
+            }
+            var roleFields = roleFieldsByOccupation[occupation] || [];
+            for (var i = 0; i < roleFields.length; i++) {
+                var roleField = document.getElementById('id_' + roleFields[i])
+                    || form.querySelector('[name="' + roleFields[i] + '"]');
+                ok = requireFilled(roleField, requiredFieldMsg) && ok;
+            }
+        }
+
+        ok = requireFilled(passwordInput, requiredFieldMsg) && ok;
+        ok = requireFilled(password2Input, requiredFieldMsg) && ok;
+
+        if (passwordInput && password2Input) {
+            var pass = String(passwordInput.value || '');
+            var pass2 = String(password2Input.value || '');
+            if (pass !== '' && pass2 !== '' && pass !== pass2) {
+                setFeedback(password2Input, passwordMismatchMsg);
+                ok = false;
+                if (!firstInvalid) {
+                    firstInvalid = password2Input;
+                }
+            }
+        }
+
+        if (!ok && firstInvalid && typeof firstInvalid.focus === 'function') {
+            try {
+                firstInvalid.scrollIntoView({behavior: 'smooth', block: 'center'});
+            } catch (err) {
+                // Ignore scroll failures.
+            }
+            firstInvalid.focus();
+        }
+        return ok;
+    }
+
+    function blockOnPasswordMismatch(e) {
+        if (!passwordInput || !password2Input) {
+            return false;
+        }
+        var pass = String(passwordInput.value || '');
+        var pass2 = String(password2Input.value || '');
+        if (pass === '' || pass2 === '' || pass === pass2) {
+            return false;
+        }
+        if (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+        setFeedback(password2Input, passwordMismatchMsg);
+        try {
+            password2Input.scrollIntoView({behavior: 'smooth', block: 'center'});
+        } catch (err) {
+            // Ignore scroll failures.
+        }
+        password2Input.focus();
+        return true;
+    }
+
+    // Run before email/OTP handlers so mismatched passwords always show an error.
+    form.addEventListener('submit', function (e) {
+        if (blockOnPasswordMismatch(e)) {
+            return;
+        }
+        if (bypassOtpGate) {
+            return;
+        }
+        if (!validateRequiredBeforeSubmit()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    }, true);
+
+    var createAccountBtn = form.querySelector('#id_submitbutton');
+    if (createAccountBtn) {
+        createAccountBtn.addEventListener('click', function (e) {
+            blockOnPasswordMismatch(e);
+        }, true);
     }
 
     form.addEventListener('submit', function (e) {
@@ -961,7 +1401,7 @@ window.IIIDEM_REGISTER_OTP = {
                     } else {
                         form.requestSubmit();
                     }
-                } else {
+                } else if (validateRequiredBeforeSubmit()) {
                     form.submit();
                 }
             } finally {
@@ -997,8 +1437,7 @@ window.IIIDEM_REGISTER_OTP = {
             phoneInput.value = phoneIti.getNumber(); // E.164 e.g. +9198xxxxxxxx
         } else {
             phoneInput.setAttribute('maxlength', '20');
-            var iso = countrySelect ? String(countrySelect.value || 'IN').toUpperCase() : 'IN';
-            var dialFallback = (iso === 'IN') ? '91' : '';
+            var dialFallback = getSelectedDialCode() || '';
             phoneInput.value = dialFallback ? ('+' + dialFallback + nationalDigits) : nationalDigits;
         }
         clearFeedback(phoneInput);
@@ -1204,6 +1643,9 @@ window.IIIDEM_REGISTER_OTP = {
             bypassPhoneCheck = true;
             bypassOtpGate = true;
             try {
+                if (!validateRequiredBeforeSubmit()) {
+                    return;
+                }
                 if (typeof form.requestSubmit === 'function') {
                     if (pendingSubmitter) {
                         form.requestSubmit(pendingSubmitter);
@@ -1249,7 +1691,16 @@ window.IIIDEM_REGISTER_OTP = {
     }
 
     form.addEventListener('submit', function (e) {
-        if (bypassOtpGate || !otpModal || !otpCfg.sendUrl) {
+        if (bypassOtpGate) {
+            return;
+        }
+        if (!otpModal || !otpCfg.sendUrl) {
+            return;
+        }
+
+        if (!validateRequiredBeforeSubmit()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
             return;
         }
 

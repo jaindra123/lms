@@ -138,7 +138,7 @@ define([], function() {
         if (digits.length > 15) {
             digits = digits.slice(0, 15);
         }
-        return /^[0-9]{6,15}$/.test(digits);
+        return /^[0-9]{4,15}$/.test(digits);
     }
 
     /**
@@ -271,7 +271,9 @@ define([], function() {
         phoneIti = window.intlTelInput(input, {
             initialCountry: initialCountry || 'in',
             preferredCountries: ['in', 'us', 'gb', 'ae', 'sg'],
-            separateDialCode: true,
+            showSelectedDialCode: true,
+            // No combobox role → Moodle aria.js will not rewrite the button.
+            countrySearch: false,
             nationalMode: true,
             autoPlaceholder: 'aggressive',
             formatOnDisplay: true,

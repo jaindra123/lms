@@ -3,13 +3,36 @@
   <library>
     <location>scss/bootstrap</location>
     <name>Twitter Bootstrap</name>
-    <description>HTML, CSS, and JavaScript framework for developing responsive, mobile-first projects on the web.</description>
-    <version>4.6.2</version>
+    <description>HTML, CSS, and JavaScript framework for developing responsive, mobile-first projects on the web. getSelectorFromElement hardened to #id-only (carousel href XSS mitigation).</description>
+    <version>4.6.2-iiidem1</version>
     <license>MIT</license>
     <repository>https://github.com/twbs/bootstrap</repository>
     <copyrights>
       <copyright>2011-2021 Twitter, Inc</copyright>
       <copyright>2011-2021 The Bootstrap Authors</copyright>
+    </copyrights>
+    <customised/>
+  </library>
+  <library>
+    <location>style/bootstrap5.bundle.min.js</location>
+    <name>Bootstrap 5 (course pages)</name>
+    <description>Bootstrap 5 bundle used on course layout pages alongside theme CSS.</description>
+    <version>5.3.8</version>
+    <license>MIT</license>
+    <repository>https://github.com/twbs/bootstrap</repository>
+    <copyrights>
+      <copyright>2011-2025 The Bootstrap Authors</copyright>
+    </copyrights>
+  </library>
+  <library>
+    <location>javascript/intl-tel-input</location>
+    <name>intl-tel-input</name>
+    <description>International telephone input for registration phone field.</description>
+    <version>21.2.7</version>
+    <license>MIT</license>
+    <repository>https://github.com/jackocnr/intl-tel-input</repository>
+    <copyrights>
+      <copyright>Jack O'Connor</copyright>
     </copyrights>
     <customised/>
   </library>
@@ -93,7 +116,7 @@
     <customised/>
   </library>
   <library>
-    <location>amd/src/bootstrap/popover.js</location>
+    <location>amd/src/bootstrap/bs4popover.js</location>
     <name>bootstrap-popover</name>
     <description>HTML, CSS, and JavaScript framework for developing responsive, mobile-first projects on the web.</description>
     <version>4.6.2</version>

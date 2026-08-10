@@ -121,6 +121,35 @@ class pnb_helper {
     }
 
     /**
+     * Current server-side payable amount for a stored txn.
+     */
+    public static function expected_amount_for_txn(\stdClass $txn): float {
+        $payable = \core_payment\helper::get_payable(
+            $txn->component,
+            $txn->paymentarea,
+            (int) $txn->itemid
+        );
+        $surcharge = \core_payment\helper::get_gateway_surcharge('pnb');
+        return \core_payment\helper::get_rounded_cost(
+            $payable->get_amount(),
+            $payable->get_currency(),
+            $surcharge
+        );
+    }
+
+    /**
+     * Fail closed if txn amount does not match current course fee.
+     *
+     * @throws \moodle_exception
+     */
+    public static function assert_txn_matches_payable(\stdClass $txn): void {
+        $expected = self::expected_amount_for_txn($txn);
+        if ($expected <= 0 || abs($expected - (float) $txn->amount) >= 0.005) {
+            throw new \moodle_exception('amountmismatch', 'paygw_pnb');
+        }
+    }
+
+    /**
      * Generate payment request checksum.
      */
     public static function generate_checksum(string $merchantid, string $txnref, string $amount,

@@ -6,6 +6,16 @@ use local_iiidem_support\manager;
 
 require_login();
 
+if (class_exists('\theme_iiidem2\rate_limit')) {
+    // List page + Intruder-style POST floods (PoC posted ticket_id/message here).
+    if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        \theme_iiidem2\rate_limit::require_allowed('support_tickets_post', 10, 60);
+        \theme_iiidem2\rate_limit::require_allowed('support_tickets_post_hour', 40, 3600);
+    } else {
+        \theme_iiidem2\rate_limit::require_allowed('support_tickets_page', 60, 60);
+    }
+}
+
 $context = context_system::instance();
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/iiidem_support/tickets.php'));

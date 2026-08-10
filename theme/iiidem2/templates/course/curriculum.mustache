@@ -61,77 +61,82 @@
 
                             <div id="collapse{{id}}" class="accordion-collapse collapse" data-bs-parent="#courseAccordion">
                                 <div class="accordion-body">
-                                    {{#activities}}
-                                    <div class="lecture-item">
-                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                            <div class="iiidem-lecture-item__main">
-                                                <span class="iiidem-lecture-item__icon" aria-hidden="true">
-                                                    <span class="fa {{iconclass}}"></span>
-                                                </span>
-                                                <span class="iiidem-lecture-item__title">{{title}}</span>
+                                    {{#activitygroups}}
+                                    <div class="iiidem-curriculum-group iiidem-curriculum-group--{{key}}">
+                                        <h4 class="iiidem-curriculum-group__title">{{title}}</h4>
+                                        {{#activities}}
+                                        <div class="lecture-item">
+                                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                <div class="iiidem-lecture-item__main">
+                                                    <span class="iiidem-lecture-item__icon" aria-hidden="true">
+                                                        <span class="fa {{iconclass}}"></span>
+                                                    </span>
+                                                    <span class="iiidem-lecture-item__title">{{title}}</span>
+                                                </div>
+                                                <div class="iiidem-lecture-item__actions">
+                                                    {{#duration}}
+                                                    <span class="iiidem-lecture-item__duration">
+                                                        <span class="fa fa-clock-o" aria-hidden="true"></span>{{duration}}
+                                                    </span>
+                                                    {{/duration}}
+                                                    {{#preview}}
+                                                    {{#canpreviewcurriculum}}
+                                                    <button class="btn btn-sm btn-primary iiidem-curriculum-preview-btn" type="button"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#preview{{id}}"
+                                                            aria-expanded="false"
+                                                            aria-controls="preview{{id}}"
+                                                            data-cmid="{{cmid}}"
+                                                            {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
+                                                            {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
+                                                        <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                    </button>
+                                                    {{/canpreviewcurriculum}}
+                                                    {{^canpreviewcurriculum}}
+                                                    {{#curriculumpreviewblocked}}
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-primary iiidem-curriculum-pay-btn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#iiidemPaymentRequiredModal"
+                                                            data-scroll-target="#iiidem-course-fee">
+                                                        <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                    </button>
+                                                    {{/curriculumpreviewblocked}}
+                                                    {{^curriculumpreviewblocked}}
+                                                    {{#hasloginmodal}}
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#iiidemLoginModal">
+                                                        <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                    </button>
+                                                    {{/hasloginmodal}}
+                                                    {{^hasloginmodal}}
+                                                    <a href="{{loginurl}}" class="btn btn-sm btn-primary">
+                                                        <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
+                                                    </a>
+                                                    {{/hasloginmodal}}
+                                                    {{/curriculumpreviewblocked}}
+                                                    {{/canpreviewcurriculum}}
+                                                    {{/preview}}
+                                                </div>
                                             </div>
-                                            <div class="iiidem-lecture-item__actions">
-                                                {{#duration}}
-                                                <span class="iiidem-lecture-item__duration">
-                                                    <span class="fa fa-clock-o" aria-hidden="true"></span>{{duration}}
-                                                </span>
-                                                {{/duration}}
-                                                {{#preview}}
-                                                {{#canpreviewcurriculum}}
-                                                <button class="btn btn-sm btn-primary iiidem-curriculum-preview-btn" type="button"
-                                                        data-bs-toggle="collapse"
-                                                        data-bs-target="#preview{{id}}"
-                                                        aria-expanded="false"
-                                                        aria-controls="preview{{id}}"
-                                                        data-cmid="{{cmid}}"
-                                                        {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
-                                                        {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
-                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
-                                                </button>
-                                                {{/canpreviewcurriculum}}
-                                                {{^canpreviewcurriculum}}
-                                                {{#curriculumpreviewblocked}}
-                                                <button type="button"
-                                                        class="btn btn-sm btn-primary iiidem-curriculum-pay-btn"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#iiidemPaymentRequiredModal"
-                                                        data-scroll-target="#iiidem-course-fee">
-                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
-                                                </button>
-                                                {{/curriculumpreviewblocked}}
-                                                {{^curriculumpreviewblocked}}
-                                                {{#hasloginmodal}}
-                                                <button type="button" class="btn btn-sm btn-primary"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#iiidemLoginModal">
-                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
-                                                </button>
-                                                {{/hasloginmodal}}
-                                                {{^hasloginmodal}}
-                                                <a href="{{loginurl}}" class="btn btn-sm btn-primary">
-                                                    <span class="fa fa-play me-1" aria-hidden="true"></span>{{previewlabel}}
-                                                </a>
-                                                {{/hasloginmodal}}
-                                                {{/curriculumpreviewblocked}}
-                                                {{/canpreviewcurriculum}}
-                                                {{/preview}}
-                                            </div>
-                                        </div>
 
-                                        {{#canpreviewcurriculum}}
-                                        {{#haspreviewcontent}}
-                                        <div class="collapse mt-2" id="preview{{id}}"
-                                             data-cmid="{{cmid}}"
-                                             {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
-                                             {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
-                                            <div class="card card-body">
-                                                {{{previewcontent}}}
+                                            {{#canpreviewcurriculum}}
+                                            {{#haspreviewcontent}}
+                                            <div class="collapse mt-2" id="preview{{id}}"
+                                                 data-cmid="{{cmid}}"
+                                                 {{#trackcompletion}}data-trackcompletion="1"{{/trackcompletion}}
+                                                 {{^trackcompletion}}data-trackcompletion="0"{{/trackcompletion}}>
+                                                <div class="card card-body">
+                                                    {{{previewcontent}}}
+                                                </div>
                                             </div>
+                                            {{/haspreviewcontent}}
+                                            {{/canpreviewcurriculum}}
                                         </div>
-                                        {{/haspreviewcontent}}
-                                        {{/canpreviewcurriculum}}
+                                        {{/activities}}
                                     </div>
-                                    {{/activities}}
+                                    {{/activitygroups}}
                                 </div>
                             </div>
                         </div>
