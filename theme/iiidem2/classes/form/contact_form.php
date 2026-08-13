@@ -81,6 +81,8 @@ class contact_form extends \moodleform {
                 $errors[$field] = get_string('required');
             } else if (\core_text::strlen($value) > $max) {
                 $errors[$field] = get_string('maximumchars', '', $max);
+            } else if (\theme_iiidem2\input_validation::contains_dangerous_markup($value)) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
             }
         }
 

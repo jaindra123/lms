@@ -67,9 +67,11 @@ add_header X-Frame-Options "SAMEORIGIN" always;
 # Full CSP + Clear-Site-Data on logout are also set by theme_iiidem2 (see docs/security-headers.md).
 ```
 
-### 3. TLS versions
+### 3. TLS versions and ciphers (LUCKY13 / CBC)
 
-Allow **TLS 1.2+** only (disable TLS 1.0 / 1.1).
+Allow **TLS 1.2+** only (disable TLS 1.0 / 1.1). Prefer **AEAD** suites only (AES-GCM, ChaCha20-Poly1305) — **disable CBC** cipher suites where possible (LUCKY13).
+
+Ready-to-apply snippets and verification: [lucky13-cbc-ciphers.md](lucky13-cbc-ciphers.md), [`docs/snippets/nginx-tls-no-cbc.conf`](snippets/nginx-tls-no-cbc.conf).
 
 ### 4. Verify
 
@@ -132,7 +134,7 @@ Do **not** attempt to “encrypt the password field in JavaScript before POST”
 | No clear-text cookies | `Secure` + `HttpOnly` on MoodleSession |
 | HTTP blocked | `curl -I http://…` → 301 to HTTPS |
 | HSTS | Response header `Strict-Transport-Security` |
-| Strong TLS | Qualys SSL Labs A/A+ or internal TLS scan |
+| Strong TLS | Qualys SSL Labs A/A+; TLS 1.2+; no CBC suites ([lucky13-cbc-ciphers.md](lucky13-cbc-ciphers.md)) |
 | Burp over HTTPS shows form fields | Expected with TLS interception; not cleartext transmission |
 
 ## Note

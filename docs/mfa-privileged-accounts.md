@@ -1,8 +1,21 @@
-# Absence of Multi-Factor Authentication
+# 21. Absence of Multi-Factor Authentication
 
 ## Finding
 
-> Implement MFA for all privileged accounts.
+| Field | Report |
+|-------|--------|
+| Title | 21. Absence of Multi-Factor Authentication |
+| Impact | MEDIUM / CVSS 5.3 |
+| URL | `https://staginglms.eci.gov.in/login/index.php` (PoC sometimes `cci.gov.in`) |
+| CWE | [CWE-308](https://cwe.mitre.org/data/definitions/308.html) — Use of Single-Factor Authentication |
+| OWASP | A07:2021 – Identification and Authentication Failures |
+| CVSS vector | `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` |
+
+> The application relies on username/password alone. Implement MFA for all privileged accounts.
+
+### PoC note
+
+Login page shows username/password only (no second-factor step on the form itself). After remediaiton, privileged users complete password login then are challenged by Moodle **tool_mfa** (TOTP / email) before the session is fully usable. Students remain password-only by design.
 
 ## Resolution
 
@@ -17,6 +30,8 @@ Moodle core already ships **Multi-factor authentication** (`admin/tool/mfa`). Th
 | Course creator | Yes |
 | Teacher / editing teacher | Yes |
 | Students / authenticated users | No (role factor grants 100 points automatically) |
+
+Password-only login on `/login/index.php` remains for students; privileged users must complete a second factor after password.
 
 ### How it works
 
@@ -65,6 +80,18 @@ Confirm:
 3. Register an authenticator app (Google Authenticator, Microsoft Authenticator, etc.).
 4. Email OTP remains available as a backup.
 
+### Verify
+
+```bash
+# Config should show tool_mfa enabled
+php -r "define('CLI_SCRIPT', true); require 'config.php';
+  echo 'mfa=' . get_config('tool_mfa', 'enabled') . PHP_EOL;
+  echo 'order=' . get_config('tool_mfa', 'factor_order') . PHP_EOL;"
+
+# As site admin / teacher: after password, expect MFA challenge (or grace setup)
+# As student: password alone completes login
+```
+
 ### Ops notes
 
 - Ensure outbound email works if relying on **Email** factor (`$CFG->noreplyaddress`, SMTP).
@@ -80,3 +107,5 @@ Confirm:
 | Second factors | TOTP + Email OTP |
 | Rollout without lockout | `factor_grace` (7 days) + force setup |
 | Automated enable | Theme upgrade + CLI |
+
+Related: [restrict-admin-access.md](restrict-admin-access.md), [account-lockout.md](account-lockout.md), [login-credentials-lock.md](login-credentials-lock.md).

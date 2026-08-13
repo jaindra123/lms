@@ -134,4 +134,33 @@ final class session_security {
             self::regenerate_id_now();
         }
     }
+
+    /**
+     * Ensure sensitive Moodle cookies in outgoing Set-Cookie headers include HttpOnly.
+     *
+     * Uses core cookie_helper to patch headers already queued for MoodleSession* / MoodleID*.
+     */
+    public static function enforce_httponly_on_set_cookie_headers(): void {
+        global $CFG;
+
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (headers_sent()) {
+            return;
+        }
+
+        $suffix = $CFG->sessioncookie ?? '';
+        $names = [
+            'MoodleSession' . $suffix,
+            'MoodleID' . $suffix,
+        ];
+
+        foreach ($names as $name) {
+            if ($name === '') {
+                continue;
+            }
+            \core\session\utility\cookie_helper::add_attributes_to_cookie_response_header($name, ['HttpOnly']);
+        }
+    }
 }

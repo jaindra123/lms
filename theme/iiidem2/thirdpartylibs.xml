@@ -116,7 +116,7 @@
     <customised/>
   </library>
   <library>
-    <location>amd/src/bootstrap/bs4popover.js</location>
+    <location>amd/src/bootstrap/bs4flyout.js</location>
     <name>bootstrap-popover</name>
     <description>HTML, CSS, and JavaScript framework for developing responsive, mobile-first projects on the web.</description>
     <version>4.6.2</version>

@@ -34,11 +34,24 @@
 
 **Fix:** Load event and require `(int)$event->courseid === $courseid` before cancel (still behind `require_capability`).
 
-### 4. Exception leakage (MEDIUM)
+### 5. Custom certificate download without real login (MEDIUM)
 
-**File:** `theme/iiidem2/ajax/chatbot_query.php`
+**Files:** `mod/customcert/view.php`
 
-**Fix:** Generic error message to clients; details only in `error_log`.
+**Report:** Instance 8/9 — `/mod/customcert/view.php?id=…&downloadown=1` labelled “accessible without login”, with `invalidparameter` + SQL `SELECT * FROM {user} WHERE id = ?` for `id = 0`.
+
+**Root cause:**
+1. Course-module lookup with `MUST_EXIST` ran **before** `require_login()`, so anonymous probes saw exception pages instead of a login redirect.
+2. Guests (`$USER->id = 0`) could reach `downloadown` and trigger a user lookup dump when debug display was on.
+3. SQL/stack text is **verbose error disclosure** ([verbose-error-messages.md](verbose-error-messages.md)), not a successful certificate theft.
+
+**Fix:**
+- Site `require_login()` immediately after bootstrap
+- Course/`cm` `require_login` + `mod/customcert:view` unchanged
+- Download / delete / report-download actions redirect guests to login
+- PDF generation refuses empty / guest `userid`
+
+**Instance 9 Razorpay URL:** `api.razorpay.com/.../payment/status?key_id=rzp_test_…` is a **third-party** public checkout status endpoint, not this LMS. The screenshot SQL stack is still Moodle `customcert` under debug — remediate as above; dispute Razorpay host as out of scope.
 
 ## Already OK (no change)
 
@@ -95,8 +108,9 @@ php admin/cli/purge_caches.php
 | Control | Implementation |
 |--------|----------------|
 | CSRF | `require_sesskey()` / `confirm_sesskey()` on state changes |
-| AuthN | `require_login()` on privileged scripts |
+| AuthN | `require_login()` on privileged scripts; customcert before CM lookup |
 | AuthZ | `require_capability()` / owner id checks / siteadmin |
 | IDOR (custom) | Chatbot history session-bound; cancel bound to courseid |
 | IDOR (profiles) | `user_can_view_profile` + forced `forceloginforprofiles` |
+| Customcert download | Guests blocked; PDF requires real userid |
 | Mock pay | POST+sesskey; production host blocked |

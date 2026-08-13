@@ -253,6 +253,81 @@ class core_renderer extends \core_renderer {
         return $firstview;
     }
 
+    /**
+     * User menu — strip sesskey from logout href (POST via logout_post.js).
+     *
+     * @param \stdClass|null $user
+     * @param bool|null $withlinks
+     * @return string
+     */
+    public function user_menu($user = null, $withlinks = null) {
+        return self::strip_login_sesskey_from_html(parent::user_menu($user, $withlinks));
+    }
+
+    /**
+     * Login info strip — same logout / login URL hardening.
+     *
+     * @param bool|null $withlinks
+     * @return string
+     */
+    public function login_info($withlinks = null) {
+        return self::strip_login_sesskey_from_html(parent::login_info($withlinks));
+    }
+
+    /**
+     * Remove sesskey from /login/*.php query strings in rendered HTML (CDAC HTML source PoC).
+     * Logout CSRF is supplied via POST (logout_post.js). Session id remains cookie-only.
+     *
+     * @param string $html
+     * @return string
+     */
+    public static function strip_login_sesskey_from_html(string $html): string {
+        if ($html === '' || (stripos($html, 'logout.php') === false && stripos($html, 'login/') === false)) {
+            return $html;
+        }
+        return preg_replace_callback(
+            '#((?:href|action)=["\'])([^"\']*login/[^"\']*\.php[^"\']*)(["\'])#i',
+            static function (array $m): string {
+                $prefix = $m[1];
+                $url = html_entity_decode($m[2], ENT_QUOTES);
+                $suffix = $m[3];
+                $parts = parse_url($url);
+                if ($parts === false) {
+                    return $m[0];
+                }
+                $query = [];
+                if (!empty($parts['query'])) {
+                    parse_str($parts['query'], $query);
+                }
+                if (!isset($query['sesskey'])) {
+                    return $m[0];
+                }
+                unset($query['sesskey']);
+                $path = $parts['path'] ?? '';
+                $rebuild = $path;
+                if (!empty($query)) {
+                    $rebuild .= '?' . http_build_query($query);
+                }
+                if (!empty($parts['fragment'])) {
+                    $rebuild .= '#' . $parts['fragment'];
+                }
+                if (!empty($parts['scheme']) && !empty($parts['host'])) {
+                    $rebuild = $parts['scheme'] . '://' . $parts['host']
+                        . (!empty($parts['port']) ? ':' . $parts['port'] : '')
+                        . $rebuild;
+                }
+                return $prefix . s($rebuild) . $suffix;
+            },
+            $html
+        ) ?? $html;
+    }
+
+    /**
+     * @deprecated Use strip_login_sesskey_from_html()
+     */
+    public static function strip_logout_sesskey_from_html(string $html): string {
+        return self::strip_login_sesskey_from_html($html);
+    }
 
 
 
@@ -298,6 +373,33 @@ class core_renderer extends \core_renderer {
     public function footer_data() {
         // Deprecated: use theme_iiidem2_get_footer_context() in layouts instead.
         return \theme_iiidem2_get_footer_context();
+    }
+
+    /**
+     * Moodle docs / help links that open in a new window must include noopener.
+     * CDAC #24: admin environment checks used doc_link(..., true) without rel=.
+     *
+     * @param string $path
+     * @param string $text
+     * @param bool $forcepopup
+     * @param array $attributes
+     * @return string
+     */
+    public function doc_link($path, $text = '', $forcepopup = false, array $attributes = []) {
+        global $CFG;
+
+        if (!empty($CFG->doctonewwindow) || $forcepopup) {
+            $attributes['target'] = '_blank';
+            $rel = preg_split('/\s+/', (string) ($attributes['rel'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+            foreach (['noopener', 'noreferrer'] as $token) {
+                if (!in_array($token, $rel, true)) {
+                    $rel[] = $token;
+                }
+            }
+            $attributes['rel'] = implode(' ', $rel);
+        }
+
+        return parent::doc_link($path, $text, $forcepopup, $attributes);
     }
 
     /**

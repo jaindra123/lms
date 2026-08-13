@@ -1,0 +1,50 @@
+{{!
+    @template theme_iiidem2/dashboard/teacher_classvideos
+
+    Teacher class videos manage page shell.
+    List first so existing course videos are visible above the long upload form.
+}}
+<div class="iiidem-teacher-dashboard-v2 iiidem-teacher-classvideos-page">
+    {{> theme_iiidem2/dashboard/teacher_sidebar }}
+
+    <div class="iiidem-teacher-main">
+        <header class="iiidem-teacher-topbar">
+            <div class="iiidem-teacher-topbar__heading">
+                <h1 class="iiidem-teacher-topbar__title">{{pagetitle}}</h1>
+                <p class="iiidem-teacher-topbar__subtitle">{{pagesubtitle}}</p>
+            </div>
+            <div class="iiidem-teacher-topbar__actions">
+                <a href="{{{dashboardurl}}}" class="btn iiidem-teacher-btn iiidem-teacher-btn--ghost btn-sm">
+                    {{#str}}dashboard, theme_iiidem2{{/str}}
+                </a>
+            </div>
+        </header>
+
+        <section class="iiidem-teacher-panel mb-4">
+            <header class="iiidem-teacher-panel__header">
+                <h2 class="iiidem-teacher-panel__title">{{listheading}}</h2>
+            </header>
+            <div class="iiidem-teacher-panel__body">
+                {{{listhtml}}}
+            </div>
+        </section>
+
+        <section class="iiidem-teacher-panel mb-4">
+            <header class="iiidem-teacher-panel__header">
+                <h2 class="iiidem-teacher-panel__title">{{pendingheading}}</h2>
+            </header>
+            <div class="iiidem-teacher-panel__body">
+                {{{pendinghtml}}}
+            </div>
+        </section>
+
+        <section class="iiidem-teacher-panel mb-4">
+            <header class="iiidem-teacher-panel__header">
+                <h2 class="iiidem-teacher-panel__title">{{addheading}}</h2>
+            </header>
+            <div class="iiidem-teacher-panel__body">
+                {{{formhtml}}}
+            </div>
+        </section>
+    </div>
+</div>

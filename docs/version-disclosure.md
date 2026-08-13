@@ -1,20 +1,34 @@
-# Sensitive information disclosure — Server / technology version headers
+# 14. Sensitive information disclosure — Server / Technology Version Disclosure
 
 ## Finding
 
-> Sensitive information disclosure — Server and Technology Version Disclosure  
-> Disable version disclosure in HTTP headers.
+| Field | Report |
+|-------|--------|
+| Title | Sensitive information disclosure — Server and Technology Version Disclosure |
+| Impact | MEDIUM / CVSS 5.3 |
+| URL | `https://staginglms.eci.gov.in/` (and production LMS hosts) |
+| CWE | [CWE-200](https://cwe.mitre.org/data/definitions/200.html) — Exposure of Sensitive Information |
+| OWASP | A05:2021 – Security Misconfiguration |
 
-## What leaks
+> The application discloses the web server type and PHP version through HTTP response headers (`Server`, `X-Powered-By`).
 
-Typical response headers before hardening:
+### PoC note
+
+Auditor noted **`PHP 8.2.31`** via `X-Powered-By` and called that build EOL. Remediaiton has two parts:
+
+1. **Stop disclosing** version strings in headers (this doc).
+2. **Ops:** run a **supported** PHP on staging/production (this project’s DDEV target is **PHP 8.3**). Hiding headers does not replace upgrading EOL PHP.
+
+**Related:** `GET /icons/apache_pb.gif` returning `Server: Apache` + the default Powered-By GIF is Apache’s **icons Alias** (directory-listing Instance 2). Block `/icons/` and set `ServerTokens Prod` — see [directory-listing.md](directory-listing.md).
+
+Related finding #13 headers: [security-headers.md](security-headers.md).
+
+## What leaks (before hardening)
 
 | Header | Example leak |
 |--------|----------------|
-| `Server` | `Apache/2.4.58 (Win64)` / `nginx/1.24.0` |
-| `X-Powered-By` | `PHP/8.2.12` |
-
-Attackers use these for targeted exploits.
+| `Server` | `Apache/2.4.52 (Ubuntu)` / `nginx/1.24.0` |
+| `X-Powered-By` | `PHP/8.2.31` |
 
 ## Fixes in this repo
 
@@ -67,28 +81,31 @@ Header always unset X-Powered-By
 expose_php = Off
 ```
 
-## PHP `info.php` / `phpinfo()` pages
+### PHP version (EOL note)
 
-Audits often cite a public `/info.php` that dumps PHP configuration (CWE-200).
-
-- **Wrong host example:** `https://staginglma.cdac.gov.in/info.php` is **not** this LMS.
-- **This Moodle site:** there is no webroot `info.php`. Local checks return **404**.
-- Moodle’s built-in viewer is `/admin/phpinfo.php` and requires a logged-in **site administrator** (`admin_externalpage_setup('phpinfo')`).
-- Defence in depth: nginx/Apache deny rules block `/info.php`, `/phpinfo.php`, `/test.php` at the document root (see `docs/directory-listing.md`).
-
-On staging/production, also delete any leftover `info.php` if ops created one outside the repo:
+Use a currently supported PHP for Moodle 4.x (e.g. **8.2 still in security support only until end of calendar window, prefer 8.3**). Confirm with:
 
 ```bash
-# Expect 403 or 404 — never a phpinfo HTML table
-curl -sI https://staginglms.eci.gov.in/info.php
-curl -sI https://staginglms.eci.gov.in/phpinfo.php
+php -v
+# Should not be an unsupported/EOL build in production
+```
+
+## PHP `info.php` / `phpinfo()` pages
+
+- Wrong-host examples (`staginglma.cdac.gov.in/info.php`) are **not** this LMS.
+- This site: no public webroot `info.php`; `/admin/phpinfo.php` requires site admin.
+- Edge deny rules for `/info.php`, `/phpinfo.php`, `/test.php` — see [directory-listing.md](directory-listing.md).
+
+```bash
+curl -sI https://YOUR-HOST/info.php
+# Expect 403 or 404
 ```
 
 ## Verify
 
 ```bash
-curl -I https://staginglms.eci.gov.in/login/index.php | grep -iE '^(Server|X-Powered-By|X-AspNet|X-Generator):'
-# Expect: no PHP version; Server absent or generic (e.g. "nginx" without version)
+curl -sI https://YOUR-HOST/login/index.php | grep -iE '^(Server|X-Powered-By|X-AspNet|X-Generator):'
+# Expect: no PHP version; Server absent or generic (e.g. "nginx" / "Apache" without version)
 ```
 
 ## Deploy
@@ -104,6 +121,7 @@ ddev restart
 
 | Control | Implementation |
 |--------|----------------|
-| No PHP version | `expose_php=Off` + `header_remove` / `fastcgi_hide_header` |
+| No PHP version in headers | `expose_php=Off` + `header_remove` / `fastcgi_hide_header` |
 | No detailed Server token | `server_tokens off` / `ServerTokens Prod` (web server) |
-| App-layer defense | `security_headers::suppress_version_headers()` on all Moodle web responses |
+| App-layer defense | `security_headers::suppress_version_headers()` |
+| Supported runtime | Ops upgrades off EOL PHP (separate from header hide) |

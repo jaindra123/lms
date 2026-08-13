@@ -42,5 +42,23 @@ function xmldb_filter_mathjaxloader_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
+    // CDAC #19 / CWE-1104: MathJax 2.7.9 (CVE-2023-39663) → MathJax 3.2.2 (Moodle MDL-75486).
+    if ($oldversion < 2024100701) {
+        $newurl = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js';
+        $olddefaults = [
+            'https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js',
+            'https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js',
+        ];
+        $current = (string) get_config('filter_mathjaxloader', 'httpsurl');
+        if ($current === '' || in_array($current, $olddefaults, true) || str_contains($current, 'mathjax@2.')) {
+            set_config('httpsurl', $newurl, 'filter_mathjaxloader');
+            // MathJax 2 Hub.Config JS is invalid for v3 — clear to defaults (ui/safe forced in AMD).
+            set_config('mathjaxconfig', '', 'filter_mathjaxloader');
+        }
+
+        upgrade_plugin_savepoint(true, 2024100701, 'filter', 'mathjaxloader');
+    }
+
     return true;
 }

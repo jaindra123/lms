@@ -23,8 +23,10 @@ try {
     $cmid = required_param('cmid', PARAM_INT);
     $result = theme_iiidem2_mark_curriculum_activity_viewed($cmid);
     ob_end_clean();
-    echo json_encode($result);
+    echo \theme_iiidem2\input_validation::json_encode_safe($result);
 } catch (Throwable $e) {
     ob_end_clean();
-    echo json_encode(\theme_iiidem2\safe_errors::json($e, 'mark_activity_viewed', false));
+    echo \theme_iiidem2\input_validation::json_encode_safe(
+        \theme_iiidem2\safe_errors::json($e, 'mark_activity_viewed', false)
+    );
 }

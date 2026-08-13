@@ -48,13 +48,21 @@ final class security_headers {
 
         header('X-Content-Type-Options: nosniff');
         header('X-XSS-Protection: 1; mode=block');
+        // Cross-domain referrer leakage: full URL must not leak to other origins.
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-Frame-Options: SAMEORIGIN');
+
+        // Keep Moodle admin setting aligned (weblib.php also emits this header).
+        if (empty($CFG->referrerpolicy) || $CFG->referrerpolicy === 'default') {
+            $CFG->referrerpolicy = 'strict-origin-when-cross-origin';
+        }
 
         // Same-origin only — never reflect arbitrary Origin or use *.
         $origin = self::site_origin();
         if ($origin !== '') {
             header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Headers: X-Moodle-Sesskey, Content-Type, Accept');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             header('Vary: Origin');
         }
 
@@ -70,6 +78,142 @@ final class security_headers {
         if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
             header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
         }
+
+        // Authenticated / login pages must not linger in the browser cache after logout.
+        self::send_sensitive_cache_control();
+    }
+
+    /**
+     * Prevent browser/proxy reuse of authenticated HTML/JSON after logout (bfcache / back button).
+     *
+     * Covers normal pages, /login/*, and AJAX (/lib/ajax/service.php) which auditors
+     * often capture with Moodle’s weaker "private, max-age=0" (no no-store).
+     *
+     * Public anonymous pages keep Moodle defaults except login/password flows.
+     * Intentional long-cache AJAX (GET + cachekey) is left alone.
+     */
+    public static function send_sensitive_cache_control(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (headers_sent()) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $isloginflow = str_contains($script, '/login/');
+        $isajax = (defined('AJAX_SCRIPT') && AJAX_SCRIPT)
+            || str_contains($script, '/lib/ajax/')
+            || str_contains($script, '/webservice/');
+
+        // Moodle core may mark some GET AJAX as publicly cacheable via cachekey.
+        if ($isajax
+                && ($_SERVER['REQUEST_METHOD'] ?? '') === 'GET'
+                && !empty($_GET['cachekey'])
+                && (int) $_GET['cachekey'] > 0) {
+            return;
+        }
+
+        $isauthed = false;
+        try {
+            $isauthed = isloggedin() && !isguestuser();
+        } catch (\Throwable $e) {
+            $isauthed = false;
+        }
+
+        if (!$isauthed && !$isloginflow) {
+            return;
+        }
+
+        header('Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    }
+
+    /**
+     * Re-assert no-store for AJAX just before the response body is flushed.
+     *
+     * Moodle / PHP may emit weaker Cache-Control after after_config; buffering
+     * lets us win on authenticated /lib/ajax/service.php responses (CDAC PoC).
+     */
+    public static function ensure_ajax_cache_control_buffer(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (!defined('AJAX_SCRIPT') || !AJAX_SCRIPT) {
+            return;
+        }
+        if (!empty($GLOBALS['theme_iiidem2_ajax_cache_ob'])) {
+            return;
+        }
+        $GLOBALS['theme_iiidem2_ajax_cache_ob'] = true;
+
+        ob_start(static function (string $buffer): string {
+            self::send_sensitive_cache_control();
+            return safe_errors::sanitize_ajax_json($buffer);
+        });
+    }
+
+    /**
+     * Ensure every target=_blank anchor in HTML responses has rel=noopener noreferrer.
+     * Auditors inspect raw HTML (admin environment docs links) before JS runs (CDAC #24).
+     */
+    public static function ensure_noopener_blank_targets_buffer(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+        if (!empty($GLOBALS['theme_iiidem2_noopener_ob'])) {
+            return;
+        }
+        $GLOBALS['theme_iiidem2_noopener_ob'] = true;
+
+        ob_start([self::class, 'harden_blank_target_html']);
+    }
+
+    /**
+     * @param string $html
+     * @return string
+     */
+    public static function harden_blank_target_html(string $html): string {
+        if ($html === '' || stripos($html, '_blank') === false) {
+            return $html;
+        }
+
+        $out = preg_replace_callback(
+            '/<a\b([^>]*?)>/i',
+            static function (array $m): string {
+                $attrs = $m[1];
+                if (!preg_match('/\btarget\s*=\s*(["\']?)_blank\1/i', $attrs)) {
+                    return $m[0];
+                }
+                if (preg_match('/\brel\s*=\s*(["\'])([^"\']*)\1/i', $attrs, $rm)) {
+                    $rel = preg_split('/\s+/', strtolower($rm[2]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                    foreach (['noopener', 'noreferrer'] as $token) {
+                        if (!in_array($token, $rel, true)) {
+                            $rel[] = $token;
+                        }
+                    }
+                    $attrs = preg_replace(
+                        '/\brel\s*=\s*(["\'])([^"\']*)\1/i',
+                        'rel="' . implode(' ', $rel) . '"',
+                        $attrs,
+                        1
+                    );
+                } else {
+                    $attrs .= ' rel="noopener noreferrer"';
+                }
+                return '<a' . $attrs . '>';
+            },
+            $html
+        );
+
+        return is_string($out) ? $out : $html;
     }
 
     /**
@@ -147,22 +291,24 @@ final class security_headers {
     }
 
     /**
-     * Practical CSP for Moodle + Razorpay checkout (allows required inline/AMD).
+     * Practical CSP for Moodle + Razorpay checkout + MathJax CDN (Moodle default).
      */
     public static function csp_policy(): string {
         $origin = self::site_origin();
+        // Moodle filter_mathjaxloader uses jsDelivr MathJax 3.2.2 (not 2.7.9).
+        $mathjax = 'https://cdn.jsdelivr.net';
         $directives = [
             "default-src 'self'",
             "base-uri 'self'",
             "object-src 'none'",
             "frame-ancestors 'self'",
             // Moodle AMD / YUI / Mustache need inline + eval in many releases.
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com",
-            "style-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com {$mathjax}",
+            "style-src 'self' 'unsafe-inline' {$mathjax}",
             "img-src 'self' data: blob: https:",
-            "font-src 'self' data:",
-            "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com",
-            "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://api.razorpay.com",
+            "font-src 'self' data: {$mathjax}",
+            "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://checkout-static-next.razorpay.com {$mathjax}",
+            "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
             // Bank / payment POSTs leave the site.
             "form-action 'self' https:",
             "upgrade-insecure-requests",

@@ -1,51 +1,89 @@
-# Payment Amount Manipulation — server-side amount validation
+# 12. Payment Amount Manipulation
 
 ## Finding
 
-> The payment amount must be determined and validated server-side.
+| Field | Report |
+|-------|--------|
+| Title | Payment Amount Manipulation |
+| Impact | HIGH / CVSS 8.1 |
+| CWE | [CWE-472](https://cwe.mitre.org/data/definitions/472.html) — External Control of Assumed-Immutable Web Parameter |
+| OWASP | A04:2021 – Insecure Design |
 
-## Controls applied
+> The payment amount must be determined and validated **server-side**. The application must not trust a client-supplied fee.
 
-### Create order / redirect (all gateways)
+## PoC (authoritative) — `local/custom_enroll`
 
-| Gateway | Amount source |
-|---------|----------------|
-| Razorpay | `helper::get_payable()` + `course_fee_amount::get_payment_amount()` (never a client param) |
-| PNB / ICICI | `helper::get_payable()->get_amount()` + surcharge only |
+```http
+POST /moodle/local/custom_enroll/ajax.php?action=create_razorpay_order
+{"course_id":…, "user_id":…, "course_fee":"10", "course_name":"…"}
+```
 
-WS/checkout APIs accept `component`, `paymentarea`, `itemid`, `description` only — **no amount field**.
+Server returned success with Razorpay order `amount: 1000` (paise = **₹10**). Invoice showed **INR 10.00** for a full-priced course.
 
-### Undercharge prevention (Razorpay `coursefeeamount`)
+| Issue | Detail |
+|-------|--------|
+| Client controlled price | JSON field `course_fee` |
+| Trusted by server | Order created for that amount |
+| Result | Underpayment enrolment / invoice |
 
-`get_payment_amount()` now charges `max(configured, payable)` so a low test `coursefeeamount` cannot undercut a higher `enrol.cost`.
+### Remediaiton for that endpoint
 
-### Verify / return (fail closed)
+`local_custom_enroll` is **retired**. Repo ships a **tombstone** plugin:
 
-| Gateway | Validation |
-|---------|------------|
-| **Razorpay** | Signature + `assert_txn_matches_payable()` + live API `GET /payments/{id}` (order_id, amount in paise, currency, status captured/authorized) |
-| **PNB / ICICI** | Callback amount **required** and must match stored txn; then `assert_txn_matches_payable()` before `deliver_order` |
+- `local/custom_enroll/ajax.php` → **HTTP 410**, never creates orders, never reads `course_fee` / amount as price
+- Live payments: Moodle **`enrol_fee` + `paygw_razorpay`** (and PNB/ICICI)
 
-Previously PNB/ICICI skipped the amount check when the bank omitted AMOUNT (fail-open). That path now rejects.
-
-### Enrolment
-
-`complete_transaction` / bank return call `deliver_order` only after amount checks pass. Stored `$txn->amount` (server-written at create time) is what is saved to Moodle payments — never a POST amount.
-
-## Deploy
+On staging/production: deploy this tree (overwrites any old vulnerable `ajax.php`), then:
 
 ```bash
 php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
-Keep `enrol_fee` cost and Razorpay `coursefeeamount` aligned on staging/live (use CLI `set_course_fee_amount.php` or gateway account save to sync).
+Confirm old path fails:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}' -X POST \
+  'https://YOUR-HOST/local/custom_enroll/ajax.php?action=create_razorpay_order'
+# Expect: 410 (with session) or redirect/login — never status:success + low amount
+```
+
+## Other PoC (false positive) — `lumberjack.razorpay.com/v1/track`
+
+Changing `"amount"` on Razorpay’s **analytics** track URL and getting `200 OK` does **not** settle a payment or enrol a user. Ignore as underpayment proof.
+
+## Current payment controls (`paygw_*`)
+
+### Create order / redirect
+
+| Gateway | Amount source |
+|---------|----------------|
+| Razorpay | `helper::get_payable()` + `course_fee_amount::get_payment_amount()` (**no** client amount / `course_fee`) |
+| PNB / ICICI | `helper::get_payable()->get_amount()` + surcharge only |
+
+Checkout WS accepts `component`, `paymentarea`, `itemid`, `description` only — **no amount field**.
+
+### Undercharge prevention
+
+`get_payment_amount()` uses `max(configured, payable)` so a low gateway test fee cannot undercut a higher `enrol.cost`.
+
+### Verify / return (fail closed)
+
+| Gateway | Validation |
+|---------|------------|
+| **Razorpay** | Signature + `assert_txn_matches_payable()` + live API payment amount (paise) |
+| **PNB / ICICI** | Callback amount required + match stored txn before `deliver_order` |
+
+Enrolment runs only after checks pass. Stored `$txn->amount` is written server-side at order create.
 
 ## Evidence for auditors
 
 | Control | Implementation |
 |--------|----------------|
-| Amount not from client | No amount in WS params; payable from Moodle DB |
-| Validate on complete | Payable re-check + Razorpay API amount / bank callback amount |
-| Fail closed | Missing/mismatched amount → no enrolment |
-| Single source of truth | Moodle payable / `enrol.cost`; config cannot undercharge |
+| Old `course_fee` endpoint | Tombstone `local_custom_enroll` → 410 |
+| Amount not from client | No amount / `course_fee` in `paygw_razorpay` checkout |
+| Validate on complete | Payable + Razorpay/bank amount checks |
+| Fail closed | Mismatch → no enrolment |
+| Invoice amount | Reflects server txn, not POST fee |
+
+Related: [password-change-sessions.md](password-change-sessions.md) (same report section family).

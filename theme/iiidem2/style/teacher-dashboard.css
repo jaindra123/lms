@@ -938,3 +938,13 @@ body.iiidem-teacher-dashboard-page .drawer-toggles,
     margin-top: 0.15rem;
 }
 
+/* Class videos: long form must not clip list/pending panels. */
+.iiidem-teacher-classvideos-page .iiidem-teacher-panel {
+    height: auto;
+    overflow: visible;
+}
+
+.iiidem-teacher-classvideos-page .iiidem-teacher-panel__body {
+    overflow: visible;
+}
+

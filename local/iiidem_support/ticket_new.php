@@ -8,6 +8,11 @@ use local_iiidem_support\manager;
 require_login();
 require_capability('local/iiidem_support:submit', context_system::instance());
 
+// Early throttle on create form POSTs (create_ticket also enforces user+IP limits).
+if (class_exists('\theme_iiidem2\rate_limit') && strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    \theme_iiidem2\rate_limit::require_allowed('support_ticket_new_post', 10, 60);
+}
+
 $context = context_system::instance();
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/iiidem_support/ticket_new.php'));

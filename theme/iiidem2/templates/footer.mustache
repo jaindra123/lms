@@ -87,7 +87,7 @@
 <footer id="page-footer" class="footer-popover bg-white d-none" aria-hidden="true">
     <div data-region="footer-container-popover" class="d-none">
         {{#output.has_communication_links}}
-            <button type="button" onclick="window.open('{{output.communication_url}}', '_blank', 'noreferrer')" class="btn icon-no-margin btn-footer-communication bg-primary text-white" aria-label="{{#str}}communicationroomlink, course{{/str}}">
+            <button type="button" onclick="window.open('{{output.communication_url}}', '_blank', 'noopener,noreferrer')" class="btn icon-no-margin btn-footer-communication bg-primary text-white" aria-label="{{#str}}communicationroomlink, course{{/str}}">
                 {{#pix}}t/messages-o, core{{/pix}}
             </button>
         {{/output.has_communication_links}}

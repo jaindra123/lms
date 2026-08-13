@@ -1,0 +1,45 @@
+# =========================================================================
+# Apache / XAMPP — disable directory listing + block sensitive / source paths.
+# Nginx uses .ddev/nginx/directory-listing.conf (and production equivalents).
+# See docs/directory-listing.md and docs/source-code-disclosure.md.
+# =========================================================================
+
+# Never auto-list directory contents when no index file is present.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block sensitive directories (files and trailing-slash listing).
+    RewriteRule ^(backups|moodledata|local_dev_logs|docs|scripts)/ - [F,L]
+    RewriteRule ^\.(git|ddev|github|grunt|upgradenotes|cursor|vscode)/ - [F,L]
+    RewriteRule ^agent-transcripts/ - [F,L]
+
+    # Block env-specific config fragments (main config.php must remain reachable).
+    RewriteRule ^config\.(staging|production|dev)\.php$ - [F,L]
+    RewriteRule ^config\.(staging|production)\.php\.example$ - [F,L]
+    RewriteRule ^config-dist\.php$ - [F,L]
+
+    # Block accidental webroot phpinfo droppings (admin/phpinfo.php stays for admins).
+    RewriteRule ^(info|phpinfo|test|i)\.php$ - [F,L]
+
+    # Apache default /icons/ alias (directory listing + apache_pb.gif fingerprint).
+    RewriteRule ^icons(/|$) - [F,L]
+
+    # Source / backup / editor leftovers (common “source code disclosure” scanner hits).
+    RewriteRule \.(bak|old|orig|save|swp|swo|tmp|temp|dist|sql|sql\.gz|tar|tar\.gz|tgz|zip|rar|7z|env)$ - [F,L]
+    RewriteRule ~$ - [F,L]
+    RewriteRule (^|/)\.env - [F,L]
+    RewriteRule (^|/)composer\.(json|lock)$ - [F,L]
+    RewriteRule (^|/)package(-lock)?\.json$ - [F,L]
+    RewriteRule (^|/)phpunit\.xml(\.dist)?$ - [F,L]
+    RewriteRule (^|/)behat\.yml(\.dist)?$ - [F,L]
+</IfModule>
+
+# Extra deny for editor swap / backup names Apache may serve as static files.
+<FilesMatch "(?i)\.(bak|old|orig|save|swp|swo|tmp|temp|sql|sql\.gz|env)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "(?i)^(\.env.*|composer\.(json|lock)|package(-lock)?\.json)$">
+    Require all denied
+</FilesMatch>

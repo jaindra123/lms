@@ -1871,6 +1871,15 @@ function theme_iiidem2_get_contact_page_context(): array {
 function theme_iiidem2_send_contact_message(\stdClass $data): bool {
     global $CFG, $SITE, $USER;
 
+    // Server-side sanitize — never trust client HTML/script in email bodies.
+    $name = \theme_iiidem2\input_validation::clean_public_text((string) ($data->name ?? ''), 100);
+    $subject = \theme_iiidem2\input_validation::clean_public_text((string) ($data->subject ?? ''), 255);
+    $message = \theme_iiidem2\input_validation::clean_public_text((string) ($data->message ?? ''), 5000);
+    $email = trim(clean_param((string) ($data->email ?? ''), PARAM_EMAIL));
+    if ($name === null || $subject === null || $message === null || !validate_email($email)) {
+        return false;
+    }
+
     $recipient = core_user::get_support_user();
     $themeemail = get_config('theme_iiidem2', 'email');
     if (!empty($themeemail) && validate_email($themeemail)) {
@@ -1891,22 +1900,22 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
     }
     $usersender->maildisplay = true;
 
-    $subject = get_string('contactusemailsubject', 'theme_iiidem2', [
+    $subjectline = get_string('contactusemailsubject', 'theme_iiidem2', [
         'site' => format_string($SITE->fullname),
-        'subject' => $data->subject,
+        'subject' => $subject,
     ]);
 
     $body = get_string('contactusemailbody', 'theme_iiidem2', (object) [
-        'name' => $data->name,
-        'email' => $data->email,
-        'subject' => $data->subject,
-        'message' => $data->message,
+        'name' => $name,
+        'email' => $email,
+        'subject' => $subject,
+        'message' => $message,
     ]);
 
     $adminsent = email_to_user(
         $recipient,
         $from,
-        $subject,
+        $subjectline,
         $body,
         ''
     );
@@ -1916,22 +1925,18 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
     }
 
     $userrecipient = clone core_user::get_noreply_user();
-    $userrecipient->email = trim((string) ($data->email ?? ''));
-    $userrecipient->firstname = trim((string) ($data->name ?? ''));
+    $userrecipient->email = $email;
+    $userrecipient->firstname = $name;
     $userrecipient->lastname = '';
     $userrecipient->maildisplay = true;
 
-    if (!validate_email($userrecipient->email)) {
-        return true;
-    }
-
     $sitename = format_string($SITE->fullname);
-    $username = $userrecipient->firstname !== '' ? $userrecipient->firstname : 'Participant';
+    $username = $name !== '' ? $name : 'Participant';
     $useracksubject = '[' . $sitename . '] We received your message';
     $userackbody = "Dear {$username},\n\n"
         . "Thank you for contacting {$sitename}. We have received your message and will get back to you soon.\n\n"
-        . "Subject: {$data->subject}\n\n"
-        . "Your message:\n{$data->message}";
+        . "Subject: {$subject}\n\n"
+        . "Your message:\n{$message}";
 
     return email_to_user(
         $userrecipient,
@@ -3226,7 +3231,7 @@ function theme_iiidem2_get_login_page_context(): array {
         'loginfeature1' => get_string('loginfeature1', 'theme_iiidem2'),
         'loginfeature2' => get_string('loginfeature2', 'theme_iiidem2'),
         'loginfeature3' => get_string('loginfeature3', 'theme_iiidem2'),
-        'homeurl' => (new moodle_url('/'))->out(false),
+        'homeurl' => rtrim($CFG->wwwroot, '/') . '/?redirect=0',
         'abouturl' => $CFG->wwwroot . '/about-us/',
         'contacturl' => $CFG->wwwroot . '/contact-us/',
         'sitename' => format_string($SITE->shortname, true, [

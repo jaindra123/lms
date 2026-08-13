@@ -28,7 +28,7 @@ $string['additionaldelimiters_help'] = 'MathJax filter parses text for equations
 
 The list of recognised delimiter characters can be added to here (e.g. AsciiMath uses `). Delimiters can contain multiple characters and multiple delimiters can be separated with commas.';
 $string['httpsurl'] = 'MathJax URL';
-$string['httpsurl_help'] = 'Full URL to MathJax library.';
+$string['httpsurl_help'] = 'Full URL to MathJax library (MathJax 3 tex-mml-chtml.js recommended).';
 $string['texfiltercompatibility'] = 'TeX filter compatibility';
 $string['texfiltercompatibility_help'] = 'The MathJax filter can be used as a replacement for the TeX notation filter.
 
@@ -38,7 +38,7 @@ $string['localinstall_help'] = 'The default MathJax configuration uses the CDN v
 
 This can be useful to save on bandwidth or because of local proxy restrictions.
 
-To use a local installation of MathJax, first download the full MathJax library from https://www.mathjax.org/. Then install it on a web server. Finally update the MathJax filter settings httpurl and/or httpsurl to point to the local MathJax.js URL.';
+To use a local installation of MathJax, first download the MathJax 3 library from https://www.mathjax.org/. Then install it on a web server. Finally update the MathJax filter setting “MathJax URL” to point to the local tex-mml-chtml.js (or equivalent) URL.';
 $string['mathjaxsettings'] = 'MathJax configuration';
-$string['mathjaxsettings_desc'] = 'The default MathJax configuration should be appropriate for most users, but MathJax is highly configurable and any of the standard MathJax configuration options can be added here.';
+$string['mathjaxsettings_desc'] = 'Optional MathJax 3 configuration as JSON (leave empty for defaults). The loader always enables the ui/safe extension. See https://docs.mathjax.org/en/v3.2-latest/web/configuration.html';
 $string['privacy:metadata'] = 'The MathJax plugin does not store any personal data.';

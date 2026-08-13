@@ -985,7 +985,7 @@ class student_dashboard {
                 'key' => 'recordings',
                 'icon' => 'fa-circle-play',
                 'label' => get_string('dashboardnavrecordings', 'theme_iiidem2'),
-                'url' => self::get_recordings_url($courses, $userid)->out(false),
+                'url' => (new \moodle_url('/local/iiidem_classvideos/index.php'))->out(false),
                 'panel' => 'learning',
                 'isinpage' => false,
                 'active' => false,

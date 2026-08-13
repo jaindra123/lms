@@ -408,5 +408,204 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100965, 'theme', 'iiidem2');
     }
 
+    // Unused QR login endpoint — disable Moodle Mobile QR auto-login.
+    if ($oldversion < 2024100972) {
+        \theme_iiidem2\qr_login_security::disable();
+        upgrade_plugin_savepoint(true, 2024100972, 'theme', 'iiidem2');
+    }
+
+    // Harden target=_blank links with rel=noopener noreferrer (JS + templates).
+    if ($oldversion < 2024100973) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100973, 'theme', 'iiidem2');
+    }
+
+    // Input returned in response — safe JSON encoding helpers on AJAX surfaces.
+    if ($oldversion < 2024100974) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100974, 'theme', 'iiidem2');
+    }
+
+    // Cookie HttpOnly enforcement helpers (session_security header patch).
+    if ($oldversion < 2024100975) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100975, 'theme', 'iiidem2');
+    }
+
+    // Login username/password: disable paste, drop, autocomplete (policy).
+    if ($oldversion < 2024100976) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100976, 'theme', 'iiidem2');
+    }
+
+    // Cross-domain referrer leakage — force Referrer-Policy.
+    if ($oldversion < 2024100977) {
+        set_config('referrerpolicy', 'strict-origin-when-cross-origin');
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100977, 'theme', 'iiidem2');
+    }
+
+    // Authenticated pages: Cache-Control no-store (no browser cache after logout).
+    if ($oldversion < 2024100978) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100978, 'theme', 'iiidem2');
+    }
+
+    // AJAX /lib/ajax/service.php: force no-store (CDAC weaker private,max-age=0 PoC).
+    if ($oldversion < 2024100979) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100979, 'theme', 'iiidem2');
+    }
+
+    // Contact / course search XSS hardening (reject markup; sanitize search params).
+    if ($oldversion < 2024100980) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100980, 'theme', 'iiidem2');
+    }
+
+    // AJAX sesskey moved from URL query to X-Moodle-Sesskey header.
+    if ($oldversion < 2024100981) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100981, 'theme', 'iiidem2');
+    }
+
+    // Re-force debug off on staging/production in after_config (contact-us debug PoC).
+    if ($oldversion < 2024100982) {
+        set_config('debug', 0);
+        set_config('debugdisplay', 0);
+        set_config('themedesignermode', 0);
+        set_config('perfdebug', 0);
+        set_config('debugpageinfo', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100982, 'theme', 'iiidem2');
+    }
+
+    // Messaging / course search XSS guard (message/index.php search PoC).
+    if ($oldversion < 2024100983) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100983, 'theme', 'iiidem2');
+    }
+
+    // Logout via POST — no sesskey in /login/logout.php URL (CDAC Instance 2).
+    if ($oldversion < 2024100984) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100984, 'theme', 'iiidem2');
+    }
+
+    // Strip sesskey from all /login/*.php hrefs in user menu / login info HTML.
+    if ($oldversion < 2024100985) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100985, 'theme', 'iiidem2');
+    }
+
+    // AJAX JSON: strip debuginfo/backtrace (CWE-209 invalidsesskey PoC).
+    if ($oldversion < 2024100986) {
+        set_config('debug', 0);
+        set_config('debugdisplay', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100986, 'theme', 'iiidem2');
+    }
+
+    // CWE-209 Instances 5–6: scrub WS JSON; disable YUI combo loading.
+    if ($oldversion < 2024100987) {
+        set_config('debug', 0);
+        set_config('debugdisplay', 0);
+        set_config('yuicomboloading', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100987, 'theme', 'iiidem2');
+    }
+
+    // CDAC #23: re-assert QR login disabled (profile QR PoC).
+    if ($oldversion < 2024100988) {
+        \theme_iiidem2\qr_login_security::disable();
+        upgrade_plugin_savepoint(true, 2024100988, 'theme', 'iiidem2');
+    }
+
+    // CDAC #24: target=_blank + rel=noopener (doc_link + HTML buffer).
+    if ($oldversion < 2024100989) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100989, 'theme', 'iiidem2');
+    }
+
+    // CDAC #25: strip junk path-info on login/register scripts.
+    if ($oldversion < 2024100990) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100990, 'theme', 'iiidem2');
+    }
+
+    // CDAC form-action XSS: neutralize PATH_INFO in $FULLME for non-slashargument scripts.
+    if ($oldversion < 2024100991) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100991, 'theme', 'iiidem2');
+    }
+
+    // CDAC register XSS: check_email / OTP never echo input; form rejects markup.
+    if ($oldversion < 2024100992) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100992, 'theme', 'iiidem2');
+    }
+
+    // CDAC #27: login credentials paste/drop lock in template + JS.
+    if ($oldversion < 2024100993) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100993, 'theme', 'iiidem2');
+    }
+
+    // CDAC #28: clear mobile setuplink / smart banners (no download.moodle.org footer link).
+    if ($oldversion < 2024100994) {
+        set_config('setuplink', '', 'tool_mobile');
+        set_config('enablesmartappbanners', 0, 'tool_mobile');
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100994, 'theme', 'iiidem2');
+    }
+
+    // CDAC #29: bfcache Back-button guard on authenticated pages.
+    if ($oldversion < 2024100995) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100995, 'theme', 'iiidem2');
+    }
+
+    // Class videos dashboard nav (local_iiidem_classvideos).
+    if ($oldversion < 2024100996) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100996, 'theme', 'iiidem2');
+    }
+
+    // AJAX sesskey: keep query fallback + header (fix missingparam).
+    if ($oldversion < 2024100997) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100997, 'theme', 'iiidem2');
+    }
+
+    // Restrict sesskey header to service.php only (fix draftfiles invalidsesskey).
+    if ($oldversion < 2024100998) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100998, 'theme', 'iiidem2');
+    }
+
+    // Class videos: list above form + panel overflow fix.
+    if ($oldversion < 2024100999) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100999, 'theme', 'iiidem2');
+    }
+
+    // Rename bs4popover → bs4flyout (WAF still empties URLs containing "popover").
+    if ($oldversion < 2024101000) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101000, 'theme', 'iiidem2');
+    }
+
+    // Bundle bs4flyout into tooltip; loader no longer fetches it (prod WAF).
+    if ($oldversion < 2024101001) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101001, 'theme', 'iiidem2');
+    }
+
+    // Force-init popover from bundled tooltip file (fix $.fn.popover is not a function).
+    if ($oldversion < 2024101002) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101002, 'theme', 'iiidem2');
+    }
+
     return true;
 }

@@ -74,18 +74,20 @@ class text_filter extends \core_filters\text_filter {
         if (!$page->requires->should_create_one_time_item_now('filter_mathjaxloader-scripts')) {
             return;
         }
+
         $url = get_config('filter_mathjaxloader', 'httpsurl');
         $lang = $this->map_language_code(current_language());
-        $url = new url($url, ['delayStartupUntil' => 'configured']);
+        $url = new url($url);
 
-        $page->requires->js($url);
-
+        // MathJax 3 config is JSON (empty = defaults). See MDL-75486 / MathJax 3.2 docs.
         $config = get_config('filter_mathjaxloader', 'mathjaxconfig');
         $wwwroot = new url('/');
-
-        $config = str_replace('{wwwroot}', $wwwroot->out(true), $config);
-
-        $params = ['mathjaxconfig' => $config, 'lang' => $lang];
+        $config = str_replace('{wwwroot}', $wwwroot->out(true), (string) $config);
+        $params = [
+            'mathjaxurl' => $url->out(false),
+            'mathjaxconfig' => $config,
+            'lang' => $lang,
+        ];
 
         $page->requires->js_call_amd('filter_mathjaxloader/loader', 'configure', [$params]);
     }

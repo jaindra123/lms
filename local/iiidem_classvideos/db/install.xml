@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/iiidem_classvideos/db" VERSION="2026081100" COMMENT="Webex / class session videos">
+    <TABLES>
+        <TABLE NAME="local_iiidem_classvideos" COMMENT="Uploaded or linked class recordings">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Uploader"/>
+                <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="description" TYPE="text" NOTNULL="false"/>
+                <FIELD NAME="accesstype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="request"
+                       COMMENT="public = all enrolled; request = approve required"/>
+                <FIELD NAME="externalurl" TYPE="text" NOTNULL="false"/>
+                <FIELD NAME="sessiondate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="visible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+                <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="course_visible_ix" UNIQUE="false" FIELDS="courseid, visible"/>
+                <INDEX NAME="accesstype_ix" UNIQUE="false" FIELDS="accesstype"/>
+            </INDEXES>
+        </TABLE>
+        <TABLE NAME="local_iiidem_classvideo_req" COMMENT="Student access requests for class videos">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="videoid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending"/>
+                <FIELD NAME="studentnote" TYPE="char" LENGTH="500" NOTNULL="true" DEFAULT=""/>
+                <FIELD NAME="timerequested" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="timeresolved" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="resolvedby" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="videoid" TYPE="foreign" FIELDS="videoid" REFTABLE="local_iiidem_classvideos" REFFIELDS="id"/>
+                <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="video_user_ux" UNIQUE="true" FIELDS="videoid, userid"/>
+                <INDEX NAME="status_ix" UNIQUE="false" FIELDS="status, timerequested"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

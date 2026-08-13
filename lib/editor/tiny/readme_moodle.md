@@ -7,7 +7,10 @@ The Moodle `master` branch is named as the upcoming STABLE branch name, for exam
 
 ## Patches included in this release
 
-N/A
+- **2026-08 (CDAC #19):** Upgraded bundled TinyMCE **7.3.0 → 7.9.3** (npm `tinymce@7.9.3`).
+  - Fixes TinyMCE XSS: CVE-2024-47759 / CVE-2024-47761 / CVE-2024-47762 (and related 2026 CVE IDs).
+  - Bundled DOMPurify **3.0.5 → 3.2.6** (addresses CVE-2024-47875, CVE-2024-45801, and later DOMPurify advisories flagged against 3.0.5).
+  - Procedure: `npm pack tinymce@7.9.3` then replace `js/tinymce/{icons,models,plugins,skins,themes,tinymce.*}` (preserve `js/tinymce/langs`).
 
 ## Upgrade procedure for TinyMCE Editor
 

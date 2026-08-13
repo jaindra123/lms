@@ -34,6 +34,23 @@ $PAGE->set_heading(get_string('registerpagetitle', 'theme_iiidem2'));
 $PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), true);
 $PAGE->requires->js_call_amd('theme_iiidem2/register_occupation', 'init');
 
+// CDAC register XSS: scrub dangerous markup from POST before formslib redisplay.
+foreach ([
+    'firstname', 'middlename', 'lastname', 'email', 'phone1', 'city',
+    'organization', 'jobprofile', 'jobpostingcountry',
+    'emb_organization', 'emb_designation', 'emb_country',
+    'university', 'position', 'specialization',
+    'instructor_university', 'instructor_course', 'presentcountry',
+] as $field) {
+    if (!isset($_POST[$field]) || !is_string($_POST[$field])) {
+        continue;
+    }
+    if (\theme_iiidem2\input_validation::contains_dangerous_markup($_POST[$field])) {
+        $_POST[$field] = '';
+        $_REQUEST[$field] = '';
+    }
+}
+
 $form = new \theme_iiidem2\form\register_form();
 
 if ($form->is_cancelled()) {

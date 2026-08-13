@@ -22,12 +22,23 @@ $PAGE->set_context(context_system::instance());
 \theme_iiidem2\rate_limit::require_json('register_send_otp_ip', 3, 900);
 \theme_iiidem2\rate_limit::require_json('register_send_otp_ip_hour', 10, 3600);
 
-$email = core_text::strtolower(trim(required_param('email', PARAM_EMAIL)));
-$firstname = trim(optional_param('firstname', '', PARAM_TEXT));
-if (core_text::strlen($firstname) > 100) {
-    $firstname = core_text::substr($firstname, 0, 100);
+$email = \theme_iiidem2\input_validation::request_email('email');
+if ($email === null) {
+    \theme_iiidem2\input_validation::json_exit([
+        'ok' => false,
+        'reason' => 'invalid',
+        'message' => get_string('invalidemail'),
+        'toast' => get_string_manager()->string_exists('registeremailtoast', 'theme_iiidem2')
+            ? get_string('registeremailtoast', 'theme_iiidem2')
+            : get_string('invalidemail'),
+    ]);
 }
-
+$firstname = trim(optional_param('firstname', '', PARAM_TEXT));
+$firstname = \theme_iiidem2\input_validation::clean_text($firstname, 100, true) ?? '';
+if (\theme_iiidem2\input_validation::contains_dangerous_markup(
+        (string) optional_param('firstname', '', PARAM_RAW))) {
+    $firstname = '';
+}
 \theme_iiidem2\rate_limit::require_json(
     'register_send_otp_email',
     1,
@@ -42,29 +53,23 @@ if (empty($CFG->allowaccountssameemail) && validate_email($email)
             'mnethostid' => $CFG->mnet_localhost_id,
             'deleted' => 0,
         ])) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    \theme_iiidem2\input_validation::json_exit([
         'ok' => false,
         'reason' => 'exists',
         'message' => get_string('emailexists'),
         'toast' => get_string('emailexists'),
     ]);
-    exit;
 }
 
 $quality = \theme_iiidem2\registration_email::validate($email);
 if (!$quality['ok']) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    \theme_iiidem2\input_validation::json_exit([
         'ok' => false,
         'reason' => $quality['reason'] ?? 'invalid',
         'message' => $quality['message'],
         'toast' => $quality['toast'] ?? 'Please check the email',
     ]);
-    exit;
 }
 
 $result = \theme_iiidem2\registration_otp::send($email, $firstname);
-
-header('Content-Type: application/json; charset=utf-8');
-echo json_encode($result);
+\theme_iiidem2\input_validation::json_exit($result);

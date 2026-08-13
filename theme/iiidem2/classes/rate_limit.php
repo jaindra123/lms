@@ -116,7 +116,7 @@ final class rate_limit {
             'message' => get_string('ratelimited', 'theme_iiidem2'),
         ], $extra);
 
-        echo json_encode($payload);
+        echo \theme_iiidem2\input_validation::json_encode_safe($payload);
         exit;
     }
 

@@ -86,9 +86,24 @@ body.iiidem-login-page #page-content {
 
 .iiidem-login-layout__brand-logo {
     position: relative;
-    z-index: 1;
-    display: inline-block;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
     text-decoration: none;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.iiidem-login-layout__brand-logo:hover .iiidem-login-layout__logo-img,
+.iiidem-login-layout__brand-logo:focus .iiidem-login-layout__logo-img {
+    opacity: 0.92;
+}
+
+.iiidem-login-layout__brand-logo:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+    border-radius: 10px;
 }
 
 .iiidem-login-layout__logo-img {
@@ -96,6 +111,7 @@ body.iiidem-login-page #page-content {
     width: auto;
     padding: 0.45rem 0.65rem;
     border-radius: 10px;
+    pointer-events: none; /* clicks go to the parent <a> */
 }
 
 .iiidem-login-layout__logo-text {

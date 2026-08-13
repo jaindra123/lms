@@ -166,6 +166,8 @@ $string['dashboardnavcurriculum'] = 'Curriculum';
 $string['dashboardnavassignments'] = 'Assignments';
 $string['dashboardnavdiscussions'] = 'Discussions';
 $string['dashboardnavrecordings'] = 'Recordings';
+$string['dashboardteachernavclassvideos'] = 'Class videos';
+$string['dashboardteacheractionclassvideos'] = 'Upload class video';
 $string['dashboardnavgrades'] = 'Grades';
 $string['dashboardnavcertificate'] = 'Certificate';
 $string['dashboardnavsupport'] = 'Support';
@@ -548,6 +550,7 @@ $string['contactus_sendmessage'] = 'Send us a message';
 $string['contactussubmit'] = 'Send message';
 $string['contactusformsent'] = 'Thank you. Your message has been sent.';
 $string['contactusformerror'] = 'Your message could not be sent. Please try again or email us directly.';
+$string['err_xss'] = 'HTML, scripts, and similar markup are not allowed in this field.';
 $string['contactusemailsubject'] = '[{$a->site}] Contact form: {$a->subject}';
 $string['contactusemailbody'] = 'Contact form submission from {$a->name} ({$a->email}).
 
@@ -714,7 +717,7 @@ This code expires in {$a->minutes} minutes. If you did not request this, you can
 ';
 $string['registerotpnote'] = 'Do not share this code with anyone.';
 $string['registerotpcta'] = 'Return to registration';
-$string['registerotpsent'] = 'A verification code was sent to {$a}.';
+$string['registerotpsent'] = 'A verification code was sent to your email address.';
 $string['registerotpsendfailed'] = 'Could not send the verification email. Please try again.';
 $string['registerotpwait'] = 'Please wait {$a} seconds before requesting a new code.';
 $string['registerotpmissing'] = 'No verification code was found. Please request a new code.';

@@ -13,19 +13,19 @@ require_sesskey();
 
 $action = required_param('action', PARAM_ALPHANUMEXT);
 
-header('Content-Type: application/json');
-
 if ($action !== 'searchfaq') {
     throw new moodle_exception('invalidparameter', 'error');
 }
 
 $query = trim(clean_param(required_param('q', PARAM_TEXT), PARAM_TEXT));
-if ($query === '' || core_text::strlen($query) > 200) {
+$query = \theme_iiidem2\input_validation::clean_text($query, 200, false);
+if ($query === null || $query === '') {
     throw new moodle_exception('invalidparameter', 'error');
 }
 $results = manager::search_faqs($USER->id, $query);
 
-echo json_encode([
+// Do not echo the raw query string back in the JSON payload.
+\theme_iiidem2\input_validation::json_exit([
     'results' => $results,
     'ticketurl' => (new moodle_url('/local/iiidem_support/ticket_new.php'))->out(false),
 ]);

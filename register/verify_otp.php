@@ -20,19 +20,20 @@ $PAGE->set_context(context_system::instance());
 
 \theme_iiidem2\rate_limit::require_json('register_verify_otp_ip', 20, 600);
 
-$email = core_text::strtolower(trim(required_param('email', PARAM_EMAIL)));
-$code = trim(required_param('code', PARAM_TEXT));
-$code = clean_param($code, PARAM_ALPHANUM);
+$email = \theme_iiidem2\input_validation::request_email('email');
+if ($email === null) {
+    \theme_iiidem2\input_validation::json_exit([
+        'ok' => false,
+        'message' => get_string('invalidemail'),
+    ]);
+}
+$code = trim(optional_param('code', '', PARAM_ALPHANUM));
 if ($code === '' || core_text::strlen($code) > 12) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    \theme_iiidem2\input_validation::json_exit([
         'ok' => false,
         'message' => get_string('registerotpinvalid', 'theme_iiidem2'),
     ]);
-    exit;
 }
 
 $result = \theme_iiidem2\registration_otp::verify($email, $code);
-
-header('Content-Type: application/json; charset=utf-8');
-echo json_encode($result);
+\theme_iiidem2\input_validation::json_exit($result);

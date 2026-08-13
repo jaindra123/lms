@@ -203,6 +203,11 @@ class teacher_dashboard {
                 'url' => (new \moodle_url('/theme/iiidem2/dashboard/materials.php'))->out(false),
             ],
             [
+                'icon' => 'fa-circle-play',
+                'label' => get_string('dashboardteacheractionclassvideos', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/local/iiidem_classvideos/manage.php'))->out(false),
+            ],
+            [
                 'icon' => 'fa-file-pen',
                 'label' => get_string('teacherassignmentquickaction', 'theme_iiidem2'),
                 'url' => (new \moodle_url('/theme/iiidem2/dashboard/create_assignment.php'))->out(false),
@@ -697,6 +702,12 @@ class teacher_dashboard {
                 'icon' => 'fa-folder-open',
                 'label' => get_string('dashboardteachernavcontent', 'theme_iiidem2'),
                 'url' => (new \moodle_url('/theme/iiidem2/dashboard/materials.php'))->out(false),
+            ],
+            [
+                'key' => 'classvideos',
+                'icon' => 'fa-circle-play',
+                'label' => get_string('dashboardteachernavclassvideos', 'theme_iiidem2'),
+                'url' => (new \moodle_url('/local/iiidem_classvideos/manage.php'))->out(false),
             ],
             [
                 'key' => 'create_assignment',

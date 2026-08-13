@@ -220,10 +220,14 @@ class manager {
             throw new \moodle_exception('invalidparameter', 'error');
         }
 
-        // Rate-limit ticket creation (CDAC missing rate limiting on support tickets).
+        // Rate-limit ticket creation (CDAC: support inquiry flood / missing rate limiting).
+        // Per-user and per-IP so one account or shared IP cannot spam the list.
         if (class_exists('\theme_iiidem2\rate_limit')) {
+            $ip = 'ip:' . \theme_iiidem2\rate_limit::client_ip();
             \theme_iiidem2\rate_limit::require_allowed('support_create_ticket', 5, 600);
             \theme_iiidem2\rate_limit::require_allowed('support_create_ticket_day', 20, 86400);
+            \theme_iiidem2\rate_limit::require_allowed('support_create_ticket_ip', 10, 600, $ip);
+            \theme_iiidem2\rate_limit::require_allowed('support_create_ticket_ip_hour', 30, 3600, $ip);
         }
 
         $now = time();

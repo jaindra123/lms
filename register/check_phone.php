@@ -22,7 +22,12 @@ require_sesskey();
 \theme_iiidem2\rate_limit::require_json('register_check_phone_ip', 30, 60);
 
 $phone = trim(required_param('phone', PARAM_TEXT));
+$phone = \theme_iiidem2\input_validation::clean_text($phone, 32, true) ?? '';
 $country = optional_param('country', 'IN', PARAM_ALPHA);
+$country = clean_param($country, PARAM_ALPHA);
+if ($country === '' || core_text::strlen($country) > 2) {
+    $country = 'IN';
+}
 
 $valid = false;
 $exists = false;
@@ -40,8 +45,8 @@ if ($national === '' || !\theme_iiidem2\form\register_form::is_valid_national_ph
     }
 }
 
-header('Content-Type: application/json; charset=utf-8');
-echo json_encode([
+// Never echo the raw phone number back — fixed localized strings only.
+\theme_iiidem2\input_validation::json_exit([
     'valid' => $valid,
     'exists' => $exists,
     'message' => $message,

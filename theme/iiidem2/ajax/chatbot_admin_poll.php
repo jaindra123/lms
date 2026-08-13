@@ -37,7 +37,7 @@ try {
 
     if (!is_siteadmin()) {
         ob_end_clean();
-        echo json_encode(['success' => true, 'items' => []]);
+        echo \theme_iiidem2\input_validation::json_encode_safe(['success' => true, 'items' => []]);
         exit;
     }
 
@@ -45,10 +45,10 @@ try {
     $items = theme_iiidem2_chatbot_pending_since($sinceid);
 
     ob_end_clean();
-    echo json_encode(['success' => true, 'items' => array_values($items)]);
+    echo \theme_iiidem2\input_validation::json_encode_safe(['success' => true, 'items' => array_values($items)]);
 } catch (Throwable $e) {
     ob_end_clean();
     $payload = \theme_iiidem2\safe_errors::json($e, 'chatbot_admin_poll', false);
     $payload['items'] = [];
-    echo json_encode($payload);
+    echo \theme_iiidem2\input_validation::json_encode_safe($payload);
 }

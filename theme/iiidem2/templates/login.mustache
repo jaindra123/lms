@@ -15,7 +15,7 @@
 <div id="page-wrapper" class="iiidem-login-shell">
     <div class="iiidem-login-layout"{{#hasloginbackground}} style="--iiidem-login-bg-image: url('{{loginbackgroundurl}}')"{{/hasloginbackground}}>
         <aside class="iiidem-login-layout__brand" aria-label="{{#str}}loginbrandpanel, theme_iiidem2{{/str}}">
-            <a href="{{homeurl}}" class="iiidem-login-layout__brand-logo">
+            <a href="{{{homeurl}}}" class="iiidem-login-layout__brand-logo" title="{{#str}}home{{/str}}" aria-label="{{#str}}home{{/str}}">
                 {{#hasloginlogo}}
                     <img src="{{{loginlogo}}}" class="iiidem-login-layout__logo-img" alt="{{sitename}}">
                 {{/hasloginlogo}}
@@ -35,7 +35,7 @@
             </div>
 
             <nav class="iiidem-login-layout__nav" aria-label="{{#str}}sitemenubar, admin{{/str}}">
-                <a href="{{homeurl}}">{{#str}}home{{/str}}</a>
+                <a href="{{{homeurl}}}">{{#str}}home{{/str}}</a>
                 <a href="{{abouturl}}">{{#str}}aboutus, theme_iiidem2{{/str}}</a>
                 <a href="{{contacturl}}">{{#str}}contactus, theme_iiidem2{{/str}}</a>
             </nav>

@@ -35,7 +35,7 @@ try {
 
     if (!is_siteadmin()) {
         ob_end_clean();
-        echo json_encode([
+        echo \theme_iiidem2\input_validation::json_encode_safe([
             'success' => false,
             'message' => 'Only site administrators can reply.',
         ]);
@@ -49,7 +49,7 @@ try {
     if ($action === 'list') {
         $items = theme_iiidem2_chatbot_list_open(40);
         ob_end_clean();
-        echo json_encode([
+        echo \theme_iiidem2\input_validation::json_encode_safe([
             'success' => true,
             'items' => $items,
             'count' => count($items),
@@ -59,10 +59,14 @@ try {
 
     if ($action === 'reply') {
         $id = required_param('id', PARAM_INT);
-        $reply = trim(clean_param(required_param('reply', PARAM_TEXT), PARAM_TEXT));
-        if ($reply === '' || \core_text::strlen($reply) > 5000) {
+        $reply = \theme_iiidem2\input_validation::clean_text(
+            (string) required_param('reply', PARAM_TEXT),
+            \theme_iiidem2\input_validation::LEN_CHATBOT_REPLY,
+            false
+        );
+        if ($reply === null || $reply === '') {
             ob_end_clean();
-            echo json_encode([
+            echo \theme_iiidem2\input_validation::json_encode_safe([
                 'success' => false,
                 'message' => get_string('invalidparameter', 'error'),
             ]);
@@ -70,13 +74,15 @@ try {
         }
         $result = theme_iiidem2_chatbot_reply($id, $reply, (int) $USER->id);
         ob_end_clean();
-        echo json_encode($result);
+        echo \theme_iiidem2\input_validation::json_encode_safe($result);
         exit;
     }
 
     ob_end_clean();
-    echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    echo \theme_iiidem2\input_validation::json_encode_safe(['success' => false, 'message' => 'Invalid action']);
 } catch (Throwable $e) {
     ob_end_clean();
-    echo json_encode(\theme_iiidem2\safe_errors::json($e, 'chatbot_admin_action', true));
+    echo \theme_iiidem2\input_validation::json_encode_safe(
+        \theme_iiidem2\safe_errors::json($e, 'chatbot_admin_action', true)
+    );
 }

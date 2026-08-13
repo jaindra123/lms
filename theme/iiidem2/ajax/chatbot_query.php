@@ -43,7 +43,7 @@ try {
         \theme_iiidem2\rate_limit::require_json('chatbot_history', 60, 60);
         $history = theme_iiidem2_chatbot_history_for_ids(theme_iiidem2_chatbot_session_ids(), 30);
         ob_end_clean();
-        echo json_encode([
+        echo \theme_iiidem2\input_validation::json_encode_safe([
             'success' => true,
             'items' => $history,
         ]);
@@ -58,14 +58,14 @@ try {
     $email = required_param('email', PARAM_EMAIL);
     $query = required_param('query', PARAM_TEXT);
 
-    $name = trim(clean_param($name, PARAM_TEXT));
+    $name = \theme_iiidem2\input_validation::clean_text((string) $name, 100, true) ?? '';
     $email = trim($email);
-    $query = trim(clean_param($query, PARAM_TEXT));
+    $query = \theme_iiidem2\input_validation::clean_text((string) $query, 2000, true) ?? '';
 
     if (\core_text::strlen($name) < 2 || \core_text::strlen($name) > 100
             || \core_text::strlen($query) < 2) {
         ob_end_clean();
-        echo json_encode([
+        echo \theme_iiidem2\input_validation::json_encode_safe([
             'success' => false,
             'error' => 'validation',
             'message' => theme_iiidem2_str(
@@ -84,7 +84,7 @@ try {
     $last = (int) ($SESSION->theme_iiidem2_chatbot_lastsent ?? 0);
     if ($last && (time() - $last) < 10) {
         ob_end_clean();
-        echo json_encode([
+        echo \theme_iiidem2\input_validation::json_encode_safe([
             'success' => false,
             'error' => 'throttle',
             'message' => theme_iiidem2_str(
@@ -111,7 +111,7 @@ try {
     }
 
     ob_end_clean();
-    echo json_encode([
+    echo \theme_iiidem2\input_validation::json_encode_safe([
         'success' => (bool) $ok,
         'message' => $ok
             ? theme_iiidem2_str(
@@ -134,5 +134,5 @@ try {
         null,
         'Sorry, we could not send your question. Please try again.'
     );
-    echo json_encode($payload);
+    echo \theme_iiidem2\input_validation::json_encode_safe($payload);
 }

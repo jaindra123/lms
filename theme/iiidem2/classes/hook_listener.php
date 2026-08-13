@@ -33,6 +33,144 @@ class hook_listener {
     }
 
     /**
+     * Sanitize public search query params (XSS / injection probes).
+     */
+    private static function sanitize_course_search_params(): void {
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $hit = false;
+        foreach (['/course/search.php', '/course/index.php', '/message/'] as $needle) {
+            if (str_contains($script, $needle)) {
+                $hit = true;
+                break;
+            }
+        }
+        if (!$hit) {
+            return;
+        }
+        foreach (['search', 'q', 'query'] as $key) {
+            if (!isset($_GET[$key]) || !is_string($_GET[$key])) {
+                continue;
+            }
+            $clean = trim(strip_tags(clean_param($_GET[$key], PARAM_TEXT)));
+            if (\core_text::strlen($clean) > 200) {
+                $clean = \core_text::substr($clean, 0, 200);
+            }
+            // Drop leftover angle brackets from probes.
+            $clean = str_replace(['<', '>'], '', $clean);
+            $_GET[$key] = $clean;
+            $_REQUEST[$key] = $clean;
+        }
+    }
+
+    /**
+     * Scripts that legitimately consume PATH_INFO / slasharguments.
+     *
+     * @return string[]
+     */
+    private static function pathinfo_allowed_script_suffixes(): array {
+        return [
+            '/pluginfile.php',
+            '/tokenpluginfile.php',
+            '/draftfile.php',
+            '/webservice/pluginfile.php',
+            '/webservice/draftfile.php',
+            '/theme/yui_combo.php',
+            '/theme/jquery.php',
+            '/theme/javascript.php',
+            '/theme/styles.php',
+            '/theme/styles_debug.php',
+            '/theme/image.php',
+            '/theme/font.php',
+            '/lib/javascript.php',
+            '/lib/requirejs.php',
+            '/lib/jslib.php',
+            '/lib/ajax/service-nologin.php',
+        ];
+    }
+
+    /**
+     * Stop PATH_INFO reflection into moodleform action="$FULLME" (CDAC form-action XSS).
+     *
+     * Example: /login/forgot_password.php/saw5xzmqrrg → clean .php URL.
+     * Also covers /user/files.php and other non-slashargument scripts.
+     */
+    private static function neutralize_spurious_php_pathinfo(): void {
+        global $FULLME, $ME, $SCRIPT, $FULLSCRIPT;
+
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if ($script === '' || !str_ends_with($script, '.php')) {
+            return;
+        }
+        foreach (self::pathinfo_allowed_script_suffixes() as $allowed) {
+            if (str_ends_with($script, $allowed)) {
+                return;
+            }
+        }
+
+        $pathinfo = (string) ($_SERVER['PATH_INFO'] ?? '');
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        $haspathinfo = ($pathinfo !== '' && $pathinfo !== '/') || str_contains($uri, '.php/');
+        if (!$haspathinfo) {
+            // Also scrub globals if FULLME already baked in path junk from setup.
+            $haspathinfo = is_string($FULLME) && (bool) preg_match('#\.php/#', $FULLME);
+        }
+        if (!$haspathinfo) {
+            return;
+        }
+
+        // moodleform defaults action to strip_querystring($FULLME) — clean globals first.
+        if (is_string($FULLME) && preg_match('#^(https?://[^?#]+?\.php)(/[^?#]*)(\?.*)?$#', $FULLME, $m)) {
+            $FULLME = $m[1] . ($m[3] ?? '');
+        }
+        if (is_string($ME) && preg_match('#^([^?#]+?\.php)(/[^?#]*)(\?.*)?$#', $ME, $m)) {
+            $ME = $m[1] . ($m[3] ?? '');
+        }
+        if (is_string($SCRIPT) && preg_match('#^([^?#]+?\.php)(/.*)$#', $SCRIPT, $m)) {
+            $SCRIPT = $m[1];
+        }
+        if (is_string($FULLSCRIPT) && preg_match('#^([^?#]+?\.php)(/.*)$#', $FULLSCRIPT, $m)) {
+            $FULLSCRIPT = $m[1];
+        }
+
+        // 302 so HTML never renders form action with the probe segment.
+        if ($uri !== '' && str_contains($uri, '.php/')
+                && preg_match('#^([^?]*\.php)(/[^?]*)(\?.*)?$#', $uri, $m) && $m[2] !== '') {
+            if (!headers_sent()) {
+                header('Location: ' . $m[1] . ($m[3] ?? ''), true, 302);
+                header('Cache-Control: no-store');
+            }
+            exit(0);
+        }
+    }
+
+    /**
+     * Accept CSRF sesskey from X-Moodle-Sesskey when the request has no sesskey.
+     * Never overwrite an existing POST/GET value (filemanager / draftfiles_ajax).
+     */
+    private static function import_sesskey_from_header(): void {
+        if (!empty($_POST['sesskey']) || !empty($_GET['sesskey'])) {
+            return;
+        }
+        $header = '';
+        foreach (['HTTP_X_MOODLE_SESSKEY', 'REDIRECT_HTTP_X_MOODLE_SESSKEY', 'HTTP_X_MOODLESESSKEY'] as $key) {
+            if (!empty($_SERVER[$key]) && is_string($_SERVER[$key])) {
+                $header = trim($_SERVER[$key]);
+                break;
+            }
+        }
+        if ($header === '' || \core_text::strlen($header) > 64) {
+            return;
+        }
+        $_POST['sesskey'] = $header;
+        $_GET['sesskey'] = $header;
+        $_REQUEST['sesskey'] = $header;
+    }
+
+    /**
      * Register theme override for course list progress (My courses block webservice).
      *
      * @param \core\hook\after_config $hook
@@ -46,11 +184,64 @@ class hook_listener {
 
         // Security headers for all web responses (including AJAX that skip $OUTPUT).
         security_headers::send();
+        // Authenticated AJAX: force no-store at flush (CDAC Cache-Control PoC on service.php).
+        security_headers::ensure_ajax_cache_control_buffer();
+        // CDAC #24: target=_blank without rel=noopener in raw HTML (admin environment docs).
+        security_headers::ensure_noopener_blank_targets_buffer();
+
+        // CDAC: form-action PATH_INFO reflection (forgot_password / user/files / etc.).
+        self::neutralize_spurious_php_pathinfo();
+
+        // Staging/production: never allow debug footers / theme dumps mid-request (CDAC contact-us PoC).
+        if (defined('MOODLE_ENV') && MOODLE_ENV !== 'dev') {
+            $forcedebug = (string) (getenv('MOODLE_FORCE_DEBUG') ?: '');
+            $forcedebug = in_array(strtolower($forcedebug), ['1', 'true', 'yes', 'on'], true);
+            if (!$forcedebug) {
+                $CFG->debug = 0;
+                $CFG->debugdisplay = 0;
+                $CFG->themedesignermode = false;
+                $CFG->perfdebug = 0;
+                $CFG->debugpageinfo = false;
+                $CFG->debugstringids = false;
+                @ini_set('display_errors', '0');
+            }
+        }
 
         // Reject unknown “quick login” style tokens (not implemented here; CDAC PoC used ?qlogin=…&userid=).
-        foreach (['qlogin', 'autologin', 'logintoken_userid'] as $badkey) {
+        foreach (['qlogin', 'autologin', 'logintoken_userid', 'qrlogin'] as $badkey) {
             unset($_GET[$badkey], $_REQUEST[$badkey], $_POST[$badkey]);
         }
+
+        // Unused QR login must stay off (CDAC #23 — profile “QR code for mobile app access” PoC).
+        if (!isset($CFG->forced_plugin_settings) || !is_array($CFG->forced_plugin_settings)) {
+            $CFG->forced_plugin_settings = [];
+        }
+        if (!isset($CFG->forced_plugin_settings['tool_mobile']) || !is_array($CFG->forced_plugin_settings['tool_mobile'])) {
+            $CFG->forced_plugin_settings['tool_mobile'] = [];
+        }
+        $CFG->forced_plugin_settings['tool_mobile']['qrcodetype'] = 0;
+        $CFG->forced_plugin_settings['tool_mobile']['setuplink'] = '';
+        $CFG->forced_plugin_settings['tool_mobile']['enablesmartappbanners'] = 0;
+        // Persist if DB still has a non-disabled value (belt-and-braces with config.php force).
+        $qrcurrent = get_config('tool_mobile', 'qrcodetype');
+        if ($qrcurrent !== false && (string) $qrcurrent !== '0') {
+            set_config('qrcodetype', 0, 'tool_mobile');
+        }
+        if ((string) get_config('tool_mobile', 'setuplink') !== '') {
+            set_config('setuplink', '', 'tool_mobile');
+        }
+        if ((string) get_config('tool_mobile', 'enablesmartappbanners') !== '0') {
+            set_config('enablesmartappbanners', 0, 'tool_mobile');
+        }
+
+        // CSRF sesskey from AJAX header (theme JS strips sesskey from service.php query string).
+        self::import_sesskey_from_header();
+
+        // Course search XSS probes: strip tags / PARAM_TEXT before optional_param (CDAC search=<script>).
+        self::sanitize_course_search_params();
+
+        // Reaffirm cookie flags early (covers AJAX that never hit before_http_headers).
+        session_security::enforce_httponly_on_set_cookie_headers();
 
         // Belt-and-braces: admin must not use theme designer mode (see config.php too).
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
@@ -171,7 +362,14 @@ class hook_listener {
         // Security headers for all web responses (including AJAX that skip $OUTPUT).
         security_headers::send();
 
+        // Ensure MoodleSession / MoodleID Set-Cookie headers include HttpOnly.
+        session_security::enforce_httponly_on_set_cookie_headers();
+
+        // Re-assert no-store on authenticated pages (Moodle may have sent weaker Cache-Control).
+        security_headers::send_sensitive_cache_control();
+
         self::throttle_login_posts();
+        self::require_login_credentials_lock_js();
 
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
@@ -224,6 +422,40 @@ class hook_listener {
         // 20 login POSTs / 5 min, 60 / hour per IP (account lockout still applies per user).
         rate_limit::require_allowed('login_post_ip', 20, 300, $ip);
         rate_limit::require_allowed('login_post_ip_hour', 60, 3600, $ip);
+    }
+
+    /**
+     * Load JS that disables paste/drop/autocomplete on username & password fields.
+     */
+    private static function require_login_credentials_lock_js(): void {
+        global $PAGE;
+
+        if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $lockpages = [
+            '/login/index.php',
+            '/login/change_password.php',
+            '/login/set_password.php',
+            '/login/forgot_password.php',
+        ];
+        $match = false;
+        foreach ($lockpages as $page) {
+            if (str_ends_with($script, $page)) {
+                $match = true;
+                break;
+            }
+        }
+        if (!$match && ($PAGE->pagelayout ?? '') === 'login') {
+            $match = true;
+        }
+        if (!$match) {
+            return;
+        }
+
+        $PAGE->requires->js(new \moodle_url('/theme/iiidem2/javascript/login_credentials_lock.js'));
     }
 
     /**
@@ -371,6 +603,38 @@ class hook_listener {
         }
 
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        // Belt-and-braces Referrer-Policy for documents (also sent as HTTP header).
+        $hook->add_html('<meta name="referrer" content="strict-origin-when-cross-origin">');
+        // Early AJAX sesskey helper for /lib/ajax/service.php only (cache-busted).
+        $hook->add_html(
+            '<script src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024100998']))->out(false) .
+            '"></script>'
+        );
+        $hook->add_html(
+            '<script src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/message_xss_guard.js'))->out(false) .
+            '"></script>'
+        );
+        $hook->add_html(
+            '<script src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/logout_post.js'))->out(false) .
+            '"></script>'
+        );
+        // Reduce bfcache of authenticated HTML in older agents.
+        if (isloggedin() && !isguestuser()) {
+            $hook->add_html(
+                '<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, private">' .
+                '<meta http-equiv="Pragma" content="no-cache">'
+            );
+            // CDAC #29: Back after logout must not show stale authenticated UI.
+            $hook->add_html(
+                '<script src="' .
+                (new \moodle_url('/theme/iiidem2/javascript/auth_nocache_back.js'))->out(false) .
+                '"></script>'
+            );
+        }
 
         $pagepath = $PAGE->url->get_path(false);
         if (in_array($pagepath, ['/user/editadvanced.php', '/user/edit.php'], true)) {

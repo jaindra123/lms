@@ -106,9 +106,20 @@ Student peer attendance is further restricted by `restrict_student_attendance_pa
 
 **Remediation for the SQL leak:** keep `$CFG->debugdisplay = 0` on staging/production (`docs/verbose-error-messages.md`, `docs/debug-mode-staging.md`). Retest after deploy — end users must see a generic error only.
 
-### 9. Instance 3 — `/mod/customcert/view.php?id=8&downloadown=1`
+### 9. Instance 3 / 8 / 9 — `/mod/customcert/view.php?…&downloadown=1`
 
-**Out of scope:** `mod_customcert` is not installed in this LMS repository. Dispute / remediate on the host that runs that plugin.
+**In scope:** `mod_customcert` is installed. Remediaiton in `mod/customcert/view.php` (≥ `2024042218`):
+
+| Control | Behaviour |
+|---------|-----------|
+| Early `require_login()` | Anonymous → login redirect (not SQL dump) |
+| Guest + `downloadown` | Redirect to login |
+| PDF userid | Must be real non-guest user |
+| SQL/stack in pink box | Debug leak — keep `debugdisplay=0` ([verbose-error-messages.md](verbose-error-messages.md)) |
+
+**Instance 9 cited URL** `api.razorpay.com/...` is **not** this LMS; dispute that host. Retest certificate URL on `staginglms.eci.gov.in`.
+
+See [broken-access-control.md](broken-access-control.md) §5.
 
 ### 10. Instance — `/mod/assign/view.php?id=5` (SQL in error page)
 
@@ -182,5 +193,5 @@ php admin/cli/purge_caches.php
 | Screenshot IDOR “Roopa” | Different app (`/var/www/html/change_password.php` + `find_user_by_id`) — dispute |
 | `qlogin` | Not present; query keys stripped |
 | Attendance / assign `?id=` to invalid CM | Access fail + SQL text = debug leak (not IDOR) |
-| customcert | Plugin not in this LMS — dispute |
+| customcert `downloadown` | Early login + guest blocked; SQL text = debug leak |
 | Calendar event AJAX | `calendar_view_event_allowed()` + sesskey |

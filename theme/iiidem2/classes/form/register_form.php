@@ -399,6 +399,21 @@ class register_form extends \moodleform {
 
         $errors = parent::validation($data, $files);
 
+        // CDAC register XSS: reject markup using raw POST (formslib already strip_tags $data).
+        $textfields = [
+            'firstname', 'middlename', 'lastname', 'email', 'phone1', 'city',
+            'organization', 'jobprofile', 'jobpostingcountry',
+            'emb_organization', 'emb_designation', 'emb_country',
+            'university', 'position', 'specialization',
+            'instructor_university', 'instructor_course', 'presentcountry',
+        ];
+        foreach ($textfields as $field) {
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? $_POST[$field] : '';
+            if ($raw !== '' && \theme_iiidem2\input_validation::contains_dangerous_markup($raw)) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+            }
+        }
+
         foreach (['firstname' => true, 'lastname' => false, 'middlename' => false] as $field => $required) {
             $value = trim((string) ($data[$field] ?? ''));
             if ($required && $value === '') {

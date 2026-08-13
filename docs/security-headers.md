@@ -1,10 +1,20 @@
-# Header Issues — security response headers
+# 13. Header Issues
 
 ## Finding
 
-> Set CSP header, X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block,
-> Referrer-Policy: strict-origin-when-cross-origin, Access-Control-Allow-Origin,
-> Clear-Site-Data: “cache”, “cookies”, “storage”, “executionContexts”
+| Field | Report |
+|-------|--------|
+| Title | Header Issues |
+| Impact | MEDIUM / CVSS 5.4 |
+| URL | Site root / login (report cites `staginglms.cci.gov.in` — retest on IIIDEM Moodle / `staginglms.eci.gov.in`) |
+| CWE | [CWE-693](https://cwe.mitre.org/data/definitions/693.html) — Protection Mechanism Failure |
+| OWASP | A05:2021 – Security Misconfiguration |
+
+> Implement recommended HTTP security headers (CSP, nosniff, XSS filter, Referrer-Policy, ACAO, Clear-Site-Data).
+
+### PoC note
+
+Burp on the homepage showed `Server: Apache/…` and `X-Powered-By: PHP/…` and **did not** list CSP / nosniff / etc. That was pre-hardening (or wrong host / theme not active). After remediaiton, those security headers are present; version banners are suppressed (see [version-disclosure.md](version-disclosure.md)).
 
 ## Implementation
 
@@ -20,7 +30,7 @@ Logout Clear-Site-Data via observer on `\core\event\user_loggedout`.
 
 | Header | Value |
 |--------|--------|
-| `Content-Security-Policy` | Restrictive policy (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`, …). Allows Moodle AMD inline/`unsafe-eval` and Razorpay checkout hosts. |
+| `Content-Security-Policy` | Restrictive policy (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`, …). Allows Moodle AMD inline/`unsafe-eval`, Razorpay checkout hosts, and MathJax CDN (`cdn.jsdelivr.net`, MathJax **3.2.2**). |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
@@ -28,7 +38,8 @@ Logout Clear-Site-Data via observer on `\core\event\user_loggedout`.
 | `X-Frame-Options` | `SAMEORIGIN` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` when wwwroot is HTTPS |
 | `Clear-Site-Data` | `"cache", "cookies", "storage", "executionContexts"` **on logout only** |
-| Version disclosure | Removes `X-Powered-By` / related tech headers (see `docs/version-disclosure.md`) |
+| Auth page cache | `Cache-Control: no-store…` for logged-in + `/login/*` / AJAX (see [cache-control-sensitive-pages.md](cache-control-sensitive-pages.md)) |
+| Version disclosure | Removes `X-Powered-By` / related tech headers (see [version-disclosure.md](version-disclosure.md)) |
 
 ### Why ACAO is the site origin (not `*`)
 
@@ -55,10 +66,18 @@ php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
+Requires active theme **`iiidem2`**.
+
 Verify:
 
 ```bash
-curl -I https://staginglms.eci.gov.in/login/index.php | grep -iE 'content-security|nosniff|xss-protection|referrer-policy|access-control-allow-origin'
+curl -sI https://YOUR-HOST/login/index.php | grep -iE \
+  'content-security-policy|x-content-type-options|x-xss-protection|referrer-policy|access-control-allow-origin|x-powered-by'
+# Expect CSP, nosniff, XSS-Protection, Referrer-Policy, ACAO (site origin)
+# Expect: no X-Powered-By
+
+# After logout response (or capture logout redirect):
+# Expect Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
 ```
 
 ## Evidence for auditors

@@ -26,14 +26,14 @@ import $ from 'jquery';
 import * as Aria from './aria';
 import {init as initAdminNavFix, resolveAdminSearchUrl} from './admin_nav_fix';
 // Side-effect imports: register Bootstrap 4 data-api handlers (data-toggle, not data-bs-*).
-// Use bs4popover (not bootstrap/popover) — live hosts block/empty that filename.
+// Popover (bs4flyout) is bundled inside bootstrap/tooltip.min.js — do NOT import it here.
+// Production WAF empties separate *popover*/bs4flyout URLs (staging does not).
 import './bootstrap/collapse';
 import './bootstrap/tab';
 import './bootstrap/carousel';
 import './bootstrap/modal';
 import './bootstrap/dropdown';
 import './bootstrap/tooltip';
-import './bootstrap/bs4popover';
 import Pending from 'core/pending';
 import {DefaultWhitelist} from './bootstrap/tools/sanitizer';
 import setupBootstrapPendingChecks from './pending';

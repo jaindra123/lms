@@ -452,6 +452,6 @@ function combo_params() {
 
     } else {
         // unsupported server, sorry!
-        combo_not_found('Unsupported server - query string can not be determined, try disabling YUI combo loading in admin settings.');
+        combo_not_found();
     }
 }

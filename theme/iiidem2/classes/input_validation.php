@@ -110,4 +110,113 @@ final class input_validation {
         }
         return $out;
     }
+
+    /**
+     * Escape for HTML body/attributes (never echo raw request data).
+     */
+    public static function escape_html(string $value): string {
+        return s($value);
+    }
+
+    /**
+     * Detect HTML / script / event-handler payloads (XSS probes).
+     */
+    public static function contains_dangerous_markup(string $value): bool {
+        if ($value === '') {
+            return false;
+        }
+        if ($value !== strip_tags($value)) {
+            return true;
+        }
+        if (preg_match('/[<>]|javascript\s*:|data\s*:|on[a-z]+\s*=/i', $value)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Clean public form free-text: PARAM_TEXT, length, reject markup.
+     *
+     * @return string|null Null when invalid / empty when allowempty and blank
+     */
+    public static function clean_public_text(string $value, int $maxlen, bool $allowempty = false): ?string {
+        $value = trim(clean_param($value, PARAM_TEXT));
+        $value = trim(strip_tags($value));
+        if ($value === '') {
+            return $allowempty ? '' : null;
+        }
+        if (self::contains_dangerous_markup($value)) {
+            return null;
+        }
+        if (\core_text::strlen($value) > $maxlen) {
+            return null;
+        }
+        return $value;
+    }
+
+    /**
+     * Read email from the request without reflecting invalid/XSS payloads.
+     *
+     * Uses PARAM_RAW then validates — avoids Moodle exception pages that can
+     * echo raw parameter debuginfo when cleaning fails under debug.
+     *
+     * @return string|null Lowercased valid email, or null when missing/invalid/dangerous
+     */
+    public static function request_email(string $paramname = 'email'): ?string {
+        $raw = optional_param($paramname, '', PARAM_RAW);
+        if (!is_string($raw)) {
+            return null;
+        }
+        $raw = trim($raw);
+        if ($raw === '' || self::contains_dangerous_markup($raw)) {
+            return null;
+        }
+        $email = \core_text::strtolower(clean_param($raw, PARAM_EMAIL));
+        if ($email === '' || !validate_email($email)) {
+            return null;
+        }
+        // Reject if cleaning changed the address (quote / tag injection attempts).
+        if (\core_text::strtolower($raw) !== $email) {
+            return null;
+        }
+        return $email;
+    }
+
+    /**
+     * Encode JSON for browser responses without reflecting raw markup as HTML.
+     *
+     * JSON_HEX_* prevents </script> / quote breakouts if a consumer embeds JSON in HTML.
+     *
+     * @param mixed $data
+     * @return string
+     */
+    public static function json_encode_safe($data): string {
+        $flags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+        if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+            $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+        }
+        $json = json_encode($data, $flags);
+        return is_string($json) ? $json : '{"success":false,"error":"encode"}';
+    }
+
+    /**
+     * Send a JSON response and exit (AJAX endpoints).
+     *
+     * @param mixed $data
+     * @param int $status
+     */
+    public static function json_exit($data, int $status = 200): void {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('X-Content-Type-Options: nosniff');
+            if ($status !== 200) {
+                http_response_code($status);
+            }
+        }
+        echo self::json_encode_safe($data);
+        exit;
+    }
 }

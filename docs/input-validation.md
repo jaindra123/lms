@@ -1,12 +1,24 @@
-# Improper Input Validation
+# 15. Improper Input Validation
 
 ## Finding
 
-> Validate all the input fields
+| Field | Report |
+|-------|--------|
+| Title | Improper Input Validation |
+| Impact | MEDIUM |
+| URLs | `/contact-us/?sent=1`, `/register/` (report sometimes cites `staginglms.cci.gov.in` — retest on IIIDEM / `staginglms.eci.gov.in`) |
 
-Custom forms and AJAX/payment endpoints must enforce **type**, **length**, and **allow-list** checks on the server. Client `maxlength` / HTML5 rules are complementary only.
+> Validate all the input fields  
+> Validate and sanitize all user input  
+> Input returned in response
 
-## Shared helper
+Custom forms and AJAX/payment endpoints must enforce **type**, **length**, and **allow-list** checks on the server, and must **not** echo raw request data into HTML/JSON in a way that enables XSS.
+
+Related finding #14 (version headers on same report pages): [version-disclosure.md](version-disclosure.md).  
+XSS / script injection PoCs on contact + course search: [input-validation-xss.md](input-validation-xss.md).  
+Scanner “input returned in response” URL list (#25): [input-returned-in-response.md](input-returned-in-response.md).
+
+## Shared helpers
 
 `theme/iiidem2/classes/input_validation.php`
 
@@ -14,40 +26,48 @@ Custom forms and AJAX/payment endpoints must enforce **type**, **length**, and *
 |--------|---------|
 | `clean_text()` | Trim + `PARAM_TEXT` + max length |
 | `length_ok()` | Min/max length after trim |
-| `clean_txn_ref()` | Payment reference sanitisation |
-| `clean_payment_params()` | Flatten/sanitize gateway `GET`/`POST` callbacks |
+| `clean_txn_ref()` / `clean_payment_params()` | Payment callback hygiene |
+| `escape_html()` | `s()` for HTML contexts |
+| `json_encode_safe()` | `JSON_HEX_TAG\|AMP\|APOS\|QUOT` — safe browser JSON |
+| `json_exit()` | JSON response + exit (no raw echo) |
+
+`theme/iiidem2/classes/safe_errors.php` — exceptions never return SQL/paths; messages cleaned with `PARAM_TEXT`.
+
+## Input returned in response — controls
+
+| Control | Detail |
+|---------|--------|
+| No raw reflection | Register/phone/email checks return **localized strings only**, not the submitted value |
+| FAQ search | Query sanitized; response does **not** include the raw `q` |
+| Chatbot ask | Name/query cleaned + length-bound; fixed success/error strings |
+| JSON encoding | Custom AJAX uses `json_encode_safe()` (hex-escapes `<` `>` `&` quotes) |
+| HTML output | Ticket/support UIs use `s()` / `format_string()` / `nl2br(s())` |
+| Exceptions | `safe_errors` strips tags + `PARAM_TEXT`; never appends `debuginfo` |
 
 ## Coverage by surface
 
-### Registration & OTP
+### `/register/` — Registration & OTP
 
 - `register_form.php` — name fields maxlength 100 (client + server); occupation fields capped
 - `registration_profile::get_submitted_value()` — form data only (no raw `$_POST`); `PARAM_TEXT` + 255
-- `register/send_otp.php` — firstname ≤ 100
+- `register/send_otp.php` — firstname ≤ 100; safe JSON exit
 - `register/verify_otp.php` — OTP `PARAM_ALPHANUM`, max 12
+- `register/check_email.php` / `check_phone.php` / OTP — `request_email()`; safe JSON; **no** email/phone echo
+- `register/index.php` — scrub XSS markup from POST before redisplay; form `err_xss`
 
-### Contact / support / chatbot
+### `/contact-us/` — Contact form
 
-- Contact form — name ≤ 100, subject ≤ 255, message ≤ 5000
+- `theme_iiidem2\form\contact_form` — name ≤ 100, subject ≤ 255, message ≤ 5000 (`PARAM_TEXT`, client + server maxlength)
+- `?sent=1` is `PARAM_INT` only (success flag, not reflected user text)
 - Support ticket create — category whitelist; subject ≤ 255; message ≤ 5000
 - Support admin reply — reply ≤ 5000; status whitelist
-- FAQ API `q` — trimmed, max 200
+- FAQ API `q` — trimmed, max 200; not returned in JSON
 - Homepage chatbot ask — name 2–100; query truncated to 2000
-- Chatbot admin reply — ≤ 5000 (`chatbot_admin_action.php` + `theme_iiidem2_chatbot_reply`)
+- Chatbot admin reply — ≤ 5000
 
-### Teacher / live class / live quiz
+### Teacher / live class / live quiz / payments
 
-- Materials & assignments — title ≤ 255; intro cleaned (`PARAM_CLEANHTML`) + plain-text length cap
-- Live class form — summary ≤ 255; description ≤ 5000; duration whitelist; location URL + length
-- Live quiz manage — session name ≤ 255; question ≤ 2000; options ≤ 255
-- Live quiz submit API — answers JSON ≤ 4096 bytes, ≤ 50 questions, choice index 0–3
-
-### Payments
-
-- PNB / ICICI return — `input_validation::clean_payment_params()` on merged `GET`/`POST`
-- Razorpay verify WS — order/payment id ≤ 64 (`PARAM_ALPHANUMEXT`); signature ≤ 128
-- Razorpay failure report — orderid ≤ 64; reason ≤ 500
-- Razorpay mock — orderid sanitized + length-bound
+See payment docs and prior hardening (`paygw_*` never trust client amount).
 
 ## Deploy
 
@@ -56,8 +76,24 @@ php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
+Theme ≥ `2024100974`.
+
+## Verify
+
+1. `/contact-us/` — submit oversized name/subject/message → rejected server-side  
+2. `/register/` — oversized names / invalid OTP → rejected; AJAX errors do not echo raw input  
+3. Confirm no XSS reflection of submitted strings in HTML/JSON
+
+## Evidence for auditors
+
+| Control | Implementation |
+|--------|----------------|
+| Contact form lengths | `contact_form.php` maxlength + `PARAM_TEXT` |
+| Register / OTP | `register/*` + `input_validation` |
+| No raw echo | `json_encode_safe` / localized messages only |
+| Server-side | Moodle formslib rules + PHP cleaners (not client-only) |
+
 ## Auditor notes
 
-- Validation is **server-side** on every listed path; HTML `maxlength` is defence-in-depth.
-- Payment amounts remain server-authoritative (see `docs/payment-amount-validation.md`); this doc covers string/param hygiene.
-- Moodle core forms outside these custom plugins continue to use Moodle’s own `PARAM_*` / formslib rules.
+- Validation is **server-side**; HTML `maxlength` is defence-in-depth.
+- Moodle core forms outside these plugins continue to use Moodle `PARAM_*` / formslib / HTMLPurifier.

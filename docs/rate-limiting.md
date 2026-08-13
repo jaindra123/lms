@@ -35,7 +35,7 @@ Shared helper: `theme/iiidem2/classes/rate_limit.php`
 | PNB / ICICI checkout | user | 5 / 10 min |
 | Private files / user draft uploads | user | 40 / 10 min; 120 / hour |
 | Login POST `/login/index.php` | IP | 20 / 5 min; 60 / hour (+ account lockout) |
-| Support ticket create | user | 5 / 10 min; 20 / day |
+| Support ticket create (`ticket_new` / `create_ticket`) | user + IP | 5 / 10 min + 20 / day / user; 10 / 10 min + 30 / hour / IP; form POST 10 / min |
 | Support ticket list (GET) | user | 60 / min |
 | Support ticket list (POST flood) | user | 10 / min; 40 / hour |
 | Support ticket view | user | 60 / min |

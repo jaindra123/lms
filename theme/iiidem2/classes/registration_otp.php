@@ -139,7 +139,8 @@ final class registration_otp {
 
         return [
             'ok' => true,
-            'message' => get_string('registerotpsent', 'theme_iiidem2', $email),
+            // Do not echo the address (CDAC reflected XSS / input-in-response).
+            'message' => get_string('registerotpsent', 'theme_iiidem2'),
             'cooldown' => self::RESEND_COOLDOWN,
             'expiresin' => self::TTL,
         ];
