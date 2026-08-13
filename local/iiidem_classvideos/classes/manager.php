@@ -266,6 +266,98 @@ class manager {
         return $videoid;
     }
 
+    /**
+     * Update an existing video (metadata + optional file/URL replace).
+     */
+    public static function update_video(
+        int $videoid,
+        string $title,
+        string $description,
+        string $accesstype,
+        string $externalurl,
+        int $sessiondate,
+        int $draftitemid,
+        int $userid
+    ): void {
+        global $DB;
+
+        $video = self::get_video($videoid);
+        if (!$video || !self::user_can_manage_video($video, $userid)) {
+            throw new \moodle_exception('nopermissions', 'error');
+        }
+
+        $courseid = (int) $video->courseid;
+        $ctx = \context_course::instance($courseid);
+
+        $accesstype = $accesstype === self::ACCESS_PUBLIC ? self::ACCESS_PUBLIC : self::ACCESS_REQUEST;
+        $externalurl = trim($externalurl);
+        if ($externalurl !== '') {
+            $externalurl = clean_param($externalurl, PARAM_URL);
+            if ($externalurl === '' || !preg_match('#^https?://#i', $externalurl)) {
+                throw new \moodle_exception('invalurl', 'local_iiidem_classvideos');
+            }
+        }
+
+        $title = trim(clean_param($title, PARAM_TEXT));
+        if ($title === '' || \core_text::strlen($title) > 255) {
+            throw new \moodle_exception('invalidtitle', 'local_iiidem_classvideos');
+        }
+
+        $description = trim(clean_param($description, PARAM_TEXT));
+        if (\core_text::strlen($description) > 5000) {
+            $description = \core_text::substr($description, 0, 5000);
+        }
+
+        if ($draftitemid > 0) {
+            if (class_exists('\theme_iiidem2\upload_security')) {
+                $err = \theme_iiidem2\upload_security::validate_user_draft($userid, $draftitemid, self::VIDEO_EXTS);
+                // empty = no new/changed file in draft — keep existing area as saved by file_save_draft_area_files.
+                if ($err !== '' && $err !== 'empty') {
+                    throw new \moodle_exception('invalidfile', 'local_iiidem_classvideos', '', $err);
+                }
+            }
+            file_save_draft_area_files(
+                $draftitemid,
+                $ctx->id,
+                'local_iiidem_classvideos',
+                'video',
+                $videoid,
+                ['subdirs' => 0, 'maxfiles' => 1, 'maxbytes' => self::MAX_UPLOAD_BYTES]
+            );
+        }
+
+        $files = get_file_storage()->get_area_files($ctx->id, 'local_iiidem_classvideos', 'video', $videoid, 'id', false);
+        if (empty($files) && $externalurl === '') {
+            throw new \moodle_exception('needfileorurl', 'local_iiidem_classvideos');
+        }
+
+        $video->title = $title;
+        $video->description = $description;
+        $video->accesstype = $accesstype;
+        $video->externalurl = $externalurl !== '' ? $externalurl : null;
+        $video->sessiondate = max(0, $sessiondate);
+        $video->timemodified = time();
+        $DB->update_record(self::TABLE_VIDEO, $video);
+    }
+
+    /**
+     * Delete video, stored file(s), and related access requests.
+     */
+    public static function delete_video(int $videoid, int $userid): void {
+        global $DB;
+
+        $video = self::get_video($videoid);
+        if (!$video || !self::user_can_manage_video($video, $userid)) {
+            throw new \moodle_exception('nopermissions', 'error');
+        }
+
+        $ctx = \context_course::instance((int) $video->courseid);
+        $fs = get_file_storage();
+        $fs->delete_area_files($ctx->id, 'local_iiidem_classvideos', 'video', $videoid);
+        $DB->delete_records(self::TABLE_REQ, ['videoid' => $videoid]);
+        $DB->delete_records(self::TABLE_VIDEO, ['id' => $videoid]);
+    }
+
     public static function set_visible(int $videoid, bool $visible, int $userid): void {
         global $DB;
         $video = self::get_video($videoid);

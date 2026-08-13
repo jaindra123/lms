@@ -607,5 +607,11 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024101002, 'theme', 'iiidem2');
     }
 
+    // Defer enablePopovers until $.fn.popover exists (AMD race with bundled bs4flyout).
+    if ($oldversion < 2024101003) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101003, 'theme', 'iiidem2');
+    }
+
     return true;
 }

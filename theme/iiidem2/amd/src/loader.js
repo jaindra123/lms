@@ -86,33 +86,62 @@ const rememberTabs = () => {
 /**
  * Enable all popovers
  *
+ * Production: popover (bs4flyout) is registered from the trailing define inside
+ * tooltip.min.js on the next AMD tick — wait for $.fn.popover before calling it.
  */
 const enablePopovers = () => {
-    $('body').popover({
-        container: 'body',
-        selector: '[data-toggle="popover"]',
-        trigger: 'focus',
-        whitelist: Object.assign(DefaultWhitelist, {
-            table: [],
-            thead: [],
-            tbody: [],
-            tr: [],
-            th: [],
-            td: [],
-        }),
-    });
+    const bind = () => {
+        if (typeof $.fn.popover !== 'function') {
+            return false;
+        }
+        $('body').popover({
+            container: 'body',
+            selector: '[data-toggle="popover"]',
+            trigger: 'focus',
+            whitelist: Object.assign(DefaultWhitelist, {
+                table: [],
+                thead: [],
+                tbody: [],
+                tr: [],
+                th: [],
+                td: [],
+            }),
+        });
 
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && e.target.closest('[data-toggle="popover"]')) {
-            $(e.target).popover('hide');
+        document.addEventListener('keydown', e => {
+            if (typeof $.fn.popover !== 'function') {
+                return;
+            }
+            if (e.key === 'Escape' && e.target.closest('[data-toggle="popover"]')) {
+                $(e.target).popover('hide');
+            }
+            if (e.key === 'Enter' && e.target.closest('[data-toggle="popover"]')) {
+                $(e.target).popover('show');
+            }
+        });
+        document.addEventListener('click', e => {
+            if (typeof $.fn.popover !== 'function') {
+                return;
+            }
+            const $el = $(e.target).closest('[data-toggle="popover"]');
+            if ($el.length) {
+                $el.popover('show');
+            }
+        });
+        return true;
+    };
+
+    if (bind()) {
+        return;
+    }
+
+    let tries = 0;
+    const timer = setInterval(() => {
+        tries += 1;
+        if (bind() || tries >= 80) {
+            clearInterval(timer);
         }
-        if (e.key === 'Enter' && e.target.closest('[data-toggle="popover"]')) {
-            $(e.target).popover('show');
-        }
-    });
-    document.addEventListener('click', e => {
-        $(e.target).closest('[data-toggle="popover"]').popover('show');
-    });
+    }, 25);
 };
 
 /**

@@ -1,6 +1,6 @@
 <?php
 /**
- * Teacher / admin: list videos, upload, approve requests.
+ * Teacher / admin: list videos, upload, edit, delete, approve requests.
  *
  * @package local_iiidem_classvideos
  */
@@ -42,10 +42,25 @@ if (!$defaultcourseid || !isset($courseoptions[$defaultcourseid])) {
 }
 
 $action = optional_param('action', '', PARAM_ALPHA);
-$videoid = optional_param('videoid', 0, PARAM_INT);
-$reqid = optional_param('reqid', 0, PARAM_INT);
+$videoid = (int) optional_param('videoid', 0, PARAM_INT);
+$editid = (int) optional_param('editid', 0, PARAM_INT);
+$reqid = (int) optional_param('reqid', 0, PARAM_INT);
+$confirm = (int) optional_param('confirm', 0, PARAM_INT);
 
-$PAGE->set_url(new moodle_url('/local/iiidem_classvideos/manage.php', ['courseid' => $defaultcourseid]));
+$editingvideo = null;
+if ($editid) {
+    $editingvideo = manager::get_video($editid);
+    if (!$editingvideo || !manager::user_can_manage_video($editingvideo, $userid)) {
+        throw new moodle_exception('nopermissions', 'error');
+    }
+    $defaultcourseid = (int) $editingvideo->courseid;
+}
+
+$pageparams = ['courseid' => $defaultcourseid];
+if ($editid) {
+    $pageparams['editid'] = $editid;
+}
+$PAGE->set_url(new moodle_url('/local/iiidem_classvideos/manage.php', $pageparams));
 $PAGE->set_context(context_system::instance());
 $PAGE->set_pagelayout('mydashboard');
 $PAGE->set_title(get_string('managevideos', 'local_iiidem_classvideos'));
@@ -76,7 +91,40 @@ if ($action && $reqid && confirm_sesskey()) {
 
 if (($action === 'hide' || $action === 'show') && $videoid && confirm_sesskey()) {
     manager::set_visible($videoid, $action === 'show', $userid);
-    redirect($PAGE->url, get_string('visibilityupdated', 'local_iiidem_classvideos'));
+    redirect(
+        new moodle_url('/local/iiidem_classvideos/manage.php', ['courseid' => $defaultcourseid]),
+        get_string('visibilityupdated', 'local_iiidem_classvideos')
+    );
+}
+
+// Delete with confirmation.
+if ($action === 'delete' && $videoid && confirm_sesskey()) {
+    $todelete = manager::get_video($videoid);
+    if (!$todelete || !manager::user_can_manage_video($todelete, $userid)) {
+        throw new moodle_exception('nopermissions', 'error');
+    }
+    $returnurl = new moodle_url('/local/iiidem_classvideos/manage.php', [
+        'courseid' => (int) $todelete->courseid,
+    ]);
+    if ($confirm) {
+        manager::delete_video($videoid, $userid);
+        redirect($returnurl, get_string('videodeleted', 'local_iiidem_classvideos'));
+    }
+
+    echo $OUTPUT->header();
+    echo $OUTPUT->confirm(
+        get_string('confirmdeletevideo', 'local_iiidem_classvideos', format_string($todelete->title)),
+        new moodle_url('/local/iiidem_classvideos/manage.php', [
+            'action' => 'delete',
+            'videoid' => $videoid,
+            'confirm' => 1,
+            'sesskey' => sesskey(),
+            'courseid' => (int) $todelete->courseid,
+        ]),
+        $returnurl
+    );
+    echo $OUTPUT->footer();
+    exit;
 }
 
 $maxbytes = get_max_upload_file_size($CFG->maxbytes);
@@ -84,17 +132,56 @@ if ($maxbytes <= 0 || $maxbytes > manager::MAX_UPLOAD_BYTES) {
     $maxbytes = manager::MAX_UPLOAD_BYTES;
 }
 
-$form = new video_form(null, [
+$formcustom = [
     'courseoptions' => $courseoptions,
     'maxbytes' => $maxbytes,
-]);
-$form->set_data([
-    'courseid' => $defaultcourseid,
-    'accesstype' => manager::ACCESS_REQUEST,
-]);
+];
+if ($editingvideo) {
+    $formcustom['editing'] = true;
+    $formcustom['videoid'] = (int) $editingvideo->id;
+    $formcustom['courseid'] = (int) $editingvideo->courseid;
+}
+
+$formurlparams = ['courseid' => $defaultcourseid];
+if ($editingvideo) {
+    $formurlparams['editid'] = (int) $editingvideo->id;
+}
+$form = new video_form(
+    new moodle_url('/local/iiidem_classvideos/manage.php', $formurlparams),
+    $formcustom
+);
+
+if ($editingvideo) {
+    $draftitemid = file_get_submitted_draft_itemid('videofile');
+    $ctx = context_course::instance((int) $editingvideo->courseid);
+    file_prepare_draft_area(
+        $draftitemid,
+        $ctx->id,
+        'local_iiidem_classvideos',
+        'video',
+        (int) $editingvideo->id,
+        ['subdirs' => 0, 'maxfiles' => 1, 'maxbytes' => $maxbytes]
+    );
+    $form->set_data([
+        'id' => (int) $editingvideo->id,
+        'editing' => 1,
+        'courseid' => (int) $editingvideo->courseid,
+        'title' => $editingvideo->title,
+        'description' => $editingvideo->description,
+        'sessiondate' => (int) $editingvideo->sessiondate ?: 0,
+        'accesstype' => $editingvideo->accesstype,
+        'externalurl' => $editingvideo->externalurl ?? '',
+        'videofile' => $draftitemid,
+    ]);
+} else {
+    $form->set_data([
+        'courseid' => $defaultcourseid,
+        'accesstype' => manager::ACCESS_REQUEST,
+    ]);
+}
 
 if ($form->is_cancelled()) {
-    redirect(new moodle_url('/my/'));
+    redirect(new moodle_url('/local/iiidem_classvideos/manage.php', ['courseid' => $defaultcourseid]));
 }
 
 if ($data = $form->get_data()) {
@@ -104,6 +191,24 @@ if ($data = $form->get_data()) {
             ? (int) $data->sessiondate
             : (int) $data->sessiondate;
     }
+
+    if (!empty($data->editing) && !empty($data->id)) {
+        manager::update_video(
+            (int) $data->id,
+            (string) $data->title,
+            (string) ($data->description ?? ''),
+            (string) $data->accesstype,
+            (string) ($data->externalurl ?? ''),
+            $sessiondate,
+            (int) ($data->videofile ?? 0),
+            $userid
+        );
+        redirect(
+            new moodle_url('/local/iiidem_classvideos/manage.php', ['courseid' => (int) $data->courseid]),
+            get_string('videoupdated', 'local_iiidem_classvideos')
+        );
+    }
+
     manager::create_video(
         (int) $data->courseid,
         (string) $data->title,
@@ -193,6 +298,10 @@ if (empty($videos)) {
     ];
     foreach ($videos as $v) {
         $watch = new moodle_url('/local/iiidem_classvideos/watch.php', ['id' => $v->id]);
+        $edit = new moodle_url('/local/iiidem_classvideos/manage.php', [
+            'courseid' => $defaultcourseid,
+            'editid' => $v->id,
+        ]);
         $visaction = (int) $v->visible ? 'hide' : 'show';
         $visurl = new moodle_url('/local/iiidem_classvideos/manage.php', [
             'action' => $visaction,
@@ -200,26 +309,41 @@ if (empty($videos)) {
             'sesskey' => sesskey(),
             'courseid' => $defaultcourseid,
         ]);
+        $delurl = new moodle_url('/local/iiidem_classvideos/manage.php', [
+            'action' => 'delete',
+            'videoid' => $v->id,
+            'sesskey' => sesskey(),
+            'courseid' => $defaultcourseid,
+        ]);
+        $actions = html_writer::link($watch, get_string('watch', 'local_iiidem_classvideos'), ['class' => 'btn btn-sm btn-primary'])
+            . ' '
+            . html_writer::link($edit, get_string('edit'), ['class' => 'btn btn-sm btn-secondary'])
+            . ' '
+            . html_writer::link($visurl, get_string($visaction, 'local_iiidem_classvideos'), ['class' => 'btn btn-sm btn-outline-secondary'])
+            . ' '
+            . html_writer::link($delurl, get_string('delete'), ['class' => 'btn btn-sm btn-outline-danger']);
         $table->data[] = [
             format_string($v->title) . (!(int) $v->visible
                 ? ' ' . html_writer::span('(' . get_string('hide', 'local_iiidem_classvideos') . ')', 'text-muted')
                 : ''),
             manager::access_label($v->accesstype),
             $v->sessiondate ? userdate($v->sessiondate, get_string('strftimedate', 'langconfig')) : '—',
-            html_writer::link($watch, get_string('watch', 'local_iiidem_classvideos'), ['class' => 'btn btn-sm btn-primary'])
-            . ' '
-            . html_writer::link($visurl, get_string($visaction, 'local_iiidem_classvideos'), ['class' => 'btn btn-sm btn-outline-secondary']),
+            $actions,
         ];
     }
     echo html_writer::table($table);
 }
 $listhtml = ob_get_clean();
 
+$addheading = $editingvideo
+    ? get_string('editvideo', 'local_iiidem_classvideos')
+    : get_string('addvideo', 'local_iiidem_classvideos');
+
 $ctx = [
     'pagetitle' => get_string('managevideos', 'local_iiidem_classvideos'),
     'pagesubtitle' => get_string('managevideos_desc', 'local_iiidem_classvideos'),
     'dashboardurl' => (new moodle_url('/my/'))->out(false),
-    'addheading' => get_string('addvideo', 'local_iiidem_classvideos'),
+    'addheading' => $addheading,
     'pendingheading' => get_string('pendingrequests', 'local_iiidem_classvideos'),
     'listheading' => get_string('yourvideos', 'local_iiidem_classvideos'),
     'formhtml' => $form->render(),

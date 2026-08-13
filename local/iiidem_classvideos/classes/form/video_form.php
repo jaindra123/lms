@@ -6,7 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 require_once($GLOBALS['CFG']->libdir . '/formslib.php');
 
 /**
- * Teacher / admin: add a class video (file and/or URL).
+ * Teacher / admin: add or edit a class video (file and/or URL).
  */
 class video_form extends \moodleform {
 
@@ -14,10 +14,25 @@ class video_form extends \moodleform {
         $mform = $this->_form;
         $courseoptions = $this->_customdata['courseoptions'] ?? [];
         $maxbytes = (int) ($this->_customdata['maxbytes'] ?? \local_iiidem_classvideos\manager::MAX_UPLOAD_BYTES);
+        $editing = !empty($this->_customdata['editing']);
+        $videoid = (int) ($this->_customdata['videoid'] ?? 0);
+        $courseid = (int) ($this->_customdata['courseid'] ?? 0);
 
-        $mform->addElement('select', 'courseid', get_string('course'), $courseoptions);
-        $mform->addRule('courseid', null, 'required', null, 'client');
-        $mform->setType('courseid', PARAM_INT);
+        if ($editing && $videoid) {
+            $mform->addElement('hidden', 'id', $videoid);
+            $mform->setType('id', PARAM_INT);
+            $mform->addElement('hidden', 'editing', 1);
+            $mform->setType('editing', PARAM_INT);
+
+            $courselabel = $courseoptions[$courseid] ?? (string) $courseid;
+            $mform->addElement('static', 'coursename', get_string('course'), $courselabel);
+            $mform->addElement('hidden', 'courseid', $courseid);
+            $mform->setType('courseid', PARAM_INT);
+        } else {
+            $mform->addElement('select', 'courseid', get_string('course'), $courseoptions);
+            $mform->addRule('courseid', null, 'required', null, 'client');
+            $mform->setType('courseid', PARAM_INT);
+        }
 
         $mform->addElement('text', 'title', get_string('videotitle', 'local_iiidem_classvideos'), [
             'size' => 64,
@@ -62,7 +77,10 @@ class video_form extends \moodleform {
         ]);
         $mform->addHelpButton('videofile', 'videofile', 'local_iiidem_classvideos');
 
-        $this->add_action_buttons(true, get_string('savevideo', 'local_iiidem_classvideos'));
+        $submitlabel = $editing
+            ? get_string('updatevideo', 'local_iiidem_classvideos')
+            : get_string('savevideo', 'local_iiidem_classvideos');
+        $this->add_action_buttons(true, $submitlabel);
     }
 
     public function validation($data, $files) {
