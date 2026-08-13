@@ -105,11 +105,24 @@ class attendance_sync {
             'status' => self::STATUS_PENDING,
             'lastsync' => 0,
             'syncmessage' => null,
+            'recordingstatus' => self::STATUS_PENDING,
+            'recordingurl' => null,
+            'classvideoid' => 0,
+            'recordinglastsync' => 0,
+            'recordingmessage' => null,
             'timemodified' => $now,
         ];
 
         if ($existing) {
             $record->id = $existing->id;
+            // Do not reset a completed recording import when the CM is edited.
+            if (!empty($existing->recordingstatus) && $existing->recordingstatus === self::STATUS_SYNCED) {
+                $record->recordingstatus = $existing->recordingstatus;
+                $record->recordingurl = $existing->recordingurl;
+                $record->classvideoid = $existing->classvideoid;
+                $record->recordinglastsync = $existing->recordinglastsync;
+                $record->recordingmessage = $existing->recordingmessage;
+            }
             $DB->update_record(self::TABLE, $record);
         } else {
             $record->timecreated = $now;
@@ -285,19 +298,46 @@ class attendance_sync {
             if (!\local_iiidem_coursecalendar\manager::is_webex_join_url($url->externalurl)) {
                 return null;
             }
-            $start = !empty($cm->completionexpected) ? (int) $cm->completionexpected : time();
+
+            $start = 0;
+            $end = 0;
+            // Prefer Restrict access date window when present.
+            if (!empty($cm->availability)) {
+                $dates = self::parse_availability_dates((string) $cm->availability);
+                $start = $dates['from'];
+                $end = $dates['until'];
+            }
+            if ($start <= 0 && !empty($cm->completionexpected)) {
+                $start = (int) $cm->completionexpected;
+            }
+            if ($start <= 0) {
+                $start = time();
+            }
             $mins = (int) get_config('local_iiidem_coursecalendar', 'urlliveduration');
             if ($mins < 1) {
                 $mins = 60;
             }
+            if ($end <= 0) {
+                $end = $start + ($mins * MINSECS);
+            }
+            if ($end <= $start) {
+                $end = $start + ($mins * MINSECS);
+            }
+
             $meetingnumber = '';
             if (preg_match('/(\d{9,12})/', $url->externalurl, $m)) {
                 $meetingnumber = $m[1];
             }
+            // Also try description for "Meeting Number: 2513 988 6477".
+            if ($meetingnumber === '' && !empty($url->intro)) {
+                if (preg_match('/(\d{3,4}\s*\d{3,4}\s*\d{3,4})/', strip_tags($url->intro), $m2)) {
+                    $meetingnumber = preg_replace('/\D+/', '', $m2[1]);
+                }
+            }
             return [
                 'name' => $url->name,
                 'start' => $start,
-                'end' => $start + ($mins * MINSECS),
+                'end' => $end,
                 'meetingid' => '',
                 'meetingnumber' => $meetingnumber,
                 'joinurl' => $url->externalurl,
@@ -305,6 +345,189 @@ class attendance_sync {
         }
 
         return null;
+    }
+
+    /**
+     * Read from/until timestamps from Moodle availability JSON.
+     *
+     * @return array{from:int,until:int}
+     */
+    protected static function parse_availability_dates(string $availabilityjson): array {
+        $from = 0;
+        $until = 0;
+        $data = json_decode($availabilityjson, true);
+        if (!is_array($data)) {
+            return ['from' => 0, 'until' => 0];
+        }
+        $stack = [$data];
+        while ($stack) {
+            $node = array_pop($stack);
+            if (!is_array($node)) {
+                continue;
+            }
+            if (($node['type'] ?? '') === 'date' && isset($node['t'], $node['d'])) {
+                $t = (int) $node['t'];
+                if ($node['d'] === '>=' || $node['d'] === '>') {
+                    $from = $from ? max($from, $t) : $t;
+                } else if ($node['d'] === '<' || $node['d'] === '<=') {
+                    $until = $until ? min($until, $t) : $t;
+                }
+            }
+            if (!empty($node['c']) && is_array($node['c'])) {
+                foreach ($node['c'] as $child) {
+                    $stack[] = $child;
+                }
+            }
+        }
+        return ['from' => $from, 'until' => $until];
+    }
+
+    /**
+     * Import Webex recording playback links into Class videos after meetings end.
+     */
+    public static function import_due_recordings(int $limit = 20): int {
+        global $DB, $CFG;
+
+        if (!self::recordings_enabled() || !oauth::is_connected()) {
+            return 0;
+        }
+        if (!file_exists($CFG->dirroot . '/local/iiidem_classvideos/classes/manager.php')) {
+            mtrace('Webex recordings: local_iiidem_classvideos not installed.');
+            return 0;
+        }
+
+        $grace = max(15, (int) get_config('local_iiidem_webexattendance', 'recordinggraceafterend')) * MINSECS;
+        $maxage = max(1, (int) get_config('local_iiidem_webexattendance', 'recordingmaxdays')) * DAYSECS;
+        $cutoff = time() - $grace;
+        $oldest = time() - $maxage;
+
+        $records = $DB->get_records_select(
+            self::TABLE,
+            "recordingstatus = ? AND endtime > 0 AND endtime <= ? AND endtime >= ?",
+            [self::STATUS_PENDING, $cutoff, $oldest],
+            'endtime ASC',
+            '*',
+            0,
+            $limit
+        );
+
+        $count = 0;
+        foreach ($records as $record) {
+            try {
+                if (self::import_one_recording($record)) {
+                    $count++;
+                }
+            } catch (\Throwable $e) {
+                $record->recordingstatus = self::STATUS_ERROR;
+                $record->recordinglastsync = time();
+                $record->recordingmessage = $e->getMessage();
+                $record->timemodified = time();
+                $DB->update_record(self::TABLE, $record);
+            }
+        }
+        return $count;
+    }
+
+    public static function recordings_enabled(): bool {
+        return (bool) get_config('local_iiidem_webexattendance', 'importrecordings');
+    }
+
+    /**
+     * @return bool True when a class video was created.
+     */
+    public static function import_one_recording(\stdClass $record): bool {
+        global $DB, $CFG;
+
+        require_once($CFG->dirroot . '/local/iiidem_classvideos/classes/manager.php');
+
+        $meetingid = api::resolve_meeting_id($record->meetingid, $record->meetingnumber, $record->joinurl ?? '');
+        if ($meetingid === '') {
+            throw new \moodle_exception('oauth_error', 'local_iiidem_webexattendance', '', 'Could not resolve Webex meeting id for recording');
+        }
+
+        $from = max(0, (int) $record->starttime - DAYSECS);
+        $to = max(time(), (int) $record->endtime + (2 * DAYSECS));
+        $items = api::list_recordings($meetingid, $from, $to);
+        $picked = api::pick_recording($items);
+
+        if ($picked === null) {
+            // Still processing — keep pending unless too old.
+            $maxage = max(1, (int) get_config('local_iiidem_webexattendance', 'recordingmaxdays')) * DAYSECS;
+            if ((int) $record->endtime < (time() - $maxage)) {
+                $record->recordingstatus = self::STATUS_SKIPPED;
+                $record->recordingmessage = 'No recording found within retry window';
+            } else {
+                $record->recordingmessage = 'No recording available yet (Webex still processing)';
+            }
+            $record->meetingid = $meetingid;
+            $record->recordinglastsync = time();
+            $record->timemodified = time();
+            $DB->update_record(self::TABLE, $record);
+            return false;
+        }
+
+        // Avoid duplicate class videos for the same CM.
+        if (!empty($record->classvideoid) && $DB->record_exists('local_iiidem_classvideos', ['id' => $record->classvideoid])) {
+            $record->recordingstatus = self::STATUS_SYNCED;
+            $record->recordingurl = $picked['url'];
+            $record->recordingmessage = 'Class video already linked';
+            $record->recordinglastsync = time();
+            $record->timemodified = time();
+            $DB->update_record(self::TABLE, $record);
+            return false;
+        }
+
+        $accesstype = get_config('local_iiidem_webexattendance', 'recordingaccesstype');
+        if ($accesstype !== \local_iiidem_classvideos\manager::ACCESS_PUBLIC) {
+            $accesstype = \local_iiidem_classvideos\manager::ACCESS_REQUEST;
+        }
+
+        $title = trim((string) $record->sessionname);
+        if ($title === '') {
+            $title = 'Webex recording';
+        }
+        if (stripos($title, 'recording') === false) {
+            $title .= ' (Recording)';
+        }
+        if (\core_text::strlen($title) > 255) {
+            $title = \core_text::substr($title, 0, 255);
+        }
+
+        $description = 'Imported automatically from Webex after the live class.';
+        if ($picked['password'] !== '') {
+            $description .= ' Recording password: ' . $picked['password'];
+        }
+        if ($picked['topic'] !== '') {
+            $description .= ' Topic: ' . $picked['topic'];
+        }
+
+        $admin = get_admin();
+        if (!$admin) {
+            throw new \moodle_exception('oauth_error', 'local_iiidem_webexattendance', '', 'No admin user to own class video');
+        }
+        \core\session\manager::set_user($admin);
+        $userid = (int) $admin->id;
+
+        $videoid = \local_iiidem_classvideos\manager::create_video(
+            (int) $record->courseid,
+            $title,
+            $description,
+            $accesstype,
+            $picked['url'],
+            (int) $record->starttime,
+            0,
+            $userid
+        );
+
+        $record->meetingid = $meetingid;
+        $record->recordingstatus = self::STATUS_SYNCED;
+        $record->recordingurl = $picked['url'];
+        $record->classvideoid = $videoid;
+        $record->recordinglastsync = time();
+        $record->recordingmessage = 'Created class video #' . $videoid;
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+        return true;
     }
 
     protected static function ensure_attendance_activity(int $courseid): ?\stdClass {

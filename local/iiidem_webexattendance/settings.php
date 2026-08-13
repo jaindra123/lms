@@ -61,19 +61,22 @@ if ($hassiteconfig) {
     $status = $connected
         ? get_string('connected', 'local_iiidem_webexattendance')
         : get_string('notconnected', 'local_iiidem_webexattendance');
-    $authlink = '';
+    $statushtml = html_writer::div(s($status), 'mb-2');
     if (\local_iiidem_webexattendance\oauth::is_configured()) {
-        $actionurl = (new moodle_url('/local/iiidem_webexattendance/oauth.php'))->out(false);
-        $authlink = '<form method="post" action="' . s($actionurl) . '" class="mt-2">' .
-            '<input type="hidden" name="action" value="connect" />' .
-            '<input type="hidden" name="sesskey" value="' . s(sesskey()) . '" />' .
-            '<button type="submit" class="btn btn-primary">' .
-            get_string('connectwebex', 'local_iiidem_webexattendance') . '</button></form>';
+        $connecturl = new moodle_url('/local/iiidem_webexattendance/oauth.php', [
+            'action' => 'connect',
+            'sesskey' => sesskey(),
+        ]);
+        $statushtml .= html_writer::link(
+            $connecturl,
+            get_string('connectwebex', 'local_iiidem_webexattendance'),
+            ['class' => 'btn btn-primary']
+        );
     }
     $settings->add(new admin_setting_description(
         'local_iiidem_webexattendance/connectionstatus',
         get_string('connectionstatus', 'local_iiidem_webexattendance'),
-        $status . $authlink
+        html_writer::div($statushtml, 'local-iiidem-webexattendance-connect')
     ));
 
     $settings->add(new admin_setting_heading(
@@ -104,6 +107,46 @@ if ($hassiteconfig) {
         get_string('graceafterend_desc', 'local_iiidem_webexattendance'),
         '20',
         PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_heading(
+        'local_iiidem_webexattendance/recordingsheading',
+        get_string('recordingsheading', 'local_iiidem_webexattendance'),
+        get_string('recordingsheading_desc', 'local_iiidem_webexattendance')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'local_iiidem_webexattendance/importrecordings',
+        get_string('importrecordings', 'local_iiidem_webexattendance'),
+        get_string('importrecordings_desc', 'local_iiidem_webexattendance'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_iiidem_webexattendance/recordinggraceafterend',
+        get_string('recordinggraceafterend', 'local_iiidem_webexattendance'),
+        get_string('recordinggraceafterend_desc', 'local_iiidem_webexattendance'),
+        '60',
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_iiidem_webexattendance/recordingmaxdays',
+        get_string('recordingmaxdays', 'local_iiidem_webexattendance'),
+        get_string('recordingmaxdays_desc', 'local_iiidem_webexattendance'),
+        '7',
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configselect(
+        'local_iiidem_webexattendance/recordingaccesstype',
+        get_string('recordingaccesstype', 'local_iiidem_webexattendance'),
+        get_string('recordingaccesstype_desc', 'local_iiidem_webexattendance'),
+        'request',
+        [
+            'request' => get_string('recordingaccess_request', 'local_iiidem_webexattendance'),
+            'public' => get_string('recordingaccess_public', 'local_iiidem_webexattendance'),
+        ]
     ));
 
     $ADMIN->add('localplugins', $settings);

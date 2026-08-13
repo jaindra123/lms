@@ -10,7 +10,7 @@ class oauth {
 
     public const TOKEN_URL = 'https://webexapis.com/v1/access_token';
     public const AUTH_URL = 'https://webexapis.com/v1/authorize';
-    public const SCOPES = 'meeting:participants_read meeting:admin_participants_read meeting:schedules_read spark:kms';
+    public const SCOPES = 'meeting:participants_read meeting:admin_participants_read meeting:schedules_read meeting:recordings_read meeting:admin_recordings_read spark:kms';
 
     public static function redirect_uri(): string {
         return (new \moodle_url('/local/iiidem_webexattendance/oauth.php'))->out(false);

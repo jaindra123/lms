@@ -47,9 +47,6 @@ if ($code !== '') {
 }
 
 if ($action === 'connect') {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new moodle_exception('invalidrequest', 'error');
-    }
     require_sesskey();
     if (!\local_iiidem_webexattendance\oauth::is_configured()) {
         redirect($returnurl, get_string('oauth_missingconfig', 'local_iiidem_webexattendance'), null, \core\output\notification::NOTIFY_ERROR);

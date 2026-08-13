@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/iiidem_webexattendance/db" VERSION="20260803" COMMENT="Webex attendance mapping"
+<XMLDB PATH="local/iiidem_webexattendance/db" VERSION="2026081300" COMMENT="Webex attendance + recording mapping"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-    <TABLE NAME="local_iiidem_webexatt" COMMENT="Maps Webex meetings to attendance sessions">
+    <TABLE NAME="local_iiidem_webexatt" COMMENT="Maps Webex meetings to attendance sessions and class videos">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -21,6 +21,11 @@
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false"/>
         <FIELD NAME="lastsync" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="syncmessage" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="recordingstatus" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false"/>
+        <FIELD NAME="recordingurl" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="classvideoid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="recordinglastsync" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="recordingmessage" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
@@ -31,6 +36,7 @@
         <INDEX NAME="cmid_idx" UNIQUE="true" FIELDS="cmid"/>
         <INDEX NAME="status_endtime" UNIQUE="false" FIELDS="status, endtime"/>
         <INDEX NAME="sessionid_idx" UNIQUE="false" FIELDS="sessionid"/>
+        <INDEX NAME="recording_status_end" UNIQUE="false" FIELDS="recordingstatus, endtime"/>
       </INDEXES>
     </TABLE>
   </TABLES>

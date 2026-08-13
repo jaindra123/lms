@@ -153,4 +153,80 @@ class api {
 
         return array_values($out);
     }
+
+    /**
+     * List recordings for a meeting (playback/download links).
+     *
+     * @return array<int,array{id:string,topic:string,playbackUrl:string,password:string,createTime:string}>
+     */
+    public static function list_recordings(string $meetingid, int $from = 0, int $to = 0): array {
+        $meetingid = trim($meetingid);
+        $query = ['max' => 50];
+        if ($meetingid !== '') {
+            $query['meetingId'] = $meetingid;
+        }
+        if ($from > 0) {
+            $query['from'] = gmdate('Y-m-d\TH:i:s\Z', $from);
+        }
+        if ($to > 0) {
+            $query['to'] = gmdate('Y-m-d\TH:i:s\Z', $to);
+        }
+
+        $out = [];
+        $urlpath = '/recordings';
+        $pagequery = $query;
+
+        do {
+            $data = self::request('GET', $urlpath, $pagequery);
+            foreach ($data['items'] ?? [] as $item) {
+                $playback = trim((string) ($item['playbackUrl'] ?? ''));
+                if ($playback === '') {
+                    $playback = trim((string) ($item['shareAndDownloadUrl'] ?? ''));
+                }
+                if ($playback === '') {
+                    $playback = trim((string) ($item['downloadUrl'] ?? ''));
+                }
+                if ($playback === '') {
+                    continue;
+                }
+                $out[] = [
+                    'id' => (string) ($item['id'] ?? ''),
+                    'topic' => (string) ($item['topic'] ?? ''),
+                    'playbackUrl' => $playback,
+                    'password' => (string) ($item['password'] ?? ''),
+                    'createTime' => (string) ($item['createTime'] ?? $item['timeRecorded'] ?? ''),
+                ];
+            }
+
+            $urlpath = '';
+            $pagequery = [];
+            if (!empty($data['link']['next'])) {
+                $next = $data['link']['next'];
+                if (strpos($next, self::BASE) === 0) {
+                    $urlpath = substr($next, strlen(self::BASE));
+                }
+            }
+        } while ($urlpath !== '');
+
+        return $out;
+    }
+
+    /**
+     * Best playback URL from a recordings list (newest first).
+     *
+     * @param array $recordings
+     * @return array{url:string,topic:string,password:string}|null
+     */
+    public static function pick_recording(array $recordings): ?array {
+        if (!$recordings) {
+            return null;
+        }
+        // Prefer MP4-style playback URLs; list is usually newest-first from API.
+        $first = $recordings[0];
+        return [
+            'url' => $first['playbackUrl'],
+            'topic' => $first['topic'],
+            'password' => $first['password'],
+        ];
+    }
 }
