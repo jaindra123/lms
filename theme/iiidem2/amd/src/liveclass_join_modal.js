@@ -114,6 +114,30 @@ define([], function() {
     };
 
     /**
+     * Tell Moodle this user clicked Join (for attendance when Webex shows guest emails).
+     *
+     * @param {string|null} cmid
+     */
+    const recordJoinClick = (cmid) => {
+        if (!cmid || !window.M || !M.cfg) {
+            return;
+        }
+        const sesskey = M.cfg.sesskey || '';
+        const wwwroot = M.cfg.wwwroot || '';
+        if (!sesskey || !wwwroot) {
+            return;
+        }
+        const url = wwwroot + '/local/iiidem_webexattendance/join_click.php'
+            + '?cmid=' + encodeURIComponent(cmid)
+            + '&sesskey=' + encodeURIComponent(sesskey);
+        try {
+            fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+        } catch (e) {
+            // Non-fatal: Webex still opens.
+        }
+    };
+
+    /**
      * Initialise join modal handlers (document-level, safe to call once).
      */
     const init = () => {
@@ -126,6 +150,7 @@ define([], function() {
             const openBtn = e.target.closest(SELECTOR.open);
             if (openBtn) {
                 e.preventDefault();
+                recordJoinClick(openBtn.getAttribute('data-cmid'));
                 openModal(openBtn.getAttribute('data-join-url') || '');
                 return;
             }

@@ -187,6 +187,9 @@ final class safe_errors {
             || preg_match('/Invalid error detected/i', $msg)
             || preg_match('#(?:/var/www|/home/|/usr/share/moodle)#', $msg)
             || preg_match('/\bSELECT\b.+\bFROM\b/i', $msg)
+            // Moodle MUST_EXIST wording historically named DB tables (CDAC #37).
+            || preg_match('/database table\b/i', $msg)
+            || preg_match('/Can\'t find data record/i', $msg)
         ) {
             return get_string('genericerror', 'theme_iiidem2');
         }

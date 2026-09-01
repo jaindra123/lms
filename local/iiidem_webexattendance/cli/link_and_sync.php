@@ -48,20 +48,12 @@ if (!\local_iiidem_webexattendance\oauth::is_connected()) {
 set_config('autosync', 1, 'local_iiidem_webexattendance');
 set_config('enabled', 1, 'local_iiidem_webexattendance');
 
-echo "Creating/updating attendance session from Webex CM {$webexcmid}...\n";
-\local_iiidem_webexattendance\attendance_sync::sync_from_cm($webexcmid);
+echo "Creating/updating attendance session from Webex CM {$webexcmid} onto Attendance CM {$attendancecmid}...\n";
+\local_iiidem_webexattendance\attendance_sync::sync_from_cm($webexcmid, $attendancecmid);
 
 $record = $DB->get_record('local_iiidem_webexatt', ['cmid' => $webexcmid]);
 if (!$record) {
     cli_error('No mapping created. Is CM a webexactivity or Webex URL?');
-}
-
-// Force mapping onto the Attendance activity the user created.
-if ((int) $record->attendancecmid !== $attendancecmid) {
-    $record->attendancecmid = $attendancecmid;
-    $record->timemodified = time();
-    $DB->update_record('local_iiidem_webexatt', $record);
-    echo "Updated mapping attendancecmid -> {$attendancecmid}\n";
 }
 
 echo "Mapping OK: cmid={$record->cmid} attendancecmid={$record->attendancecmid}"
@@ -89,6 +81,8 @@ try {
     \local_iiidem_webexattendance\attendance_sync::sync_one($record);
     $record = $DB->get_record('local_iiidem_webexatt', ['id' => $record->id], '*', MUST_EXIST);
     echo "DONE status={$record->status} message={$record->syncmessage}\n";
+    echo "Open: {$CFG->wwwroot}/mod/attendance/manage.php?id={$attendancecmid}\n";
+    echo "Look for session: {$record->sessionname}\n";
 } catch (Throwable $e) {
     echo "SYNC ERROR: " . $e->getMessage() . "\n";
     exit(1);

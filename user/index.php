@@ -74,6 +74,10 @@ $isfrontpage = ($course->id == SITEID);
 $frontpagectx = context_course::instance(SITEID);
 
 if ($isfrontpage) {
+    // Site home roster: teachers must not open via ?id=1 (CDAC #31).
+    if (!is_siteadmin()) {
+        throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('participants'));
+    }
     $PAGE->set_pagelayout('admin');
     course_require_view_participants($systemcontext);
 } else {

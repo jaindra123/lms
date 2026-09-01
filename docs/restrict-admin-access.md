@@ -92,17 +92,33 @@ location ^~ /admin/ {
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 3. Apache equivalent
+### 3. Apache equivalent (ops — staging/production RHEL)
+
+Use [snippets/apache-admin-allowlist.conf](snippets/apache-admin-allowlist.conf) in the **vhost** (preferred).
+
+**Critical:** MFA uses `/admin/tool/mfa/auth.php`. A blanket `/admin/` allowlist will **403 after login**. Always allow MFA for all clients:
 
 ```apache
-<Location /admin>
+# MFA must stay open for every user after login
+<LocationMatch "^/admin/tool/mfa">
+    Require all granted
+</LocationMatch>
+
+# Site administration UI — trusted IPs only
+<LocationMatch "^/admin(/|$)(?!tool/mfa)">
     Require ip 127.0.0.1
     Require ip ::1
-    Require ip 203.0.113.10
-</Location>
+    Require ip 10.26.89.1
+    Require ip 10.206.96.0/23
+    # Require ip YOUR.PUBLIC.OFFICE.IP
+</LocationMatch>
 ```
 
-### 4. Optional: HTTP Basic Auth in front of `/admin/`
+```bash
+httpd -t && systemctl reload httpd
+```
+
+Public clients should get **403** on `/admin/` and `/admin/index.php`; MFA and login must still work from any IP.### 4. Optional: HTTP Basic Auth in front of `/admin/`
 
 Use with `satisfy all` if auditors want a second password **and** IPs are unstable.
 

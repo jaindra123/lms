@@ -491,6 +491,11 @@ class participants extends \table_sql implements dynamic_table {
         global $CFG;
         require_once($CFG->dirroot . '/course/lib.php');
 
+        // Site home participants table — site admins only (blocks AJAX IDOR id=SITEID).
+        if ((int) $this->course->id === (int) SITEID && !is_siteadmin()) {
+            return false;
+        }
+
         $context = $this->course->id == SITEID ? \context_system::instance() : $this->get_context();
         return course_can_view_participants($context);
     }

@@ -1,16 +1,36 @@
-# 18. Verbose Error Messages Leading to Information Disclosure
+# Verbose / excessive error information disclosure
+
+## Findings (CDAC)
+
+| # | Title | Same control |
+|---|-------|----------------|
+| 18 | Verbose Error Messages Leading to Information Disclosure | This doc |
+| **37** | **Excessive Error Information Disclosure** | This doc (same CWE-209) |
 
 ## Finding
 
-| Field | Report |
+| Field | Report (#18 / #37) |
 |-------|--------|
-| Title | Verbose Error Messages Leading to Information Disclosure |
+| Title | Verbose / Excessive Error Information Disclosure |
 | Impact | MEDIUM / CVSS 5.3 |
 | CWE | [CWE-209](https://cwe.mitre.org/data/definitions/209.html) — Generation of Error Message Containing Sensitive Information |
-| OWASP | A02:2025 – Security Misconfiguration (report) |
-| URLs | `/lib/ajax/service.php`, `/lib/ajax/service-nologin.php`, `/theme/yui_combo.php`, `/login/index.php`, `/course/view.php` |
+| OWASP | A02/A05:2025 – Security Misconfiguration |
+| CVSS | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` |
 
-> Return generic error messages to users. Do not return `debuginfo`, stack traces, or internal secrets in API/HTML responses.
+> Return generic error messages to users. Do not return `debuginfo`, stack traces, SQL, file paths, framework/server internals, or other implementation details.
+
+### URLs cited in #37
+
+| URL | Expected safe behaviour (debug off) |
+|-----|-------------------------------------|
+| `/course/view.php?id=4` | Normal course page, or generic Moodle error — **no** stack/SQL/paths |
+| `/course/edit.php?id=5` | Login / capability / generic error — no internals |
+| `/question/bank/editquestion/question.php?…` | Auth/capability gate or generic error |
+| `/pluginfile.php/…/user/icon/…` | Image or 404 — not PHP dumps |
+| `/grade/report/grader/index.php?id='&…` | Invalid `id` → generic “invalid course ID” (PARAM_INT); **not** SQL |
+| `/user/contactsitesupport.php` | Support form or redirect — no debug footer |
+
+Also covered earlier: `/lib/ajax/service.php`, `service-nologin.php`, `/theme/yui_combo.php`, `/login/index.php`.
 
 ### PoC (Instance 1)
 
@@ -44,6 +64,64 @@ That discloses edge/config advice on older Moodle builds. Bare probes should get
 ### PoC (docs.moodle.org help link)
 
 Some Moodle errors offer “More information about this error” → `docs.moodle.org/.../error/...`. That is Moodle’s public docs index, not a staging stack dump. Keep debug/HTML traces off; the help link alone is not treated as CWE-209.
+
+### PoC (#37 Instance — missing course / `invalidrecord`)
+
+1. `course/view.php?id=4` → normal course.
+2. Change to `id=8` (no such course) → historically named the DB table; later a soft “item could not be found” plus docs link.
+
+**Hardened (theme ≥ 2024101014):** end users see only the theme generic message —  
+“Something went wrong. Please try again…” — **no** “More information about this error” docs link, **no** SQL/stack. Local `MOODLE_FORCE_DEBUG=1` still shows developer detail.
+
+### PoC (#37 Instance — AJAX SQL fuzz on `service.php`)
+
+Intruder injects SQL/OOB payloads into `tiny_autosave_reset_session` args (`pageinstance` / `pagehash`). Response:
+
+```json
+{
+  "error": true,
+  "exception": {
+    "message": "Invalid parameter value detected",
+    "errorcode": "invalidparameter",
+    "moreinfourl": "https://docs.moodle.org/405/en/error/debug/invalidparameter"
+  }
+}
+```
+
+That is **successful input rejection** (PARAM validation), not SQL injection and not a stack dump. No `debuginfo` / `backtrace` when `debugdisplay=0`. Dispute as SQLi; accept as evidence that verbose debug is off.
+
+### PoC (#37 Instance 6 — grader `id` SQL quote fuzz)
+
+Intruder on `/grade/report/grader/index.php?id='&sifirst=A&silast=` (payloads `'`, `"`, `\`, etc.):
+
+| Observation | Meaning |
+|-------------|---------|
+| Status often **404** / shorter body vs baseline `id=4` | Invalid cleaned `id` — not a SQL error page |
+| HTML: **“You are trying to use an invalid course ID”** | Moodle `invalidcourseid` after `required_param('id', PARAM_INT)` |
+| No SQL / stack / `debuginfo` in body | Debug off — **not** CWE-209 disclosure |
+
+Same control as [#32 OS command injection](os-command-injection.md) and [sql-injection-parameterized-queries.md](sql-injection-parameterized-queries.md): integer allow-list; quote never reaches SQL as syntax.
+
+### PoC (#37 Instance 7 — `contactsitesupport.php` + `Origin: evil.com`)
+
+Burp POST to `/user/contactsitesupport.php` with `Origin: https://evil.com` showed Moodle’s sesskey failure page (“session has most likely timed out…”).
+
+| Claim | Result |
+|-------|--------|
+| Origin reflection / CORS allow evil.com | **No** — ACAO is fixed to site wwwroot only ([security-headers.md](security-headers.md)) |
+| Changing Origin alone = vuln | **No** — form still requires valid `sesskey`; failure is CSRF/session check working |
+| Message too verbose (CWE-209) | Softened `invalidsesskey` to a short generic reload prompt (no “timed out / check login” essay) |
+
+### What is *not* CWE-209 (#37)
+
+| Observation | Assessment |
+|-------------|------------|
+| “Invalid course ID” / “required parameter missing” / “Invalid parameter value detected” | Normal Moodle localization — OK |
+| Softened sesskey / not-found messages | Generic reload / not-found — OK |
+| Link to docs.moodle.org `missingparam` / `invalidcourseid` / `invalidrecord` / `invalidparameter` | Public docs — OK |
+| “Can't find data record in database table …” | Softened to generic not-found (see above) |
+| `Server: Apache` without version | Prefer hide at edge ([version-disclosure.md](version-disclosure.md)) — separate from error body |
+| Stack trace / SQL / `/var/www/html/…` / `debuginfo` | **Must not** appear — fixed by debug off + sanitizers below |
 
 ### PoC (Instance 8 / 9 — customcert)
 
@@ -116,6 +194,20 @@ curl -s 'https://staginglms.eci.gov.in/theme/yui_combo.php' | head -c 200
 # Required rollup must work (200 + JS/CSS)
 curl -sI 'https://staginglms.eci.gov.in/theme/yui_combo.php?rollup/3.18.1/yui-moodlesimple-min.js' | head -n 5
 # Expect: HTTP 200
+
+# Finding #37 — malformed grader id / course view: no SQL or stack; no DB table name
+curl -s 'https://staginglms.eci.gov.in/course/view.php?id=999999' \
+  | grep -iE 'database table|stack trace|/var/www|SELECT |debuginfo' && echo FAIL || echo OK
+curl -s 'https://staginglms.eci.gov.in/grade/report/grader/index.php?id=%27&sifirst=A&silast=' \
+  | grep -iE 'stack trace|/var/www|SELECT |debuginfo|DML' && echo FAIL || echo OK
+curl -sI 'https://staginglms.eci.gov.in/course/view.php?id=4' | head -n 5
+```
+
+Confirm on staging CLI:
+
+```bash
+php -r "define('CLI_SCRIPT', true); require 'config.php'; echo 'env=' . MOODLE_ENV . ' debug=' . \$CFG->debug . ' display=' . \$CFG->debugdisplay . PHP_EOL;"
+# Expect: env=staging debug=0 display=0  (or debug bitflags with display=0 if MOODLE_FORCE_DEBUG)
 ```
 
 ## Evidence for auditors
@@ -128,4 +220,4 @@ curl -sI 'https://staginglms.eci.gov.in/theme/yui_combo.php?rollup/3.18.1/yui-mo
 | No YUI combo admin advice | `yuicomboloading=0` + bare probe → generic combo 404 (endpoint itself stays enabled) |
 | Generic custom errors | `safe_errors` on theme AJAX/UI |
 
-Related: [session-token-in-url.md](session-token-in-url.md), [sql-injection-parameterized-queries.md](sql-injection-parameterized-queries.md), [debug-mode-staging.md](debug-mode-staging.md).
+Related: [session-token-in-url.md](session-token-in-url.md), [sql-injection-parameterized-queries.md](sql-injection-parameterized-queries.md), [debug-mode-staging.md](debug-mode-staging.md), [os-command-injection.md](os-command-injection.md) (#32 invalid course ID is not CWE-209).

@@ -67,5 +67,60 @@ function xmldb_local_iiidem_webexattendance_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026081301, 'local', 'iiidem_webexattendance');
     }
 
+    if ($oldversion < 2026081400) {
+        // Clearer OAuth failure codes in admin notification.
+        upgrade_plugin_savepoint(true, 2026081400, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081401) {
+        upgrade_plugin_savepoint(true, 2026081401, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081402) {
+        // Load Moodle curl via filelib before token exchange.
+        upgrade_plugin_savepoint(true, 2026081402, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081403) {
+        // Fix OAuth token POST: send urlencoded body (not multipart) so grant_type is accepted.
+        upgrade_plugin_savepoint(true, 2026081403, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081404) {
+        // Fix bad meetingNumber scraped from MTID; improve meeting resolve for ended classes.
+        upgrade_plugin_savepoint(true, 2026081404, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081405) {
+        // Recreate Webex session on the correct Attendance activity when remapping.
+        upgrade_plugin_savepoint(true, 2026081405, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081406) {
+        // Clearer email-match remarks / syncmessage for attendance marks.
+        upgrade_plugin_savepoint(true, 2026081406, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081407) {
+        $table = new xmldb_table('local_iiidem_webexatt_click');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('cmid_user', XMLDB_INDEX_NOTUNIQUE, ['cmid', 'userid']);
+            $table->add_index('cmid_time', XMLDB_INDEX_NOTUNIQUE, ['cmid', 'timecreated']);
+            $dbman->create_table($table);
+        }
+        upgrade_plugin_savepoint(true, 2026081407, 'local', 'iiidem_webexattendance');
+    }
+
+    if ($oldversion < 2026081408) {
+        // Mark by join/leave vs class start (Present / Late / Absent), not total duration.
+        set_config('lateminutes', 5, 'local_iiidem_webexattendance');
+        upgrade_plugin_savepoint(true, 2026081408, 'local', 'iiidem_webexattendance');
+    }
+
     return true;
 }

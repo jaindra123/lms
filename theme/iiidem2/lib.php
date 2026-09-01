@@ -1670,10 +1670,13 @@ function theme_iiidem2_get_frontpage_courses(): array {
         }
 
         $summaryplain = trim(html_to_text($course->summary, 0));
+        // CDAC #39: never leave raw script-looking text in frontpage cards.
+        $summaryplain = trim(strip_tags($summaryplain));
+        $summaryplain = str_replace(['<', '>'], '', $summaryplain);
 
         $coursedata[] = [
             'id' => $course->id,
-            'fullname' => format_string($course->fullname),
+            'fullname' => format_string(\theme_iiidem2\input_validation::purify_plain_title($course->fullname)),
             'summaryplain' => $summaryplain,
             'viewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             'courseimage' => theme_iiidem2_get_course_image_url($course),
@@ -4079,6 +4082,7 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
                     'class' => 'btn btn-primary iiidem-liveclass-open-btn',
                     'data-action' => 'open-liveclass-modal',
                     'data-join-url' => $joinurl,
+                    'data-cmid' => (string) $cm->id,
                 ]);
 
                 $parts = [html_writer::div($button, 'iiidem-liveclass-preview__actions mb-2')];
@@ -4100,30 +4104,64 @@ function theme_iiidem2_get_activity_preview_content(cm_info $cm): string {
             return '';
         }
         $videourl = $url->externalurl;
-        if (strpos($videourl, 'youtube.com/watch?v=') !== false) {
-            parse_str(parse_url($videourl, PHP_URL_QUERY), $params);
-            if (!empty($params['v'])) {
-                $embedurl = 'https://www.youtube.com/embed/' . $params['v'];
-                return '<iframe width="100%" height="400" src="' . s($embedurl) . '" frameborder="0" allowfullscreen></iframe>';
+        // YouTube watch / short / embed → iframe player.
+        if (preg_match('#(?:youtube\.com/watch\?|youtu\.be/|youtube\.com/embed/)#i', $videourl)) {
+            $embedurl = '';
+            if (preg_match('#youtu\.be/([a-zA-Z0-9_-]+)#', $videourl, $m)) {
+                $embedurl = 'https://www.youtube.com/embed/' . $m[1];
+            } else if (preg_match('#youtube\.com/embed/([a-zA-Z0-9_-]+)#', $videourl, $m)) {
+                $embedurl = 'https://www.youtube.com/embed/' . $m[1];
+            } else {
+                parse_str((string) parse_url($videourl, PHP_URL_QUERY), $params);
+                if (!empty($params['v'])) {
+                    $embedurl = 'https://www.youtube.com/embed/' . $params['v'];
+                }
             }
+            if ($embedurl !== '') {
+                return '<iframe width="100%" height="400" src="' . s($embedurl)
+                    . '" title="' . s(format_string($url->name)) . '" frameborder="0" allowfullscreen '
+                    . 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
+                    . 'referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+            }
+        }
+
+        // Direct MP4 / media file URL → HTML5 player.
+        // Use ~ delimiters: pattern may contain # (fragment) which breaks #...# regexes.
+        if (preg_match('~\.(mp4|webm|m4v|ogg)(\?|#|$)~i', $videourl)) {
+            return html_writer::tag('video', '', [
+                'src' => $videourl,
+                'controls' => 'controls',
+                'playsinline' => 'playsinline',
+                'preload' => 'metadata',
+                'style' => 'width:100%;max-height:480px;background:#000;',
+            ]);
         }
 
         // Webex / live meeting links: open in theme modal instead of a new tab.
         if (preg_match('#https?://[^/\s]*webex\.com/#i', $videourl)
                 || preg_match('#\b(webex|live\s*class|online\s*class)\b#i', (string) $url->name)) {
+            // Recording links (playback) should open externally, not as "Join live".
+            if (preg_match('#\brecording\b#i', (string) $url->name)
+                    || preg_match('#/(record|recording|playback|nbrdetail)#i', $videourl)) {
+                return html_writer::link($videourl, get_string('liveclassmodalopenexternal', 'theme_iiidem2'), [
+                    'class' => 'btn btn-primary btn-sm',
+                    'target' => '_blank',
+                    'rel' => 'noopener noreferrer',
+                ]);
+            }
             return html_writer::tag('button', get_string('liveclassjoin', 'theme_iiidem2'), [
                 'type' => 'button',
                 'class' => 'btn btn-primary btn-sm iiidem-liveclass-open-btn',
                 'data-action' => 'open-liveclass-modal',
                 'data-join-url' => $videourl,
+                'data-cmid' => (string) $cm->id,
             ]);
         }
 
-        return html_writer::tag('button', get_string('liveclassmodalopenexternal', 'theme_iiidem2'), [
-            'type' => 'button',
-            'class' => 'btn btn-outline-primary btn-sm iiidem-liveclass-open-btn',
-            'data-action' => 'open-liveclass-modal',
-            'data-join-url' => $videourl,
+        return html_writer::link($videourl, get_string('liveclassmodalopenexternal', 'theme_iiidem2'), [
+            'class' => 'btn btn-outline-primary btn-sm',
+            'target' => '_blank',
+            'rel' => 'noopener noreferrer',
         ]);
     }
 
@@ -5349,7 +5387,7 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
             $userpicture->size = 150;
             $jobprofile = \theme_iiidem2\registration_profile::get_job_profile_display((int) $teacher->id, $teacher);
             if (!empty($teacher->description)) {
-                $bio = format_text(
+                $bio = \theme_iiidem2\input_validation::purify_html_fragment(format_text(
                     $teacher->description,
                     $teacher->descriptionformat ?? FORMAT_HTML,
                     [
@@ -5357,8 +5395,9 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
                         'para' => false,
                         'overflowdiv' => false,
                         'filter' => true,
+                        'noclean' => false,
                     ]
-                );
+                ));
             } else {
                 $bio = get_string('nobio', 'theme_iiidem2');
             }
@@ -5380,15 +5419,19 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
     foreach ($faqsraw as $faq) {
         $faqs[] = [
             'id' => $faq->id,
-            'question' => $faq->question,
-            'answer' => $faq->answer,
+            'question' => format_string($faq->question),
+            'answer' => \theme_iiidem2\input_validation::purify_html_fragment(
+                format_text($faq->answer, FORMAT_HTML, ['context' => $context, 'noclean' => false])
+            ),
         ];
     }
 
     $cache[$courseid] = [
         'coursename' => format_string($course->fullname),
         'courseshortname' => format_string($course->shortname),
-        'coursesummary' => format_text($course->summary, $course->summaryformat, ['context' => $context]),
+        'coursesummary' => \theme_iiidem2\input_validation::purify_html_fragment(
+            format_text($course->summary, $course->summaryformat, ['context' => $context, 'noclean' => false])
+        ),
         'hascoursesummary' => trim(strip_tags($course->summary)) !== '',
         'courseimage' => $courseimage,
         'instructordata' => $instructors,

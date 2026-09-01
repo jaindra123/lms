@@ -47,7 +47,15 @@ if (empty($course)) {
     $PAGE->set_context($context);
 }
 
-require_capability('report/loglive:view', $context);
+$syscontext = context_system::instance();
+if (!empty($course) && (int) $course->id === (int) SITEID) {
+    if (!is_siteadmin()) {
+        throw new \moodle_exception('nopermissions', 'error', '', get_string('livelogs', 'report_loglive'));
+    }
+    require_capability('report/loglive:view', $syscontext);
+} else {
+    require_capability('report/loglive:view', $context);
+}
 
 if (!$since) {
     echo $since = $since - report_loglive_renderable::CUTOFF;

@@ -98,14 +98,51 @@ class oauth {
     }
 
     protected static function token_request(array $payload): array {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $curl = new \curl();
-        $curl->setHeader(['Content-Type: application/x-www-form-urlencoded']);
-        $raw = $curl->post(self::TOKEN_URL, $payload);
+        $curl->setHeader([
+            'Content-Type: application/x-www-form-urlencoded',
+            'Accept: application/json',
+        ]);
+        // Ensure secrets have no accidental whitespace from paste.
+        foreach (['client_id', 'client_secret', 'code', 'redirect_uri', 'refresh_token', 'grant_type'] as $key) {
+            if (isset($payload[$key]) && is_string($payload[$key])) {
+                $payload[$key] = trim($payload[$key]);
+            }
+        }
+        // Must POST as a raw urlencoded string. Moodle curl with an array uses
+        // multipart/form-data; Webex then returns "missing grant_type".
+        $body = http_build_query($payload, '', '&', PHP_QUERY_RFC3986);
+        $raw = $curl->post(self::TOKEN_URL, $body);
         $info = $curl->get_info();
         $code = (int) ($info['http_code'] ?? 0);
         $data = json_decode((string) $raw, true);
-        if ($code < 200 || $code >= 300 || !is_array($data)) {
-            $msg = is_array($data) ? ($data['message'] ?? $data['error'] ?? $raw) : $raw;
+        if ($code < 200 || $code >= 300 || !is_array($data) || empty($data['access_token'])) {
+            $msg = '';
+            if (is_array($data)) {
+                $msg = (string) ($data['error'] ?? '');
+                if (!empty($data['error_description'])) {
+                    $msg .= ($msg !== '' ? ': ' : '') . (string) $data['error_description'];
+                }
+                if ($msg === '' && !empty($data['message'])) {
+                    $msg = (string) $data['message'];
+                }
+            }
+            if ($msg === '') {
+                $msg = 'HTTP ' . $code . ' ' . substr(trim((string) $raw), 0, 180);
+            }
+            if ($code === 0) {
+                $curlerr = '';
+                if (!empty($curl->error)) {
+                    $curlerr = trim((string) $curl->error);
+                } else if (method_exists($curl, 'get_errno') && $curl->get_errno()) {
+                    $curlerr = 'errno=' . $curl->get_errno();
+                }
+                $msg = 'cannot_reach_webexapis.com';
+                $msg .= $curlerr !== '' ? ' (' . $curlerr . ')' : ' (firewall/proxy/DNS/SSL)';
+            }
             throw new \moodle_exception('oauth_error', 'local_iiidem_webexattendance', '', $msg);
         }
         return $data;

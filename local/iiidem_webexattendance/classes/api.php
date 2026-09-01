@@ -18,6 +18,9 @@ class api {
      * @return array
      */
     public static function request(string $method, string $path, array $query = [], ?array $body = null): array {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $token = oauth::get_access_token();
         $url = self::BASE . $path;
         if ($query) {
@@ -70,30 +73,98 @@ class api {
 
     /**
      * Resolve meeting UUID/id from meeting number or join URL if needed.
+     *
+     * @param int $from Unix start (optional, helps find ended instances)
+     * @param int $to Unix end (optional)
      */
-    public static function resolve_meeting_id(?string $meetingid, ?string $meetingnumber, ?string $joinurl = ''): string {
+    public static function resolve_meeting_id(
+        ?string $meetingid,
+        ?string $meetingnumber,
+        ?string $joinurl = '',
+        int $from = 0,
+        int $to = 0
+    ): string {
         $meetingid = trim((string) $meetingid);
         if ($meetingid !== '') {
             return $meetingid;
         }
 
-        $queries = [];
         $meetingnumber = preg_replace('/\D+/', '', (string) $meetingnumber);
+        // Webex meeting numbers are typically 9–11 digits. Reject longer junk from MTID hashes.
+        if ($meetingnumber !== '' && (strlen($meetingnumber) < 9 || strlen($meetingnumber) > 11)) {
+            $meetingnumber = '';
+        }
+
+        $joinurl = trim((string) $joinurl);
+        $queries = [];
+
+        // Prefer webLink for personal-room / j.php?MTID= joins (digit scraping from MTID is wrong).
+        if ($joinurl !== '' && preg_match('#/j\.php\?MTID=#i', $joinurl)) {
+            $queries[] = ['webLink' => $joinurl];
+        }
         if ($meetingnumber !== '') {
             $queries[] = ['meetingNumber' => $meetingnumber];
         }
-        $joinurl = trim((string) $joinurl);
         if ($joinurl !== '') {
             $queries[] = ['webLink' => $joinurl];
         }
 
+        // Ended instances: list actual meetings in the class time window.
+        if ($from > 0 || $to > 0) {
+            $range = [
+                'meetingType' => 'meeting',
+                'max' => 50,
+            ];
+            if ($from > 0) {
+                $range['from'] = gmdate('Y-m-d\TH:i:s\Z', max(0, $from - DAYSECS));
+            }
+            if ($to > 0) {
+                $range['to'] = gmdate('Y-m-d\TH:i:s\Z', $to + DAYSECS);
+            }
+            if ($meetingnumber !== '') {
+                $queries[] = $range + ['meetingNumber' => $meetingnumber];
+            }
+            $queries[] = $range;
+        }
+
+        $seen = [];
         foreach ($queries as $query) {
-            $data = self::request('GET', '/meetings', $query);
+            $key = md5(json_encode($query));
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            try {
+                $data = self::request('GET', '/meetings', $query);
+            } catch (\Throwable $e) {
+                // Try next strategy (wrong meetingNumber often returns 404).
+                continue;
+            }
+
             $items = $data['items'] ?? [];
+            // Prefer an instance id (contains _I_) when present.
+            $fallback = '';
             foreach ($items as $item) {
-                if (!empty($item['id'])) {
-                    return (string) $item['id'];
+                if (empty($item['id'])) {
+                    continue;
                 }
+                $id = (string) $item['id'];
+                if ($joinurl !== '' && !empty($item['webLink'])) {
+                    // Exact join URL match wins.
+                    if (strcasecmp(rtrim($item['webLink'], '/'), rtrim($joinurl, '/')) === 0) {
+                        return $id;
+                    }
+                }
+                if (strpos($id, '_I_') !== false) {
+                    return $id;
+                }
+                if ($fallback === '') {
+                    $fallback = $id;
+                }
+            }
+            if ($fallback !== '') {
+                return $fallback;
             }
         }
         return '';
@@ -119,24 +190,52 @@ class api {
             foreach ($data['items'] ?? [] as $item) {
                 $email = strtolower(trim((string) ($item['email'] ?? '')));
                 $duration = 0;
-                if (isset($item['duration'])) {
+                $joined = 0;
+                $left = 0;
+                // Prefer join/leave timestamps (seconds). API "duration" is also seconds when set.
+                if (!empty($item['joinedTime'])) {
+                    $joined = (int) strtotime((string) $item['joinedTime']);
+                }
+                if (!empty($item['leftTime'])) {
+                    $left = (int) strtotime((string) $item['leftTime']);
+                }
+                if ($joined && $left && $left >= $joined) {
+                    $duration = $left - $joined;
+                }
+                if ($duration <= 0 && isset($item['duration'])) {
                     $duration = (int) $item['duration'];
-                } else if (!empty($item['joinedTime']) && !empty($item['leftTime'])) {
-                    $duration = max(0, strtotime($item['leftTime']) - strtotime($item['joinedTime']));
+                }
+                // Some payloads omit email on host but include it under devices.
+                if ($email === '' && !empty($item['devices']) && is_array($item['devices'])) {
+                    foreach ($item['devices'] as $device) {
+                        $demail = strtolower(trim((string) ($device['email'] ?? '')));
+                        if ($demail !== '') {
+                            $email = $demail;
+                            break;
+                        }
+                    }
                 }
                 if ($email === '' && empty($item['displayName'])) {
                     continue;
                 }
-                // Aggregate multiple join segments for same email.
-                if ($email !== '' && isset($out[$email])) {
-                    $out[$email]['duration'] += $duration;
+                $key = $email !== '' ? $email : ('name:' . strtolower(trim((string) $item['displayName'])));
+                // Aggregate multiple join segments for same person.
+                if (isset($out[$key])) {
+                    $out[$key]['duration'] += $duration;
+                    if ($joined > 0 && ($out[$key]['firstjoined'] === 0 || $joined < $out[$key]['firstjoined'])) {
+                        $out[$key]['firstjoined'] = $joined;
+                    }
+                    if ($left > $out[$key]['lastleft']) {
+                        $out[$key]['lastleft'] = $left;
+                    }
                     continue;
                 }
-                $key = $email !== '' ? $email : ('name:' . strtolower(trim((string) $item['displayName'])));
                 $out[$key] = [
                     'email' => $email,
                     'displayName' => (string) ($item['displayName'] ?? ''),
                     'duration' => $duration,
+                    'firstjoined' => $joined,
+                    'lastleft' => $left,
                 ];
             }
 

@@ -31,12 +31,38 @@ $id = required_param('id', PARAM_INT);
 $params = array('id' => $id);
 $course = $DB->get_record('course', $params, '*', MUST_EXIST);
 require_login($course);
-$context = context_course::instance($course->id);
+
+// Site home (id=SITEID): no competency breakdown to open via ?id=1 (CDAC Instance 2).
+if ((int) $course->id === (int) SITEID && !is_siteadmin()) {
+    throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('pluginname', 'report_competency'));
+}
+
+$coursecontext = context_course::instance($course->id);
+$context = $coursecontext;
 $currentuser = optional_param('user', null, PARAM_INT);
-$currentmodule = optional_param('mod', null, PARAM_INT);
+$currentmodule = optional_param('mod', 0, PARAM_INT);
+$cm = null;
 if ($currentmodule > 0) {
-    $cm = get_coursemodule_from_id('', $currentmodule, 0, false, MUST_EXIST);
-    $context = context_module::instance($cm->id);
+    // Must belong to this course — invalid/foreign mod must not throw a DB dump (audit Step 4).
+    $cm = get_coursemodule_from_id('', $currentmodule, (int) $course->id, false, IGNORE_MISSING);
+    if (!$cm) {
+        $currentmodule = 0;
+    } else {
+        $context = context_module::instance($cm->id);
+    }
+}
+
+// Authorization: only staff/graders may view another user's competency breakdown.
+// Students changing ?user=37 → ?user=40 (IDOR) must be forced to their own report.
+// Capabilities are checked on the course (IDs differ per environment — never hard-code).
+$canviewothers = has_any_capability([
+    'moodle/competency:competencygrade',
+    'moodle/competency:usercompetencyreview',
+    'moodle/competency:coursecompetencymanage',
+    'moodle/course:update',
+], $coursecontext);
+if (!$canviewothers && !is_siteadmin()) {
+    $currentuser = (int) $USER->id;
 }
 
 // Fetch current active group.
@@ -54,8 +80,21 @@ if (empty($currentuser)) {
     if (count($gradable) == 0) {
         $currentuser = 0;
     } else if (!in_array($currentuser, array_keys($gradable))) {
-        $currentuser = array_shift($gradable)->id;
+        // Invalid / out-of-scope user id: staff fall back to first gradable; students stay on self only.
+        if ($canviewothers || is_siteadmin()) {
+            $currentuser = array_shift($gradable)->id;
+        } else {
+            $currentuser = (int) $USER->id;
+            if (!in_array($currentuser, array_keys($gradable))) {
+                $currentuser = 0;
+            }
+        }
     }
+}
+
+// Re-assert after gradable resolution (students never keep a peer's id).
+if (!$canviewothers && !is_siteadmin() && (int) $currentuser !== (int) $USER->id) {
+    $currentuser = in_array((int) $USER->id, array_keys($gradable ?? [])) ? (int) $USER->id : 0;
 }
 
 $urlparams = array('id' => $id);
@@ -90,7 +129,7 @@ if ($currentuser > 0) {
         'user' => $user,
         'usercontext' => $usercontext
     );
-    if ($currentmodule > 0) {
+    if ($currentmodule > 0 && $cm) {
         $title = get_string('filtermodule', 'report_competency', format_string($cm->name));
     }
     $top .= $output->context_header($userheading, 3);

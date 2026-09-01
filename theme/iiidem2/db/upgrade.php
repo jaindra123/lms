@@ -613,5 +613,115 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024101003, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024101004) {
+        // Allow YouTube / Webex embeds in CSP; improve URL recording preview.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101004, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101005) {
+        // Fix preg_match delimiter clash in URL MP4 preview (lib.php).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101005, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101006) {
+        // Record Moodle Join clicks for Webex guest attendance matching.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101006, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101007) {
+        // Contact-us success banner: session one-time flag (ignore ?sent= URL tampering).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101007, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101008) {
+        // Harden /user/index.php: block site roster + student peer PII lists.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101008, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101009) {
+        // Competency report: non-staff may only view own user= breakdown.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101009, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101010) {
+        // Live logs: site id=SITEID restricted to site managers (not course teachers).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101010, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101011) {
+        // Live logs site view: site administrators only (not managers with viewreports).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101011, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101012) {
+        // CWE-209: scrub legacy "database table …" wording from AJAX errors (#37).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101012, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101013) {
+        // Local/dev: keep debugdisplay off unless MOODLE_FORCE_DEBUG (friendly errors only).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101013, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101014) {
+        // CWE-209: generic fatal_error page (no docs errorcode link / no item-specific text).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101014, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101015) {
+        // CDAC #40: idle session timeout 30 min (was Moodle default 8 hours).
+        set_config('sessiontimeout', 30 * 60);
+        set_config('sessiontimeoutwarning', 5 * 60);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101015, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101016) {
+        // CDAC #39: purify course/question rich text on save + safer course HTML output.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101016, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101017) {
+        // CDAC #39: question idnumber + participants keyword filter hardening.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101017, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101018) {
+        // CDAC #31: site participants (user/index.php?id=SITEID) = site admins only.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101018, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101019) {
+        // CDAC #31: avoid duplicate nopermissions text on participants deny.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101019, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101020) {
+        // Show safe permission messages on fatal_error (not only generic text).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101020, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101021) {
+        // CDAC #31 competency: deny SITEID report for non-site-admin.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101021, 'theme', 'iiidem2');
+    }
+
     return true;
 }

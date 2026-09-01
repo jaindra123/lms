@@ -9,6 +9,9 @@
 /**
  * Public Contact Us page (clean URL: /contact-us/).
  *
+ * Success banner is session-gated (one-time). Client query params like
+ * ?sent=1 must never alone show “message sent” (CWE-639 / parameter tampering).
+ *
  * @package   theme_iiidem2
  * @copyright 2026 IIIDEM
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -16,6 +19,8 @@
 
 require_once(__DIR__ . '/../config.php');
 require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+global $SESSION;
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_course($SITE);
@@ -35,14 +40,22 @@ if ($form->is_cancelled()) {
 
 if ($data = $form->get_data()) {
     if (theme_iiidem2_send_contact_message($data)) {
+        // Server-side proof of send — not a client-controlled URL flag.
+        $SESSION->theme_iiidem2_contact_form_sent = true;
         redirect(
-            new moodle_url('/contact-us/', ['sent' => 1]),
+            new moodle_url('/contact-us/'),
             get_string('contactusformsent', 'theme_iiidem2'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
         );
     }
     \core\notification::error(get_string('contactusformerror', 'theme_iiidem2'));
+}
+
+// One-time success banner after a real submit (ignore any ?sent= query param).
+$formsent = !empty($SESSION->theme_iiidem2_contact_form_sent);
+if ($formsent) {
+    unset($SESSION->theme_iiidem2_contact_form_sent);
 }
 
 ob_start();
@@ -55,6 +68,6 @@ theme_iiidem2_render_public_page('theme_iiidem2/pages/contact-us', array_merge(
         'pagetitle' => get_string('contactus', 'theme_iiidem2'),
         'pagesubtitle' => get_string('contactus_lead', 'theme_iiidem2'),
         'formhtml' => $formhtml,
-        'formsent' => optional_param('sent', 0, PARAM_INT) === 1,
+        'formsent' => $formsent,
     ]
 ), 'pagelayout-marketing', false);

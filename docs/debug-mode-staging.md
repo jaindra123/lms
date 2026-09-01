@@ -25,18 +25,16 @@ Related input-validation recommendation on the same report pages (CWE-20): [inpu
 
 `config.php` treats **staging like production** for developer/debug settings:
 
-| Setting | Staging (default) | Staging + `MOODLE_FORCE_DEBUG=1` | Dev (local) |
-|---------|-------------------|----------------------------------|-------------|
-| `$CFG->debug` | `0` | `DEBUG_NORMAL` (not DEVELOPER) | on |
-| `$CFG->debugdisplay` | `0` | `0` (never HTML / AJAX debuginfo dumps) | on |
-| `display_errors` | off | off | on |
-| `$CFG->themedesignermode` | off | off | on |
-| `$CFG->cachejs` | on | on | (default) |
-| `$CFG->perfdebug` / page info / string ids | off | off | off |
+| Setting | Staging (default) | Staging + `MOODLE_FORCE_DEBUG=1` | Dev (local default) | Dev + `MOODLE_FORCE_DEBUG=1` |
+|---------|-------------------|----------------------------------|---------------------|------------------------------|
+| `$CFG->debug` | `0` | `DEBUG_NORMAL` (not DEVELOPER) | on (logs) | on |
+| `$CFG->debugdisplay` | `0` | `0` (never HTML / AJAX debuginfo dumps) | **`0`** | `1` (pink Debug info / Stack) |
+| `display_errors` | off | off | off | on |
+| `$CFG->themedesignermode` | off | off | off | on |
 
 Hostnames including `staginglms.eci.gov.in` and `staginglms.cci.gov.in` map to **staging**. Prefer `MOODLE_ENV=staging` on the server.
 
-Theme `after_config` **re-forces** debug off on non-dev when `MOODLE_FORCE_DEBUG` is unset (belt-and-braces if DB settings were toggled). Upgrade `2024100982` clears stored debug flags in `mdl_config`.
+Also: Moodle exception pages show **Debug info / Stack trace** when `$CFG->debugdeveloper` is true. That flag is set whenever `$CFG->debug` is full **DEBUG_DEVELOPER** (`E_ALL|E_STRICT`) — even if `debugdisplay` is 0. Local default therefore uses `DEBUG_ALL` (not DEVELOPER) so missing-course pages only show the friendly message.
 
 Because these values are set in `config.php`, they override Site administration → Development → Debugging stored in the database.
 

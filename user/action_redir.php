@@ -25,6 +25,10 @@
 require_once("../config.php");
 require_once($CFG->dirroot . '/course/lib.php');
 
+// Bulk participant actions require an authenticated session. Without this, a bare GET
+// shows "missing parameter (formaction)" to guests (audit: page accessible without login).
+require_login();
+
 $formaction = required_param('formaction', PARAM_LOCALURL);
 $id = required_param('id', PARAM_INT);
 

@@ -13,7 +13,9 @@ $map = $DB->get_records('local_iiidem_webexatt', null, 'id DESC', '*', 0, 20);
 echo "mappings=" . count($map) . "\n";
 foreach ($map as $r) {
     echo "map id={$r->id} cmid={$r->cmid} attendancecmid={$r->attendancecmid} sessionid={$r->sessionid}"
-        . " meetingid={$r->meetingid} status={$r->syncstatus} name={$r->sessionname}\n";
+        . " meetingid={$r->meetingid} status={$r->status} endtime={$r->endtime}"
+        . " message=" . str_replace(["\r", "\n"], ' ', (string) ($r->syncmessage ?? '')) . "\n"
+        . " name={$r->sessionname}\n";
 }
 
 $sql = "SELECT cm.id, cm.course, m.name AS modname

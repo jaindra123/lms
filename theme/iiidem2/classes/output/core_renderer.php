@@ -432,7 +432,99 @@ class core_renderer extends \core_renderer {
         return $menu;
     }
 
+    /**
+     * Fatal errors for end users: generic message only (CDAC CWE-209).
+     *
+     * Core always appends a “More information about this error” link that reveals
+     * the Moodle errorcode via docs.moodle.org. Hide that (and Debug/Stack) unless
+     * local MOODLE_FORCE_DEBUG developer mode is on.
+     *
+     * @param string $message
+     * @param string $moreinfourl
+     * @param string $link
+     * @param array $backtrace
+     * @param string|null $debuginfo
+     * @param string $errorcode
+     * @return string
+     */
+    public function fatal_error($message, $moreinfourl, $link, $backtrace, $debuginfo = null, $errorcode = "") {
+        global $CFG;
 
+        if (!empty($CFG->debugdeveloper)) {
+            return parent::fatal_error($message, $moreinfourl, $link, $backtrace, $debuginfo, $errorcode);
+        }
 
+        $output = '';
+        $obbuffer = '';
 
+        if ($this->has_started()) {
+            $output .= $this->opencontainers->pop_all_but_last();
+        } else {
+            error_reporting(0);
+            while (ob_get_level() > 0) {
+                $buff = ob_get_clean();
+                if ($buff === false) {
+                    break;
+                }
+                $obbuffer .= $buff;
+            }
+            error_reporting($CFG->debug ?? 0);
+
+            $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
+            if (empty($_SERVER['HTTP_RANGE'])) {
+                @header($protocol . ' 404 Not Found');
+            } else if (\core_useragent::check_safari_ios_version(602) && !empty($_SERVER['HTTP_X_PLAYBACK_SESSION_ID'])) {
+                @header($protocol . ' 403 Forbidden');
+            } else {
+                @header($protocol . ' 407 Proxy Authentication Required');
+            }
+
+            $this->page->set_context(null);
+            $this->page->set_url('/');
+            $this->page->set_title(get_string('error'));
+            $this->page->set_heading($this->page->course->fullname);
+            $this->page->activityheader->disable();
+            $output .= $this->header();
+        }
+
+        // Safe, intentional Moodle messages (permissions / login) — never SQL, paths, or stack.
+        // Other failures stay fully generic (CDAC verbose-error finding).
+        $safecodes = [
+            'nopermissions',
+            'requireloginerror',
+            'requirelogintitle',
+            'nopermissiontoviewpage',
+            'notingroup',
+            'courseaccessdenied',
+        ];
+        $safemessage = get_string('genericerror', 'theme_iiidem2');
+        if ($errorcode && in_array($errorcode, $safecodes, true) && is_string($message) && $message !== '') {
+            // Use core message only if it looks like a short user-facing string (no SQL).
+            $lookssafe = (strlen($message) < 400)
+                && stripos($message, 'SELECT ') === false
+                && stripos($message, 'stack trace') === false
+                && strpos($message, DIRECTORY_SEPARATOR) === false;
+            if ($lookssafe) {
+                $safemessage = $message;
+            }
+        }
+        $messagehtml = '<p class="errormessage">' . s($safemessage) . '</p>';
+        if (empty($CFG->rolesactive)) {
+            $messagehtml .= '<p class="errormessage">' . get_string('installproblem', 'error') . '</p>';
+        }
+        $output .= $this->box($messagehtml, 'errorbox alert alert-danger', null, ['data-rel' => 'fatalerror']);
+
+        if (empty($CFG->rolesactive)) {
+            // Continue does not make much sense during install.
+        } else if (!empty($link)) {
+            $output .= $this->continue_button($link);
+        }
+
+        $output .= $this->footer();
+
+        // Padding so IE displays our error page (same as core).
+        $output .= str_repeat(' ', 512);
+
+        return $output;
+    }
 }

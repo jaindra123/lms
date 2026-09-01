@@ -85,6 +85,7 @@ class verification_field extends \MoodleQuickForm_text {
      */
     public function toHtml(): string {
         // Empty the value after all attributes decided.
+        $this->setValue('');
         $this->_attributes['value'] = '';
         $result = parent::toHtml();
 
@@ -104,12 +105,29 @@ class verification_field extends \MoodleQuickForm_text {
     }
 
     /**
+     * Never export a submitted OTP into Mustache (audit: OTP reflected in HTML value=).
+     *
+     * Moodle renders text elements via templates; clearing only in toHtml() is skipped.
+     *
+     * @param \renderer_base $output
+     * @return array
+     */
+    public function export_for_template(\renderer_base $output): array {
+        $this->setValue('');
+        $this->_attributes['value'] = '';
+        $context = parent::export_for_template($output);
+        $context['value'] = '';
+        return $context;
+    }
+
+    /**
      * Setup and return the script for autosubmission while inside the secure layout.
      *
      * @return string the JS to inline attach to the rendered object.
      */
     public function secure_js(): string {
         // Empty the value after all attributes decided.
+        $this->setValue('');
         $this->_attributes['value'] = '';
 
         return "<script>

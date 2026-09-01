@@ -24,8 +24,11 @@ class attendance_sync {
 
     /**
      * Handle webexactivity or webex URL course module create/update.
+     *
+     * @param int $cmid Webex / URL course-module id
+     * @param int $preferredattendancecmid Optional Attendance CM to use (CLI / repair)
      */
-    public static function sync_from_cm(int $cmid): void {
+    public static function sync_from_cm(int $cmid, int $preferredattendancecmid = 0): void {
         global $DB;
 
         if (!self::autosync_enabled()) {
@@ -45,7 +48,19 @@ class attendance_sync {
         $now = time();
         $existing = $DB->get_record(self::TABLE, ['cmid' => $cmid]);
 
-        $attendancecm = self::ensure_attendance_activity((int) $cm->course);
+        $attendancecm = null;
+        if ($preferredattendancecmid > 0) {
+            $attendancecm = get_coursemodule_from_id(
+                'attendance',
+                $preferredattendancecmid,
+                (int) $cm->course,
+                false,
+                IGNORE_MISSING
+            );
+        }
+        if (!$attendancecm) {
+            $attendancecm = self::ensure_attendance_activity((int) $cm->course);
+        }
         if (!$attendancecm) {
             return;
         }
@@ -57,6 +72,14 @@ class attendance_sync {
 
         $sessionname = 'Webex: ' . format_string($info['name']);
         $sessionid = $existing ? (int) $existing->sessionid : 0;
+
+        // Session must belong to THIS attendance activity (remapping CM without new session hid marks).
+        if ($sessionid > 0) {
+            $sessrow = $DB->get_record('attendance_sessions', ['id' => $sessionid], 'id,attendanceid');
+            if (!$sessrow || (int) $sessrow->attendanceid !== (int) $att->id) {
+                $sessionid = 0;
+            }
+        }
 
         if ($sessionid > 0 && $DB->record_exists('attendance_sessions', ['id' => $sessionid])) {
             $sess = $DB->get_record('attendance_sessions', ['id' => $sessionid], '*', MUST_EXIST);
@@ -177,17 +200,29 @@ class attendance_sync {
     public static function sync_one(\stdClass $record): void {
         global $DB, $USER;
 
-        $meetingid = api::resolve_meeting_id($record->meetingid, $record->meetingnumber, $record->joinurl ?? '');
+        $meetingid = api::resolve_meeting_id(
+            $record->meetingid,
+            $record->meetingnumber,
+            $record->joinurl ?? '',
+            (int) ($record->starttime ?? 0),
+            (int) ($record->endtime ?? 0)
+        );
         if ($meetingid === '') {
-            throw new \moodle_exception('oauth_error', 'local_iiidem_webexattendance', '', 'Could not resolve Webex meeting id');
+            throw new \moodle_exception(
+                'oauth_error',
+                'local_iiidem_webexattendance',
+                '',
+                'Could not resolve Webex meeting id (check Meeting Number in description, join URL, and that the Connect Webex user hosted the meeting)'
+            );
         }
 
         $participants = api::list_participants($meetingid);
-        $presentmin = max(1, (int) get_config('local_iiidem_webexattendance', 'presentminutes'));
-        $latemin = max(0, (int) get_config('local_iiidem_webexattendance', 'lateminutes'));
-        if ($latemin > $presentmin) {
-            $latemin = $presentmin;
+        // Minutes after scheduled class start: late arrival OR early leave → Late.
+        $lategrace = max(0, (int) get_config('local_iiidem_webexattendance', 'lateminutes'));
+        if ($lategrace < 1) {
+            $lategrace = 5;
         }
+        $classstart = (int) ($record->starttime ?? 0);
 
         $cm = get_coursemodule_from_id('attendance', (int) $record->attendancecmid, 0, false, MUST_EXIST);
         $att = self::load_attendance_structure($cm);
@@ -205,11 +240,34 @@ class attendance_sync {
         }
 
         $emailmap = [];
+        $namemap = [];
+        $webexemails = [];
         foreach ($participants as $p) {
-            if ($p['email'] !== '') {
-                $emailmap[$p['email']] = (int) $p['duration'];
+            $email = strtolower(trim((string) ($p['email'] ?? '')));
+            $isguestmail = ($email === '' || preg_match('/@guest\.webex\./i', $email));
+            $payload = [
+                'duration' => (int) ($p['duration'] ?? 0),
+                'firstjoined' => (int) ($p['firstjoined'] ?? 0),
+                'lastleft' => (int) ($p['lastleft'] ?? 0),
+            ];
+            if ($email !== '' && !$isguestmail) {
+                $emailmap[$email] = self::merge_participant_timing($emailmap[$email] ?? null, $payload);
+                $webexemails[] = $email;
+            } else if ($email !== '') {
+                $webexemails[] = $email;
+            }
+            $nkey = self::normalize_person_name((string) ($p['displayName'] ?? ''));
+            if ($nkey !== '') {
+                $namemap[$nkey] = self::merge_participant_timing($namemap[$nkey] ?? null, $payload);
             }
         }
+
+        // Students who opened Join from Moodle during the class window.
+        $clickusers = self::get_join_click_userids(
+            (int) $record->cmid,
+            (int) $record->starttime,
+            (int) $record->endtime
+        );
 
         $context = \context_course::instance((int) $record->courseid);
         $students = get_enrolled_users($context, 'mod/attendance:canbelisted', 0, 'u.*', null, 0, 0, true);
@@ -219,25 +277,63 @@ class attendance_sync {
         $statusset = implode(',', array_map('intval', array_keys($statuses)));
         $sesslog = [];
         $marked = 0;
+        $matched = 0;
+        $matchedclick = 0;
+        $matchedname = 0;
+        $countp = 0;
+        $countl = 0;
+        $counta = 0;
 
         foreach ($students as $student) {
             $email = strtolower(trim($student->email));
-            $seconds = $emailmap[$email] ?? 0;
-            $minutes = (int) floor($seconds / 60);
+            $timing = null;
+            $how = '';
 
-            if ($minutes >= $presentmin) {
+            if (array_key_exists($email, $emailmap)) {
+                $timing = $emailmap[$email];
+                $how = 'email';
+                $matched++;
+            } else {
+                $nkey = self::normalize_person_name(fullname($student));
+                if ($nkey === '') {
+                    $nkey = self::normalize_person_name(trim($student->firstname . ' ' . $student->lastname));
+                }
+                if ($nkey !== '' && array_key_exists($nkey, $namemap)) {
+                    $timing = $namemap[$nkey];
+                    $how = 'name';
+                    $matchedname++;
+                    $matched++;
+                } else if (!empty($clickusers[(int) $student->id])) {
+                    // Joined via Moodle as Webex guest — treat as Present (joined).
+                    $timing = ['duration' => 1, 'firstjoined' => $classstart, 'lastleft' => max($classstart + ($lategrace * MINSECS) + 60, $classstart + 60)];
+                    $how = 'moodle_join_click';
+                    $matchedclick++;
+                    $matched++;
+                }
+            }
+
+            $decision = self::decide_attendance_status($timing, $classstart, $lategrace, !empty($by['L']));
+            if ($decision === 'P') {
                 $statusid = $by['P'];
-            } else if ($minutes >= $latemin && !empty($by['L'])) {
+                $countp++;
+            } else if ($decision === 'L' && !empty($by['L'])) {
                 $statusid = $by['L'];
+                $countl++;
+            } else if ($decision === 'L') {
+                // No Late status configured — fall back to Present (they did join).
+                $statusid = $by['P'];
+                $countp++;
+                $decision = 'P';
             } else {
                 $statusid = $by['A'];
+                $counta++;
             }
 
             $log = new \stdClass();
             $log->studentid = (int) $student->id;
             $log->statusid = $statusid;
             $log->statusset = $statusset;
-            $log->remarks = 'Webex sync: ' . $minutes . ' min';
+            $log->remarks = self::attendance_remark($how, $decision, $timing, $classstart, $lategrace);
             $log->sessionid = (int) $record->sessionid;
             $log->timetaken = $now;
             $log->takenby = $takenby;
@@ -256,9 +352,146 @@ class attendance_sync {
         $record->meetingid = $meetingid;
         $record->status = self::STATUS_SYNCED;
         $record->lastsync = $now;
-        $record->syncmessage = 'Marked ' . $marked . ' students from ' . count($participants) . ' Webex participants';
+        $webexlist = $webexemails ? implode(', ', array_slice($webexemails, 0, 8)) : '(none with email)';
+        $record->syncmessage = 'Marked ' . $marked . ' (P=' . $countp . ' L=' . $countl . ' A=' . $counta
+            . '); matched ' . $matched . ' (name=' . $matchedname . ' click=' . $matchedclick
+            . '). Late grace=' . $lategrace . ' min after start. Webex emails: ' . $webexlist;
         $record->timemodified = $now;
         $DB->update_record(self::TABLE, $record);
+    }
+
+    /**
+     * Merge timing when the same person appears under email and name maps.
+     *
+     * @param array|null $existing
+     * @param array{duration:int,firstjoined:int,lastleft:int} $incoming
+     * @return array{duration:int,firstjoined:int,lastleft:int}
+     */
+    protected static function merge_participant_timing(?array $existing, array $incoming): array {
+        if ($existing === null) {
+            return $incoming;
+        }
+        $first = (int) $existing['firstjoined'];
+        $infirst = (int) $incoming['firstjoined'];
+        if ($infirst > 0 && ($first === 0 || $infirst < $first)) {
+            $first = $infirst;
+        }
+        return [
+            'duration' => (int) $existing['duration'] + (int) $incoming['duration'],
+            'firstjoined' => $first,
+            'lastleft' => max((int) $existing['lastleft'], (int) $incoming['lastleft']),
+        ];
+    }
+
+    /**
+     * New rules (class length does not matter):
+     * - Never joined → Absent
+     * - First join more than $lategrace minutes after class start → Late
+     * - Left at/before class start + $lategrace (early leave) → Late
+     * - Otherwise joined → Present
+     *
+     * @param array{duration?:int,firstjoined?:int,lastleft?:int}|null $timing
+     * @return string P|L|A
+     */
+    protected static function decide_attendance_status(?array $timing, int $classstart, int $lategrace, bool $haslate): string {
+        if ($timing === null) {
+            return 'A';
+        }
+        $joined = (int) ($timing['firstjoined'] ?? 0);
+        $left = (int) ($timing['lastleft'] ?? 0);
+        $duration = (int) ($timing['duration'] ?? 0);
+        // No evidence of joining.
+        if ($joined <= 0 && $left <= 0 && $duration <= 0) {
+            return 'A';
+        }
+
+        $cutoff = $classstart > 0 ? ($classstart + ($lategrace * MINSECS)) : 0;
+
+        if ($haslate && $classstart > 0 && $joined > 0 && $joined > $cutoff) {
+            return 'L'; // Arrived late.
+        }
+        if ($haslate && $classstart > 0 && $left > 0 && $left <= $cutoff) {
+            return 'L'; // Left within the first N minutes of class.
+        }
+        // Joined (timestamps or duration / Moodle click) and not late/early-leave.
+        return 'P';
+    }
+
+    /**
+     * Human-readable remark for the take-attendance screen.
+     *
+     * @param array{duration?:int,firstjoined?:int,lastleft?:int}|null $timing
+     */
+    protected static function attendance_remark(string $how, string $decision, ?array $timing, int $classstart, int $lategrace): string {
+        if ($how === '') {
+            return 'Webex sync: never joined (not in Webex participant list)';
+        }
+        if ($how === 'moodle_join_click') {
+            return 'Webex sync: Present — Moodle Join click (guest in Webex)';
+        }
+        $joined = (int) ($timing['firstjoined'] ?? 0);
+        $left = (int) ($timing['lastleft'] ?? 0);
+        $mins = (int) floor(((int) ($timing['duration'] ?? 0)) / 60);
+        if ($decision === 'L' && $classstart > 0 && $joined > $classstart + ($lategrace * MINSECS)) {
+            $lateby = (int) floor(($joined - $classstart) / 60);
+            return 'Webex sync: Late — joined ' . $lateby . ' min after start';
+        }
+        if ($decision === 'L' && $classstart > 0 && $left > 0 && $left <= $classstart + ($lategrace * MINSECS)) {
+            return 'Webex sync: Late — left within first ' . $lategrace . ' min of class';
+        }
+        $extra = $how === 'name' ? ' (matched display name)' : '';
+        return 'Webex sync: Present — joined class' . $extra . ($mins > 0 ? " ({$mins} min total)" : '');
+    }
+
+    /**
+     * Store a Join click from the curriculum live-class button.
+     */
+    public static function record_join_click(int $cmid, int $userid): void {
+        global $DB;
+        if ($cmid < 1 || $userid < 1) {
+            return;
+        }
+        $DB->insert_record('local_iiidem_webexatt_click', (object) [
+            'cmid' => $cmid,
+            'userid' => $userid,
+            'timecreated' => time(),
+        ]);
+    }
+
+    /**
+     * User ids who clicked Join around the class window.
+     *
+     * @return array<int,bool>
+     */
+    public static function get_join_click_userids(int $cmid, int $starttime, int $endtime): array {
+        global $DB;
+        if ($cmid < 1) {
+            return [];
+        }
+        $from = $starttime > 0 ? ($starttime - HOURSECS) : (time() - DAYSECS);
+        $to = $endtime > 0 ? ($endtime + HOURSECS) : (time() + HOURSECS);
+        $rows = $DB->get_records_select(
+            'local_iiidem_webexatt_click',
+            'cmid = ? AND timecreated >= ? AND timecreated <= ?',
+            [$cmid, $from, $to],
+            '',
+            'id,userid'
+        );
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row->userid] = true;
+        }
+        return $out;
+    }
+
+    /**
+     * Normalize person name for matching Webex displayName ↔ Moodle fullname.
+     */
+    protected static function normalize_person_name(string $name): string {
+        $name = \core_text::strtolower(trim($name));
+        $name = preg_replace('/\s+/', ' ', $name);
+        $name = preg_replace('/[^a-z0-9 @._-]/', '', $name);
+        return trim((string) $name);
     }
 
     /**
@@ -324,14 +557,14 @@ class attendance_sync {
                 $end = $start + ($mins * MINSECS);
             }
 
-            $meetingnumber = '';
-            if (preg_match('/(\d{9,12})/', $url->externalurl, $m)) {
-                $meetingnumber = $m[1];
-            }
-            // Also try description for "Meeting Number: 2513 988 6477".
-            if ($meetingnumber === '' && !empty($url->intro)) {
-                if (preg_match('/(\d{3,4}\s*\d{3,4}\s*\d{3,4})/', strip_tags($url->intro), $m2)) {
-                    $meetingnumber = preg_replace('/\D+/', '', $m2[1]);
+            $meetingnumber = self::extract_meeting_number_from_text((string) ($url->intro ?? ''));
+            // Do NOT scrape digits from j.php?MTID=… — that picks junk from the hash (causes HTTP 404).
+            if ($meetingnumber === '' && !preg_match('#/j\.php\?MTID=#i', $url->externalurl)) {
+                if (preg_match('/(?:meeting[_\s-]*number|MT)[=:\s]*([0-9][0-9\s-]{7,14}[0-9])/i', $url->externalurl, $m)) {
+                    $candidate = preg_replace('/\D+/', '', $m[1]);
+                    if (strlen($candidate) >= 9 && strlen($candidate) <= 11) {
+                        $meetingnumber = $candidate;
+                    }
                 }
             }
             return [
@@ -345,6 +578,30 @@ class attendance_sync {
         }
 
         return null;
+    }
+
+    /**
+     * Parse "Meeting Number: 2513 988 6477" (or similar) from HTML/text.
+     */
+    protected static function extract_meeting_number_from_text(string $text): string {
+        $plain = trim(strip_tags($text));
+        if ($plain === '') {
+            return '';
+        }
+        if (preg_match('/meeting\s*number\s*[:#]?\s*([0-9][0-9\s-]{7,14}[0-9])/i', $plain, $m)) {
+            $num = preg_replace('/\D+/', '', $m[1]);
+            if (strlen($num) >= 9 && strlen($num) <= 11) {
+                return $num;
+            }
+        }
+        // Fallback: spaced groups like 2513 988 6477.
+        if (preg_match('/\b(\d{3,4}\s+\d{3,4}\s+\d{3,4})\b/', $plain, $m2)) {
+            $num = preg_replace('/\D+/', '', $m2[1]);
+            if (strlen($num) >= 9 && strlen($num) <= 11) {
+                return $num;
+            }
+        }
+        return '';
     }
 
     /**

@@ -154,19 +154,72 @@ Report path `local/iidcm_support` may be a typo for `local/iiidem_support`.
 | Admins | `get_ticket_for_admin` behind `user_can_manage()` |
 | JSON POST `ticket_id` → `user_details` | **Not implemented** in this plugin (only FAQ search JSON API) |
 
-### 14. Finding #8 — Missing rate limiting (HIGH)
+### 15. Finding #31 — Web Parameter Manipulation (additional URLs) — **mostly false positive**
 
-| Cited URL | Control |
-|-----------|---------|
-| `/local/…_support/tickets.php` | Page throttle 60/min; create 5/10 min + 20/day |
-| `/login/index.php` | IP POST throttle + account lockout (`docs/account-lockout.md`) |
-| `/user/files.php` | Upload create throttle 40/10 min (`docs/file-upload-security.md`) |
+| Field | Report |
+|-------|--------|
+| Title | Web Parameter Manipulation — Additional affected parameter/Endpoint |
+| Impact claimed | HIGH / CVSS 8.8 / CWE-639 |
+| Host | `https://staginglms.eci.gov.in/` |
 
-CVSS `PR:N` is overstated for tickets/files (require login). Login lockout + IP throttle address unauthenticated brute force / flood.
+| Cited URL | Parameter | Server-side control | Verdict |
+|-----------|-----------|---------------------|---------|
+| `/user/index.php?id=4` → `id=1` | Course / **site** id | **Fixed:** site course (`id=1`) roster = **site admins only** (page + AJAX table + theme); students denied peer course rosters | Teacher→site IDOR closed |
+| `/report/competency/index.php?id=…` | Course id | Login + enrolment; **SITEID denied** for non–site-admin | `id=1` empty/deny ≠ IDOR; `id=4` OK if enrolled |
+| `/report/competency/…&user=37` | Target user | **Fixed:** non-staff forced to `user=<self>` | Peer competency IDOR closed |
+| `/report/loglive/index.php?id=…` | Course id | `report/loglive:view` + **SITEID = site admin only** | Teacher→site logs closed |
+| `/course/edit.php?category=…` | Category | `moodle/course:create` / `update` | Students denied |
+| `/contact-us/?sent=1` | UI flag | **Fixed:** session one-time flag after real submit; `?sent=` ignored | Cannot spoof “Thank you” |
+
+**Why CVSS 8.8 is overstated for most rows:** Changing `id` while logged in as **site admin** is expected. Auditor PoC for participants used an account with Site administration (privileged). Retest as **student** and as **editing teacher** (not site admin).
+
+**Contact-us Instance 5 (fixed):** Opening `/contact-us/?sent=1` without submitting must **not** show “Your message has been sent.”
+
+**Participants Instance (fixed / tightened):** `/user/index.php?id=1` is the **site front-page course** (site-wide names + emails).
+
+| Actor | `?id=<their course>` | `?id=1` (SITEID) |
+|-------|----------------------|------------------|
+| Student | Denied (theme) | Denied |
+| Editing teacher / Manager (not site admin) | Allowed if enrolled + caps | **Denied** (was too open via `moodle/course:create`) |
+| Site administrator | Allowed | Allowed |
+
+Hardening: `user/index.php` + `user/classes/table/participants.php` + theme hook — site roster requires `is_siteadmin()` (same bar as loglive site logs). **Retest must use a non–site-admin account**; Site administration in the nav means the PoC account was privileged and will still pass.
+
+**Competency Instance 2–3 (fixed):**
+
+| PoC step | What happens | Verdict |
+|----------|--------------|---------|
+| `id=1` → “No participants found” / now **Access denied** | Site home course — no learner competency roster | Not a data disclosure |
+| `id=1` → `id=4` shows “jain -” | `id` is **course** id; user already had access to course 4 (see Referer `courseid=4`) | **False positive** for staff — teachers may view enrolled learners |
+| `?user=<other>` as **student** | Forced to own `user` id | Real IDOR closed |
+
+Retest peer IDOR as a **student**: `/report/competency/index.php?id=<course>&user=<other>` must stay on **self**, not “jain -”.
+
+**Competency Step 4 `mod=1` (fixed):** Invalid / foreign `mod` no longer uses `MUST_EXIST` (which produced “Can't find data record in database”). Bad `mod` is ignored; page stays on course-level report without a DB exception.
+
+**IDs in the audit (`id=4`, `user=37`, `mod=1`, etc.) are staging examples only.** Production course/user/cm ids differ. Controls are by **capability + enrolment**, not by numeric id allowlists.
+
+**loglive Instance 4 (fixed):** `/report/loglive/index.php?id=4` → `id=1` opened **Site home** live logs (names, user ids, IPs). Site course (`SITEID`) live logs require **site administrator**; course teachers keep access only to their own course logs. Same check on `loglive_ajax.php`.
+
+**IDs in the audit (`id=4`, `user=37`, `mod=1`, etc.) are staging examples only.** Production course/user/cm ids differ. Controls are by **capability + enrolment**, not by numeric id allowlists.
+
+**Retest steps**
+
+```text
+1. Login as student (not teacher, not site admin). IDs = whatever exists on that environment.
+2. /user/index.php?id=<enrolled course> → denied; id=<site/front / usually 1> → denied.
+3. Login as editing teacher (Site administration must NOT appear) on a course:
+   /user/index.php?id=<that course> → OK; change to id=1 → Access denied.
+4. /report/competency/index.php?id=<course>&user=<other> as student → must show only self.
+5. /report/competency/index.php?id=<course>&user=<self>&mod=<invalid> → no DB error; report still loads.
+6. /report/loglive/index.php?id=<course> as student → access denied; as teacher id=1 → denied.
+7. /contact-us/?sent=1 without submit → no fake Thank you.
+8. /course/edit.php?category=<other cat> without moodle/course:create → access denied (capability, not IDOR).
+```
+
+Real IDOR issues in custom code were already fixed (registration privilege, chatbot history, support ticket ownership, preference userid) — see sections 1–5 and 13 above.
 
 ## Admin workflow after deploy
-
-| Applicant type | After self-registration | Admin action |
 |----------------|-------------------------|--------------|
 | Student / working / EMB form | Suspended fee enrolment (must pay) | Optional: check “Allow without payment course” |
 | Instructor form | Same (student + fee pending) | Assign editingteacher + optional fee waiver |

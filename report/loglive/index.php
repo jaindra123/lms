@@ -50,7 +50,18 @@ if (empty($course)) {
     $context = context_system::instance();
     $coursename = format_string($SITE->fullname, true, ['context' => $context]);
 }
-require_capability('report/loglive:view', $context);
+
+// Site home (id=SITEID) live logs expose site-wide events + IPs.
+// Course teachers must not open them by changing ?id=<course> → ?id=1 (audit PoC).
+// Only full site administrators may view site-level live logs.
+if (!empty($course) && (int) $course->id === (int) SITEID) {
+    if (!is_siteadmin()) {
+        throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('livelogs', 'report_loglive'));
+    }
+    require_capability('report/loglive:view', context_system::instance());
+} else {
+    require_capability('report/loglive:view', $context);
+}
 
 $params = array();
 if ($id != 0) {

@@ -308,13 +308,13 @@ final class security_headers {
             "img-src 'self' data: blob: https:",
             "font-src 'self' data: {$mathjax}",
             "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://checkout-static-next.razorpay.com {$mathjax}",
-            "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+            "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://*.webex.com https://webex.com",
             // Bank / payment POSTs leave the site.
             "form-action 'self' https:",
             "upgrade-insecure-requests",
         ];
         if ($origin !== '') {
-            // Keep media local + https.
+            // Keep media local + https (direct .mp4 / Webex media).
             $directives[] = "media-src 'self' https: blob:";
         }
         return implode('; ', $directives);

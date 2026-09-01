@@ -86,18 +86,10 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configtext(
-        'local_iiidem_webexattendance/presentminutes',
-        get_string('presentminutes', 'local_iiidem_webexattendance'),
-        get_string('presentminutes_desc', 'local_iiidem_webexattendance'),
-        '30',
-        PARAM_INT
-    ));
-
-    $settings->add(new admin_setting_configtext(
         'local_iiidem_webexattendance/lateminutes',
         get_string('lateminutes', 'local_iiidem_webexattendance'),
         get_string('lateminutes_desc', 'local_iiidem_webexattendance'),
-        '10',
+        '5',
         PARAM_INT
     ));
 

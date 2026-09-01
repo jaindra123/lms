@@ -219,4 +219,30 @@ final class input_validation {
         echo self::json_encode_safe($data);
         exit;
     }
+
+    /**
+     * Purify HTML fragments (course summary, custom fields, question text).
+     * Removes script/iframe and other XSS vectors; keeps safe formatting tags.
+     */
+    public static function purify_html_fragment(string $html): string {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+        $clean = clean_text($html, FORMAT_HTML);
+        $clean = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $clean) ?? $clean;
+        $clean = preg_replace('#<iframe\b[^>]*>.*?</iframe>#is', '', $clean) ?? $clean;
+        $clean = preg_replace('/\son[a-z]+\s*=\s*(["\']).*?\1/iu', '', $clean) ?? $clean;
+        $clean = preg_replace('/\son[a-z]+\s*=\s*[^\s>]+/iu', '', $clean) ?? $clean;
+        return $clean;
+    }
+
+    /**
+     * Plain title/name: no HTML at all.
+     */
+    public static function purify_plain_title(string $value): string {
+        $value = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $value = trim(strip_tags($value));
+        return clean_param($value, PARAM_TEXT);
+    }
 }

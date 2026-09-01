@@ -11,6 +11,7 @@ The Moodle `master` branch is named as the upcoming STABLE branch name, for exam
   - Fixes TinyMCE XSS: CVE-2024-47759 / CVE-2024-47761 / CVE-2024-47762 (and related 2026 CVE IDs).
   - Bundled DOMPurify **3.0.5 → 3.2.6** (addresses CVE-2024-47875, CVE-2024-45801, and later DOMPurify advisories flagged against 3.0.5).
   - Procedure: `npm pack tinymce@7.9.3` then replace `js/tinymce/{icons,models,plugins,skins,themes,tinymce.*}` (preserve `js/tinymce/langs`).
+- **2026-08 (CDAC #38):** Patched bundled DOMPurify **3.2.6 → 3.2.7** inside `tinymce.js` / `themes/silver/theme.js` (+ `.min.js`) for [CVE-2025-15599](https://nvd.nist.gov/vuln/detail/CVE-2025-15599) (`SAFE_FOR_XML` attribute regex now includes `textarea`).
 
 ## Upgrade procedure for TinyMCE Editor
 

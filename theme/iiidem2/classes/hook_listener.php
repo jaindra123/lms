@@ -38,7 +38,7 @@ class hook_listener {
     private static function sanitize_course_search_params(): void {
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
         $hit = false;
-        foreach (['/course/search.php', '/course/index.php', '/message/'] as $needle) {
+        foreach (['/course/search.php', '/course/index.php', '/message/', '/user/index.php'] as $needle) {
             if (str_contains($script, $needle)) {
                 $hit = true;
                 break;
@@ -47,19 +47,153 @@ class hook_listener {
         if (!$hit) {
             return;
         }
-        foreach (['search', 'q', 'query'] as $key) {
-            if (!isset($_GET[$key]) || !is_string($_GET[$key])) {
+        foreach (['search', 'q', 'query', 'keywords'] as $key) {
+            if (!isset($_GET[$key])) {
                 continue;
             }
-            $clean = trim(strip_tags(clean_param($_GET[$key], PARAM_TEXT)));
-            if (\core_text::strlen($clean) > 200) {
-                $clean = \core_text::substr($clean, 0, 200);
+            if (is_array($_GET[$key])) {
+                $cleaned = [];
+                foreach ($_GET[$key] as $item) {
+                    if (!is_string($item)) {
+                        continue;
+                    }
+                    $clean = self::sanitize_filter_keyword($item);
+                    if ($clean !== '') {
+                        $cleaned[] = $clean;
+                    }
+                }
+                $_GET[$key] = $cleaned;
+                $_REQUEST[$key] = $cleaned;
+                continue;
             }
-            // Drop leftover angle brackets from probes.
-            $clean = str_replace(['<', '>'], '', $clean);
+            if (!is_string($_GET[$key])) {
+                continue;
+            }
+            $clean = self::sanitize_filter_keyword($_GET[$key]);
             $_GET[$key] = $clean;
             $_REQUEST[$key] = $clean;
         }
+    }
+
+    /**
+     * Plain keyword/filter token — no HTML (participants unified filter / search).
+     */
+    private static function sanitize_filter_keyword(string $value): string {
+        $clean = trim(strip_tags(clean_param($value, PARAM_TEXT)));
+        if (\core_text::strlen($clean) > 200) {
+            $clean = \core_text::substr($clean, 0, 200);
+        }
+        $clean = str_replace(['<', '>'], '', $clean);
+        if (input_validation::contains_dangerous_markup($clean)) {
+            return '';
+        }
+        return $clean;
+    }
+
+    /**
+     * CDAC #39: purify course / question HTML fields on save (stored XSS).
+     *
+     * Scrubs fullname/shortname (plain) and editor/customfield HTML (purified)
+     * before Moodle persists them — blocks &lt;script&gt; in Instructor Data, summary, etc.
+     */
+    private static function sanitize_richtext_content_post(): void {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            return;
+        }
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $courseedit = (bool) preg_match('#/course/(edit|editadvanced)\.php$#', $script);
+        $questionedit = str_contains($script, '/question/bank/editquestion/')
+            || str_contains($script, '/question/question.php');
+        if (!$courseedit && !$questionedit) {
+            return;
+        }
+
+        if ($courseedit) {
+            foreach (['fullname', 'shortname'] as $key) {
+                if (!empty($_POST[$key]) && is_string($_POST[$key])) {
+                    $clean = input_validation::purify_plain_title($_POST[$key]);
+                    $_POST[$key] = $clean;
+                    $_REQUEST[$key] = $clean;
+                }
+            }
+        }
+
+        if ($questionedit) {
+            // ID number must never store HTML/script (CDAC #39 Instance 5).
+            if (isset($_POST['idnumber']) && is_string($_POST['idnumber'])) {
+                $idnumber = $_POST['idnumber'];
+                if (input_validation::contains_dangerous_markup($idnumber) || str_contains($idnumber, '<')) {
+                    $idnumber = '';
+                } else {
+                    $idnumber = clean_param(trim($idnumber), PARAM_NOTAGS);
+                }
+                $_POST['idnumber'] = $idnumber;
+                $_REQUEST['idnumber'] = $idnumber;
+            }
+        }
+
+        self::purify_editor_array_post('summary_editor');
+        self::purify_editor_array_post('questiontext');
+        self::purify_editor_array_post('questiontext_editor');
+        self::purify_editor_array_post('generalfeedback');
+        self::purify_editor_array_post('generalfeedback_editor');
+
+        foreach (array_keys($_POST) as $key) {
+            if (!is_string($key)) {
+                continue;
+            }
+            if (preg_match('/^customfield_.+_editor$/', $key) && is_array($_POST[$key])) {
+                self::purify_editor_array_post($key);
+                continue;
+            }
+            if (str_starts_with($key, 'customfield_') && is_string($_POST[$key])) {
+                $val = $_POST[$key];
+                if (str_contains($val, '<')) {
+                    $clean = input_validation::purify_html_fragment($val);
+                } else if (input_validation::contains_dangerous_markup($val)) {
+                    $clean = input_validation::purify_plain_title($val);
+                } else {
+                    continue;
+                }
+                $_POST[$key] = $clean;
+                $_REQUEST[$key] = $clean;
+            }
+            // Question answer/feedback editors: answer[0][text], feedback[0]_editor, etc.
+            if ($questionedit && is_array($_POST[$key])) {
+                self::purify_nested_editor_post($key);
+            }
+        }
+    }
+
+    /**
+     * Purify Moodle editor array shape: ['text' => html, 'format' => int, ...].
+     */
+    private static function purify_editor_array_post(string $key): void {
+        if (empty($_POST[$key]) || !is_array($_POST[$key])) {
+            return;
+        }
+        if (!isset($_POST[$key]['text']) || !is_string($_POST[$key]['text'])) {
+            return;
+        }
+        $_POST[$key]['text'] = input_validation::purify_html_fragment($_POST[$key]['text']);
+        if (isset($_REQUEST[$key]) && is_array($_REQUEST[$key])) {
+            $_REQUEST[$key]['text'] = $_POST[$key]['text'];
+        }
+    }
+
+    /**
+     * Recursively purify ['text'=>…] leaves under a POST key (question answers).
+     */
+    private static function purify_nested_editor_post(string $key): void {
+        if (empty($_POST[$key]) || !is_array($_POST[$key])) {
+            return;
+        }
+        array_walk_recursive($_POST[$key], static function (&$value, $leafkey): void {
+            if ($leafkey === 'text' && is_string($value) && str_contains($value, '<')) {
+                $value = input_validation::purify_html_fragment($value);
+            }
+        });
+        $_REQUEST[$key] = $_POST[$key];
     }
 
     /**
@@ -192,19 +326,32 @@ class hook_listener {
         // CDAC: form-action PATH_INFO reflection (forgot_password / user/files / etc.).
         self::neutralize_spurious_php_pathinfo();
 
-        // Staging/production: never allow debug footers / theme dumps mid-request (CDAC contact-us PoC).
-        if (defined('MOODLE_ENV') && MOODLE_ENV !== 'dev') {
-            $forcedebug = (string) (getenv('MOODLE_FORCE_DEBUG') ?: '');
-            $forcedebug = in_array(strtolower($forcedebug), ['1', 'true', 'yes', 'on'], true);
-            if (!$forcedebug) {
+        // Never allow debug footers / SQL / stack in the browser unless local FORCE_DEBUG (CWE-209).
+        // Moodle fatal_error() shows Debug info + Stack when $CFG->debugdeveloper is true
+        // (set automatically when $CFG->debug === DEBUG_DEVELOPER / E_ALL|E_STRICT).
+        $forcedebug = (string) (getenv('MOODLE_FORCE_DEBUG') ?: '');
+        $forcedebug = in_array(strtolower($forcedebug), ['1', 'true', 'yes', 'on'], true);
+        $allowbrowserdebug = defined('MOODLE_ENV') && MOODLE_ENV === 'dev' && $forcedebug;
+        if (!$allowbrowserdebug) {
+            $CFG->debugdisplay = 0;
+            $CFG->debugdeveloper = false;
+            $CFG->themedesignermode = false;
+            $CFG->perfdebug = 0;
+            $CFG->debugpageinfo = false;
+            $CFG->debugstringids = false;
+            @ini_set('display_errors', '0');
+            if (defined('MOODLE_ENV') && MOODLE_ENV === 'dev') {
+                // Keep logging, but not developer-level (avoids SQL/stack on exception pages).
+                $CFG->debug = defined('DEBUG_ALL') ? DEBUG_ALL : (E_ALL & ~E_STRICT);
+            } else if (!$forcedebug) {
                 $CFG->debug = 0;
-                $CFG->debugdisplay = 0;
-                $CFG->themedesignermode = false;
-                $CFG->perfdebug = 0;
-                $CFG->debugpageinfo = false;
-                $CFG->debugstringids = false;
-                @ini_set('display_errors', '0');
             }
+        }
+
+        // CDAC #40: keep idle session timeout short on staging/production (CWE-613).
+        if (defined('MOODLE_ENV') && MOODLE_ENV !== 'dev') {
+            $CFG->sessiontimeout = 30 * 60;
+            $CFG->sessiontimeoutwarning = 5 * 60;
         }
 
         // Reject unknown “quick login” style tokens (not implemented here; CDAC PoC used ?qlogin=…&userid=).
@@ -239,6 +386,9 @@ class hook_listener {
 
         // Course search XSS probes: strip tags / PARAM_TEXT before optional_param (CDAC search=<script>).
         self::sanitize_course_search_params();
+
+        // CDAC #39: purify course/question rich text on save (Instructor Data, summary, etc.).
+        self::sanitize_richtext_content_post();
 
         // Reaffirm cookie flags early (covers AJAX that never hit before_http_headers).
         session_security::enforce_httponly_on_set_cookie_headers();
@@ -373,8 +523,9 @@ class hook_listener {
 
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
-        self::restrict_student_attendance_pages();
-        self::restrict_preferences_userid_tampering();
+        // Run once per request. If a guard throws, Moodle re-enters header() while
+        // rendering the error page — running again would print the same message twice.
+        self::run_request_access_guards();
 
         \theme_iiidem2_extend_admin_secondary_nav($PAGE);
 
@@ -524,6 +675,193 @@ class hook_listener {
                 'id' => $cmid,
                 'studentid' => (int) $USER->id,
             ]));
+        }
+    }
+
+    /**
+     * CDAC access guards for participants / competency / loglive / prefs / attendance.
+     * Skips when Moodle is already rendering an exception page (nested header),
+     * otherwise the same deny text is printed twice via early_error_content.
+     */
+    private static function run_request_access_guards(): void {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25) as $frame) {
+            $fn = $frame['function'] ?? '';
+            if ($fn === 'default_exception_handler' || $fn === 'fatal_error') {
+                return;
+            }
+        }
+
+        $done = true;
+        self::restrict_student_attendance_pages();
+        self::restrict_preferences_userid_tampering();
+        self::restrict_participants_list_access();
+        self::restrict_competency_report_access();
+        self::restrict_loglive_site_access();
+    }
+
+    /**
+     * Harden /user/index.php (enrolled users / participants).
+     *
+     * Audit PoC: change id=4 → id=1 (site front page) and read another roster + emails.
+     * - Site course (id=SITEID): site administrators only.
+     * - Other courses: teachers/managers only — students must not browse peer PII lists.
+     */
+    private static function restrict_participants_list_access(): void {
+        global $SITE;
+
+        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (!str_ends_with($script, '/user/index.php')) {
+            return;
+        }
+
+        $courseid = optional_param('id', 0, PARAM_INT);
+        $contextid = optional_param('contextid', 0, PARAM_INT);
+        if ($contextid > 0) {
+            $ctx = \context::instance_by_id($contextid, IGNORE_MISSING);
+            if ($ctx && (int) $ctx->contextlevel === CONTEXT_COURSE) {
+                $courseid = (int) $ctx->instanceid;
+            }
+        }
+        if ($courseid < 1) {
+            return;
+        }
+
+        // Front page / site course participants (audit: id=<course> → id=1).
+        // Core allows anyone with moodle/course:viewparticipants at system context
+        // (often Managers / course creators). Match loglive: site roster = site admins only.
+        // is_siteadmin() already returned above — any caller reaching here is denied.
+        if ((int) $courseid === (int) SITEID || (int) $courseid === (int) $SITE->id) {
+            throw new \moodle_exception(
+                'nopermissions',
+                'error',
+                new \moodle_url('/'),
+                get_string('participants')
+            );
+        }
+
+        $coursecontext = \context_course::instance($courseid, IGNORE_MISSING);
+        if (!$coursecontext) {
+            return;
+        }
+
+        // Staff who can manage the course or see identity fields may open the roster.
+        if (has_any_capability([
+            'moodle/course:update',
+            'moodle/course:viewhiddenuserfields',
+            'moodle/site:viewuseridentity',
+            'moodle/course:enrolreview',
+            'moodle/role:assign',
+            'enrol/manual:enrol',
+        ], $coursecontext)) {
+            return;
+        }
+
+        // Pure students (viewparticipants alone): block peer roster / email dump.
+        throw new \moodle_exception(
+            'nopermissions',
+            'error',
+            new \moodle_url('/course/view.php', ['id' => $courseid]),
+            get_string('participants')
+        );
+    }
+
+    /**
+     * Harden /report/competency/index.php.
+     *
+     * Audit PoC: change id=1 → id=4 and open peer competency; ?user=37 views another learner.
+     * Non-staff may only view their own competency breakdown (never another user's).
+     */
+    private static function restrict_competency_report_access(): void {
+        global $USER;
+
+        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (!str_ends_with($script, '/report/competency/index.php')) {
+            return;
+        }
+
+        $courseid = optional_param('id', 0, PARAM_INT);
+        if ($courseid < 1) {
+            return;
+        }
+
+        // Site home course: no competency roster to browse via ?id=1 (audit Instance 2).
+        if ((int) $courseid === (int) SITEID) {
+            throw new \moodle_exception(
+                'nopermissions',
+                'error',
+                new \moodle_url('/'),
+                get_string('pluginname', 'report_competency')
+            );
+        }
+
+        $coursecontext = \context_course::instance($courseid, IGNORE_MISSING);
+        if (!$coursecontext) {
+            return;
+        }
+
+        $canviewothers = has_any_capability([
+            'moodle/competency:competencygrade',
+            'moodle/competency:usercompetencyreview',
+            'moodle/competency:coursecompetencymanage',
+            'moodle/course:update',
+            'moodle/course:viewhiddenuserfields',
+        ], $coursecontext);
+
+        if ($canviewothers) {
+            return;
+        }
+
+        // Students / non-graders: only own report (core otherwise defaults to another participant).
+        $requesteduser = optional_param('user', 0, PARAM_INT);
+        $mod = optional_param('mod', 0, PARAM_INT);
+        if ($requesteduser !== (int) $USER->id) {
+            redirect(new \moodle_url('/report/competency/index.php', [
+                'id' => $courseid,
+                'user' => (int) $USER->id,
+                'mod' => $mod,
+            ]));
+        }
+    }
+
+    /**
+     * Harden live logs: site course id=SITEID must not be open to course teachers via ?id= switch.
+     */
+    private static function restrict_loglive_site_access(): void {
+        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (!str_ends_with($script, '/report/loglive/index.php')
+                && !str_ends_with($script, '/report/loglive/loglive_ajax.php')) {
+            return;
+        }
+
+        $courseid = optional_param('id', 0, PARAM_INT);
+        if ($courseid < 1 || (int) $courseid !== (int) SITEID) {
+            return;
+        }
+
+        if (!is_siteadmin()) {
+            throw new \moodle_exception(
+                'nopermissions',
+                'error',
+                new \moodle_url('/'),
+                get_string('livelogs', 'report_loglive')
+            );
         }
     }
 

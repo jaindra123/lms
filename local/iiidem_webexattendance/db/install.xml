@@ -39,5 +39,20 @@
         <INDEX NAME="recording_status_end" UNIQUE="false" FIELDS="recordingstatus, endtime"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="local_iiidem_webexatt_click" COMMENT="Moodle Join clicks for Webex live class (guest email workaround)">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="cmid_user" UNIQUE="false" FIELDS="cmid, userid"/>
+        <INDEX NAME="cmid_time" UNIQUE="false" FIELDS="cmid, timecreated"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>
