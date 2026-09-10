@@ -821,16 +821,26 @@ class core_calendar_external extends external_api {
         $eventvault = event_container::get_event_vault();
         if ($event = $eventvault->get_event_by_id($params['eventid'])) {
             $mapper = event_container::get_event_mapper();
-            if (!calendar_view_event_allowed($mapper->from_event_to_legacy_event($event))) {
+            $legacy = $mapper->from_event_to_legacy_event($event);
+            // Server-side authZ for every eventid (CDAC Web Parameter Tampering Instance 4).
+            // Do not trust client-supplied eventid alone — must pass calendar_view_event_allowed().
+            if (!calendar_view_event_allowed($legacy)) {
+                throw new moodle_exception('nopermissiontoviewcalendar', 'error');
+            }
+            // Extra guard: personal calendar rows of another user are never returned unless
+            // calendar_can_manage_user_event already allowed (capability / ownership).
+            $ispersonal = empty($legacy->courseid) && empty($legacy->groupid)
+                && empty($legacy->categoryid) && empty($legacy->modulename)
+                && !empty($legacy->userid);
+            if ($ispersonal && (int) $legacy->userid !== (int) $USER->id
+                    && !calendar_can_manage_user_event($legacy)) {
                 throw new moodle_exception('nopermissiontoviewcalendar', 'error');
             }
         }
 
         if (!$event) {
-            // We can't return a warning in this case because the event is not optional.
-            // We don't know the context for the event and it's not worth loading it.
-            $syscontext = context_system::instance();
-            throw new \required_capability_exception($syscontext, 'moodle/course:view', 'nopermissions', 'error');
+            // Missing / unauthorized event ids must not distinguish existence (same deny).
+            throw new moodle_exception('nopermissiontoviewcalendar', 'error');
         }
 
         $cache = new events_related_objects_cache([$event]);

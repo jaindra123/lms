@@ -127,11 +127,19 @@ define([], function() {
         if (!sesskey || !wwwroot) {
             return;
         }
-        const url = wwwroot + '/local/iiidem_webexattendance/join_click.php'
-            + '?cmid=' + encodeURIComponent(cmid)
-            + '&sesskey=' + encodeURIComponent(sesskey);
+        // CDAC #17: sesskey in POST body, not query string.
+        const url = wwwroot + '/local/iiidem_webexattendance/join_click.php';
+        const body = new URLSearchParams();
+        body.set('cmid', cmid);
+        body.set('sesskey', sesskey);
         try {
-            fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+            fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: body.toString(),
+            });
         } catch (e) {
             // Non-fatal: Webex still opens.
         }

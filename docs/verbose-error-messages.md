@@ -59,7 +59,9 @@ Bare / invalid-token calls to `/lib/ajax/service-nologin.php` returned JSON with
 
 > Unsupported server - query string can not be determined, try disabling YUI combo loading in admin settings.
 
-That discloses edge/config advice on older Moodle builds. Bare probes should get a generic 404 body (core `combo_not_found`), while **valid rollup URLs must keep working**.
+That discloses edge/config advice. **Fix:** `theme/yui_combo.php` `combo_not_found()` always returns generic **“Combo resource not found, sorry.”** (404) — never admin-settings text. Valid rollup URLs must keep working.
+
+**Staging note (2026-09 retest):** live staging still returned the old “Unsupported server…” string until `theme/yui_combo.php` is deployed from this repo.
 
 ### PoC (docs.moodle.org help link)
 
@@ -122,6 +124,8 @@ Burp POST to `/user/contactsitesupport.php` with `Origin: https://evil.com` show
 | “Can't find data record in database table …” | Softened to generic not-found (see above) |
 | `Server: Apache` without version | Prefer hide at edge ([version-disclosure.md](version-disclosure.md)) — separate from error body |
 | Stack trace / SQL / `/var/www/html/…` / `debuginfo` | **Must not** appear — fixed by debug off + sanitizers below |
+| Successful `core_courseformat_get_state` / template JSON | Normal app data for authorized users — not an error dump |
+| Razorpay `api.razorpay.com` JSON (`grpc`, `SERVER_ERROR`) | Third-party host — out of LMS scope; LMS shows generic copy only |
 
 ### PoC (Instance 8 / 9 — customcert)
 
@@ -130,6 +134,81 @@ Burp POST to `/user/contactsitesupport.php` with `Origin: https://evil.com` show
 ### PoC (third-party UPI — out of scope)
 
 JSON from **`upiassembly.com`** (`code: bad_request_error`, “invalid characters”) is not served by this Moodle LMS. Dispute that host. Keep LMS errors generic per controls below.
+
+### Retest round (2026-09) — auditor instances
+
+| Instance | Observation | Verdict |
+|----------|-------------|---------|
+| **Instance 1:** `/user/index.php?id=4` → HTTP **500** + `<title>Error</title>` | Caused by throwing from `before_http_headers` → Moodle `early_error` (always 500). | **Fixed** — deny before output; early_error → **403** + generic body |
+| **Instance 3:** `service.php?…&info=core_courseformat_get_state` | `"error": false` + course UI state JSON | **Dispute** — not an error; authorized course data (see below) |
+| **Instance 4:** `service-nologin.php?…load_template…` | `"error": false` + Mustache UI templates | **Dispute** — not an error; public theme templates (see below) |
+| `GET /theme/yui_combo.php` | “Unsupported server… disable YUI…” | **Fix** — deploy patched `theme/yui_combo.php` |
+| Instance 5: remove checkout id → `api.razorpay.com` grpc JSON | Third-party Razorpay host, not LMS | **Dispute** LMS; LMS UI uses generic disruption copy |
+| Instance 9: `api.razorpay.com/.../payment/status?key_id=` | Third-party Razorpay host | **Dispute** LMS |
+
+### PoC (Instance 3 — `core_courseformat_get_state`) — **DISPUTE under CWE-209**
+
+Burp: logged-in user on `/course/view.php?id=4` →
+
+`POST /lib/ajax/service.php?sesskey=…&info=core_courseformat_get_state`  
+Body: `[{"methodname":"core_courseformat_get_state","args":{"courseid":4}}]`
+
+| Observation | Why it is **not** verbose-error disclosure |
+|-------------|--------------------------------------------|
+| `"error": false` | **Successful** API call — not an exception / stack / SQL dump |
+| Large `data` JSON (sections, cm ids, titles, visibility) | Normal Moodle **course format state** for the reactive course UI; same structure the browser already needs to render `/course/view.php?id=4` |
+| Requires valid session + `validate_context(course)` | Guests / users without course access get an auth/capability failure (sanitized) — not this payload |
+| `sesskey` in query string | Separate finding **#17** ([session-token-in-url.md](session-token-in-url.md)); theme JS strips it and sends `X-Moodle-Sesskey` |
+
+**Do not “fix” by stripping course state** — that breaks the course page. Retest as CWE-209 only if response contains `debuginfo`, `backtrace`, `stacktrace`, SQL, or `/var/www/…` paths.
+
+### PoC (Instance 4 — `service-nologin.php` template load) — **DISPUTE under CWE-209**
+
+Burp: `GET /lib/ajax/service-nologin.php?info=6-method-calls&…&args=[…core_output_load_template_with_dependencies…]`
+
+| Observation | Why it is **not** verbose-error disclosure |
+|-------------|--------------------------------------------|
+| Every item `"error": false` | Successful template fetch — not an error page |
+| Payload = Mustache HTML for `loading`, `modal`, `modal_backdrop`, etc. | Public UI chrome for theme `iiidem2`; no passwords, PII, SQL, or stack |
+| `service-nologin.php` | By design allows cookie-less template/string loads used by Moodle AMD |
+| `sesskey` in query | Again finding **#17**, not CWE-209 |
+
+**Do not disable** `core_output_load_template_with_dependencies` — Moodle JS (modals, loading icons) depends on it.
+
+### PoC (Instance 5 — Razorpay remove `checkout_id`) — **DISPUTE LMS**
+
+Burp host is **`api.razorpay.com`**, not `staginglms.eci.gov.in`:
+
+`POST https://api.razorpay.com/v1/standard_checkout/ads/ip/serve?key_id=rzp_test_…`  
+Tamper: empty / remove `"checkout_id"` in JSON → Razorpay returns `500` + `"internal grpc error…"`.
+
+| Claim | Assessment |
+|-------|------------|
+| LMS discloses gRPC internals | **No** — response is from **Razorpay’s** API |
+| Moodle can change that JSON | **No** — third-party host |
+| What LMS users see | Generic disruption copy via `paygw_razorpay` (`apiservererror` / `friendlyFailureMessage`) — never the raw grpc string |
+
+Dispute against the LMS; optionally report to Razorpay. Related: [razorpay-key-id-exposure.md](razorpay-key-id-exposure.md).
+
+### PoC (Instance 1 — `/user/index.php?id=4` HTTP 500)
+
+Burp: logged-in student (`MoodleSession`) → `GET /user/index.php?id=4` → **500** + HTML error shell.
+
+| Cause | Fix |
+|-------|-----|
+| Access guard threw `moodle_exception` inside `before_http_headers` (during `$OUTPUT->header()`) | Moodle treats that as early init → `bootstrap_renderer::early_error()` → **always HTTP 500** |
+| Status 500 looked like a crash dump to scanners | Deny in `user/index.php` **before** any HTML; hook **redirects** instead of throw |
+| `early_error` status / body | Staging/production: **403 Forbidden** + theme `genericerror` only (no stack/SQL/paths) |
+
+**Expected after deploy:**
+
+| Role | `GET /user/index.php?id=4` |
+|------|----------------------------|
+| Guest | Login redirect (3xx) |
+| Student | **403** or redirect to course — generic message only, **never 500** |
+| Teacher / manager | **200** participants table |
+
+Deploy: `user/index.php`, `theme/iiidem2` (≥ `2024101041`), `lib/classes/output/bootstrap_renderer.php`.
 
 ## Controls
 
@@ -159,13 +238,17 @@ Wired from `security_headers::ensure_ajax_cache_control_buffer()`.
 |---------|--------|
 | `$CFG->yuicomboloading = false` | `config.php` staging/production + upgrade `set_config` |
 | Valid rollup/module combo URLs | **Must return 200** — required for Moodle JS (do not blanket-404) |
-| Bare `/theme/yui_combo.php` (no modules) | Core returns generic 404 (“Combo resource not found”) — not admin-settings advice |
+| Bare `/theme/yui_combo.php` (no modules) | Always generic 404 body (“Combo resource not found, sorry.”) — `combo_not_found()` ignores any admin-advice `$message` |
 
 Do **not** block all `yui_combo.php` traffic: that breaks file picker / YUI (`YUI is not defined`). See [vulnerable-javascript-dependency.md](vulnerable-javascript-dependency.md).
 
 ### 4. Shared helper for custom endpoints
 
 `theme/iiidem2/classes/safe_errors.php` — logs full exceptions server-side; returns generic user text / JSON.
+
+### 5. Razorpay checkout errors (Instance 5 — LMS side)
+
+`paygw_razorpay` maps provider `SERVER_ERROR` / gRPC-style descriptions to `apiservererror` (server) and `friendlyFailureMessage()` (Checkout.js UI). Users never see “internal grpc error”.
 
 ## Deploy
 
@@ -175,11 +258,28 @@ php admin/cli/purge_caches.php
 # MOODLE_FORCE_DEBUG unset; MOODLE_ENV=staging
 ```
 
-Theme ≥ `2024100987`.
+Theme ≥ `2024101041`. paygw_razorpay ≥ `2025062916`. **Must deploy** `theme/yui_combo.php`, `user/index.php`, and `lib/classes/output/bootstrap_renderer.php` for Instance 1 / YUI fixes.
 
 ## Verify
 
 ```bash
+# Instance 1 — participants: never HTTP 500; no stack/SQL
+curl -sI -b 'MoodleSession=…' 'https://staginglms.eci.gov.in/user/index.php?id=4' | head -n 5
+# Expect student: HTTP/1.1 403 or 303 — NOT 500
+curl -s -b 'MoodleSession=…' 'https://staginglms.eci.gov.in/user/index.php?id=4' \
+  | grep -iE 'stack trace|/var/www|SELECT |debuginfo|500 Internal' && echo FAIL || echo OK
+
+# Instance 3 — successful course state (NOT an error dump)
+# Expect: "error":false and NO debuginfo/backtrace
+curl -s -X POST 'https://staginglms.eci.gov.in/lib/ajax/service.php' \
+  -H 'Content-Type: application/json' -H 'X-Moodle-Sesskey: YOURKEY' -b 'MoodleSession=…' \
+  --data '[{"index":0,"methodname":"core_courseformat_get_state","args":{"courseid":4}}]' \
+  | grep -iE 'debuginfo|backtrace|stacktrace|/var/www|SELECT ' && echo FAIL || echo OK
+
+# Instance 4 — successful templates (NOT an error dump)
+curl -s 'https://staginglms.eci.gov.in/lib/ajax/service-nologin.php?info=1-method-call&args=%5B%7B%22index%22%3A0%2C%22methodname%22%3A%22core_output_load_template_with_dependencies%22%2C%22args%22%3A%7B%22component%22%3A%22core%22%2C%22template%22%3A%22loading%22%2C%22themename%22%3A%22iiidem2%22%2C%22lang%22%3A%22en%22%7D%7D%5D' \
+  | grep -iE '"error"\s*:\s*true|debuginfo|backtrace|stacktrace' && echo FAIL || echo OK
+
 # Instance 1 / 5 — no debug fields or programmer text
 curl -s -X POST 'https://staginglms.eci.gov.in/lib/ajax/service-nologin.php' \
   -H 'Content-Type: application/json' \
@@ -217,7 +317,9 @@ php -r "define('CLI_SCRIPT', true); require 'config.php'; echo 'env=' . MOODLE_E
 | Debug off | `config.php` + `after_config` re-force |
 | No AJAX debuginfo/stacktrace | `safe_errors::sanitize_ajax_json` |
 | No programmer/WS dump text | `scrub_public_error_text` |
-| No YUI combo admin advice | `yuicomboloading=0` + bare probe → generic combo 404 (endpoint itself stays enabled) |
+| No YUI combo admin advice | Patched `theme/yui_combo.php` → generic combo 404 |
 | Generic custom errors | `safe_errors` on theme AJAX/UI |
+| Razorpay grpc text not shown in LMS UI | `paygw_razorpay` friendlyFailureMessage / apiservererror |
+| `/user/index.php` never HTTP 500 for authz deny | Deny before output + `early_error` → 403 + generic text |
 
-Related: [session-token-in-url.md](session-token-in-url.md), [sql-injection-parameterized-queries.md](sql-injection-parameterized-queries.md), [debug-mode-staging.md](debug-mode-staging.md), [os-command-injection.md](os-command-injection.md) (#32 invalid course ID is not CWE-209).
+Related: [session-token-in-url.md](session-token-in-url.md), [sql-injection-parameterized-queries.md](sql-injection-parameterized-queries.md), [debug-mode-staging.md](debug-mode-staging.md), [os-command-injection.md](os-command-injection.md) (#32 invalid course ID is not CWE-209), [web-parameter-tampering.md](web-parameter-tampering.md).

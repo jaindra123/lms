@@ -76,20 +76,21 @@ php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
-Theme ≥ `2024100974`.
+Theme ≥ `2024101027`.
 
 ## Verify
 
-1. `/contact-us/` — submit oversized name/subject/message → rejected server-side  
-2. `/register/` — oversized names / invalid OTP → rejected; AJAX errors do not echo raw input  
+1. `/contact-us/` — XSS / oversized name/subject/message → rejected server-side (`err_xss`)  
+2. `/register/` — script in names / invalid OTP → rejected; AJAX errors do not echo raw input  
 3. Confirm no XSS reflection of submitted strings in HTML/JSON
 
 ## Evidence for auditors
 
 | Control | Implementation |
 |--------|----------------|
-| Contact form lengths | `contact_form.php` maxlength + `PARAM_TEXT` |
-| Register / OTP | `register/*` + `input_validation` |
+| Contact form lengths + allow-list | `contact_form.php` + `is_safe_person_name` / `is_safe_plain_line` |
+| Register / OTP | `register/*` + person-name / plain-line checks |
+| Client defence | HTML `pattern` + `form_input_guard.js` |
 | No raw echo | `json_encode_safe` / localized messages only |
 | Server-side | Moodle formslib rules + PHP cleaners (not client-only) |
 

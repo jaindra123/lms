@@ -57,7 +57,7 @@ Host variants in reports (`staginglms.cdac.gov.in`, `staginglma.cci.gov.in`) may
 
 | Cited URL | Parameter meaning | Verdict |
 |-----------|-------------------|---------|
-| `/login/change_password.php?id=1` | `id` = **course** id | **False positive** — password always for session `$USER` |
+| `/login/change_password.php?id=1` | `id` = **course** id | **Hardened** — `id` ignored (forced SITEID); password always for session `$USER` |
 | `/user/preferences.php?userid=5` | Target user | Core authZ + theme forces non-privileged → own userid |
 | `/user/forum.php?id=5` | Target user | `useredit_setup_preference_page` requires `moodle/user:editprofile` for others; theme redirects students to own `id` |
 | `/user/calendar.php?id=5` | Target user | Same preference-page authZ + theme redirect |
@@ -70,26 +70,31 @@ Host variants in reports (`staginglms.cdac.gov.in`, `staginglma.cci.gov.in`) may
 | `/course/view.php?id=4&registered=1` | Course id + UI flag | `registered=1` only shows a success toast — **no privilege change** |
 | `/?qlogin=…&userid=49` | — | **Not implemented** in this codebase; query keys stripped |
 | `/blog/edit.php?action=add&userid=46` | Ignored `userid` on add | Add uses session user; blogs **disabled** on staging/prod (`$CFG->enableblogs = 0`) |
-| `/lib/ajax/service.php?…core_calendar_get_calendar_event_by_id` | Event id | Core checks `calendar_view_event_allowed()`; sesskey required |
+| `/lib/ajax/service.php?…core_calendar_get_calendar_event_by_id` | Event id | **Hardened** — `calendar_view_event_allowed()` + personal-event ownership; sesskey required |
 
 CVSS 8.8 / CWE-639 is overstated where changing `id` only selects another **authorized** course module or course the user already can access.
 
 **Extra hardening:** `restrict_preferences_userid_tampering()` covers preferences, forum, calendar, contentbank, editor, language, and message preferences.
 
-### 7. PoC screenshots: `change_password.php?id=` switches “Sai Kumar” → “Roopa” — **OUT OF SCOPE**
+### 7. PoC: `change_password.php?id=` (Instance 1) — **HARDENED**
 
-Auditor evidence shows:
+| Claim | Fact |
+|-------|------|
+| `?id=` is another user’s primary key | **False** — Moodle uses `id` as **course** context only |
+| Changing `id=1` → `id=4` changes whose password is updated | **False** — form always updates session `$USER` (same username in both screenshots) |
+| `id=24` → “invalid course ID” | Course 24 missing; **not** an authZ bypass |
 
-| Evidence | Moodle LMS (this repo) |
-|----------|-------------------------|
-| Path in stack: `/var/www/html/change_password.php` | Only `/login/change_password.php` exists |
-| Function: `find_user_by_id()` | **Does not exist** anywhere in this codebase |
-| Error: “Access denied, invalid user id” | Moodle uses course lookup → `invalidcourseid` |
-| `?id=` meaning | **Course** id for page context / return URL — password form always binds to session `$USER` |
+**Fix applied:**
 
-Changing `id` in Moodle does **not** load another user’s password form. The PoC belongs to a **different custom PHP app** that treats `id` as a user primary key. Dispute for this LMS.
+| Control | Behaviour |
+|---------|-----------|
+| `login/change_password.php` | Forces `$id = SITEID`; ignores client `id` |
+| Theme `harden_change_password_course_id()` | Pins `$_GET`/`$_POST` `id` to SITEID early (`after_config`) |
+| Password target | Always `$USER` + `moodle/user:changeownpassword` |
 
-**Related (in scope):** stack traces / filesystem paths must not display to end users — already controlled via `$CFG->debugdisplay = 0` on staging/production (`docs/verbose-error-messages.md`).
+**Retest:** `/login/change_password.php?id=1`, `?id=4`, `?id=24` → same own-user form; no `invalidcourseid` stack; submitting changes only the logged-in account.
+
+**Staging recheck (2026-09):** `?id=1` and `?id=4` both show username `mayaaravind18` for session user MC — **no cross-user password target**. **Dispute / closed.**
 
 ### 8. Instance 2 — `/mod/attendance/view.php?id=11` → `id=1` (NOT successful IDOR)
 
@@ -135,9 +140,30 @@ With `$CFG->debug = 0` and `$CFG->debugdisplay = 0` (forced on staging/productio
 
 Same class of finding as Instance 2 (attendance).
 
-### 11. Instance 4 — `core_calendar_get_calendar_event_by_id`
+### 11. Instance 4 — `core_calendar_get_calendar_event_by_id` — **HARDENED**
 
-AJAX webservice loads a calendar event by id. Core calls `calendar_view_event_allowed()` and throws if the caller cannot view that event. Requires a valid `sesskey`. Not an unauthenticated IDOR.
+AJAX: `POST /lib/ajax/service.php?…&info=core_calendar_get_calendar_event_by_id` with `args.eventid`.
+
+| Control | Behaviour |
+|---------|-----------|
+| Sesskey | Required (Moodle AJAX) |
+| `calendar_view_event_allowed()` | Course/module/group/category/site rules |
+| Site events | Logged-in non-guest only |
+| Category events | Category must be user-visible |
+| Personal user events | Owner or `moodle/calendar:manageentries` only |
+| Missing / denied `eventid` | Same `nopermissiontoviewcalendar` (no existence oracle) |
+
+**Retest as student:** `eventid` of another user’s **personal** calendar → denied. `eventid` of a course/module event in a course they are **not** enrolled in → denied. Events they already see in their calendar UI may still load (authorized, not IDOR).
+
+**Staging recheck (2026-09):**
+
+| `eventid` | Result | Meaning |
+|-----------|--------|---------|
+| `8` / `3` | Event/course JSON (e.g. “Live Session on AI”, course `alert(1)`) | User is **authorized** for that course calendar (enrolled) — not IDOR |
+| `30` | `nopermissiontoviewcalendar` | **AuthZ held** — tampered id denied |
+| Changing id among events the student can already see | Different authorized rows | **Expected** Moodle calendar API |
+
+**Verdict:** **Dispute / closed** as Web Parameter Tampering. Pass criteria = deny for out-of-scope / other-user personal events; allow for enrolled course events is normal.
 
 ### 12. Out of scope — `/api/admin/services.php` `eventid` IDOR
 
@@ -164,42 +190,54 @@ Report path `local/iidcm_support` may be a typo for `local/iiidem_support`.
 
 | Cited URL | Parameter | Server-side control | Verdict |
 |-----------|-----------|---------------------|---------|
-| `/user/index.php?id=4` → `id=1` | Course / **site** id | **Fixed:** site course (`id=1`) roster = **site admins only** (page + AJAX table + theme); students denied peer course rosters | Teacher→site IDOR closed |
-| `/report/competency/index.php?id=…` | Course id | Login + enrolment; **SITEID denied** for non–site-admin | `id=1` empty/deny ≠ IDOR; `id=4` OK if enrolled |
+| `/user/index.php?id=4` → `id=1` | Course / **site** id | **Fixed (tightened):** site course roster **never** served on this URL (all roles); site admins redirected to `/admin/user.php`; students denied peer course rosters | id=1 PII dump closed |
+| `/report/competency/index.php?id=…` | Course id | Login + **`moodle/competency:coursecompetencyview`**; **SITEID hard-denied** (all roles) | `id=1` → access denied (not soft “No participants”); `id=4` only if enrolled + cap |
 | `/report/competency/…&user=37` | Target user | **Fixed:** non-staff forced to `user=<self>` | Peer competency IDOR closed |
-| `/report/loglive/index.php?id=…` | Course id | `report/loglive:view` + **SITEID = site admin only** | Teacher→site logs closed |
+| `/report/loglive/index.php?id=…` | Course id | `report/loglive:view` + **SITEID never via `?id=`** (all roles; admins → `/report/loglive/index.php` no id) | Teacher/admin → site logs closed |
 | `/course/edit.php?category=…` | Category | `moodle/course:create` / `update` | Students denied |
 | `/contact-us/?sent=1` | UI flag | **Fixed:** session one-time flag after real submit; `?sent=` ignored | Cannot spoof “Thank you” |
 
 **Why CVSS 8.8 is overstated for most rows:** Changing `id` while logged in as **site admin** is expected. Auditor PoC for participants used an account with Site administration (privileged). Retest as **student** and as **editing teacher** (not site admin).
 
+**Staging recheck (2026-09) — admin session:**
+
+| URL | PoC note | Verdict |
+|-----|----------|---------|
+| `/user/index.php?id=4` | Admin / privileged login; “24/31 participants”, Enrol users, Edit mode | **Dispute** — authorized course roster for staff/admin. Fail only if a **pure student** sees the peer list. `id=1` (site) must still deny/redirect. |
+| `/mod/page/view.php?id=29` (also `id=31`, …) | Admin login; Intruder across CM ids → 200 for pages in accessible courses | **Dispute** — `id` is course-module id; admin/teacher may open enrolled activities. Fail only if a **student not enrolled** in that course gets page HTML. `alert(1)` in breadcrumb = stored course shortname (XSS / content hygiene), **not** parameter-tampering IDOR. |
+
 **Contact-us Instance 5 (fixed):** Opening `/contact-us/?sent=1` without submitting must **not** show “Your message has been sent.”
 
-**Participants Instance (fixed / tightened):** `/user/index.php?id=1` is the **site front-page course** (site-wide names + emails).
+**Participants Instance (fixed / tightened):** `/user/index.php?id=1` is the **site front-page course** (site-wide names + emails). Auditor PoC changed `id=4` → `id=1` and still saw emails when the account had **Site administration** (often a full site admin). Allowing site admins on this URL left the finding open.
 
 | Actor | `?id=<their course>` | `?id=1` (SITEID) |
 |-------|----------------------|------------------|
-| Student | Denied (theme) | Denied |
-| Editing teacher / Manager (not site admin) | Allowed if enrolled + caps | **Denied** (was too open via `moodle/course:create`) |
-| Site administrator | Allowed | Allowed |
+| Student | Denied (theme) | **Denied** |
+| Editing teacher / Manager | Allowed if enrolled + caps | **Denied** |
+| Site administrator | Allowed | **Redirect → `/admin/user.php`** (no participants/email table) |
 
-Hardening: `user/index.php` + `user/classes/table/participants.php` + theme hook — site roster requires `is_siteadmin()` (same bar as loglive site logs). **Retest must use a non–site-admin account**; Site administration in the nav means the PoC account was privileged and will still pass.
+Hardening: `user/index.php` + `user/classes/table/participants.php` + theme hook — **no role** may load the site-home participants list via this endpoint. Theme ≥ `2024101035`.
 
-**Competency Instance 2–3 (fixed):**
+**Competency Instance 3 — `?user=37` → `?user=40` (fixed / clarified):**
 
-| PoC step | What happens | Verdict |
-|----------|--------------|---------|
-| `id=1` → “No participants found” / now **Access denied** | Site home course — no learner competency roster | Not a data disclosure |
-| `id=1` → `id=4` shows “jain -” | `id` is **course** id; user already had access to course 4 (see Referer `courseid=4`) | **False positive** for staff — teachers may view enrolled learners |
-| `?user=<other>` as **student** | Forced to own `user` id | Real IDOR closed |
+| PoC step | Control |
+|----------|---------|
+| `user=37&id=4` then `user=40` | Non-graders forced to **own** `user` id; Jump-to-user dropdown only for grade/manage caps |
+| `user=38&id=1` | SITEID → **Access denied** (not soft “No participants found”) |
+| `user=40&id=4&mod=1` | Invalid/foreign `mod` ignored — **no** “Can't find data record” |
 
-Retest peer IDOR as a **student**: `/report/competency/index.php?id=<course>&user=<other>` must stay on **self**, not “jain -”.
-
-**Competency Step 4 `mod=1` (fixed):** Invalid / foreign `mod` no longer uses `MUST_EXIST` (which produced “Can't find data record in database”). Bad `mod` is ignored; page stays on course-level report without a DB exception.
+Teachers/graders viewing enrolled learners via Jump to user remains **authorized** (same as gradebook). Retest IDOR as a **student** without grading caps.**Competency Step 4 `mod=1` (fixed):** Invalid / foreign `mod` no longer uses `MUST_EXIST` (which produced “Can't find data record in database”). Bad `mod` is ignored; page stays on course-level report without a DB exception.
 
 **IDs in the audit (`id=4`, `user=37`, `mod=1`, etc.) are staging examples only.** Production course/user/cm ids differ. Controls are by **capability + enrolment**, not by numeric id allowlists.
 
-**loglive Instance 4 (fixed):** `/report/loglive/index.php?id=4` → `id=1` opened **Site home** live logs (names, user ids, IPs). Site course (`SITEID`) live logs require **site administrator**; course teachers keep access only to their own course logs. Same check on `loglive_ajax.php`.
+**loglive Instance 4 (fixed / tightened):** `/report/loglive/index.php?id=4` → `id=1` opened **Site home** live logs (names, user ids, IPs). PoC accounts with Site administration still passed the old “site admins only” check.
+
+| Actor | `?id=<course>` | `?id=1` (SITEID) |
+|-------|----------------|------------------|
+| Student / teacher | Own course if `report/loglive:view` | **Denied** |
+| Site administrator | Own course OK | **Redirect → `/report/loglive/index.php`** (no id; admin report, not course id=1 dump) |
+
+Hardening: `report/loglive/index.php` + `loglive_ajax.php` + theme hook. Theme ≥ `2024101038`.
 
 **IDs in the audit (`id=4`, `user=37`, `mod=1`, etc.) are staging examples only.** Production course/user/cm ids differ. Controls are by **capability + enrolment**, not by numeric id allowlists.
 
@@ -208,13 +246,15 @@ Retest peer IDOR as a **student**: `/report/competency/index.php?id=<course>&use
 ```text
 1. Login as student (not teacher, not site admin). IDs = whatever exists on that environment.
 2. /user/index.php?id=<enrolled course> → denied; id=<site/front / usually 1> → denied.
-3. Login as editing teacher (Site administration must NOT appear) on a course:
-   /user/index.php?id=<that course> → OK; change to id=1 → Access denied.
-4. /report/competency/index.php?id=<course>&user=<other> as student → must show only self.
-5. /report/competency/index.php?id=<course>&user=<self>&mod=<invalid> → no DB error; report still loads.
-6. /report/loglive/index.php?id=<course> as student → access denied; as teacher id=1 → denied.
-7. /contact-us/?sent=1 without submit → no fake Thank you.
-8. /course/edit.php?category=<other cat> without moodle/course:create → access denied (capability, not IDOR).
+3. Login as editing teacher on a course:
+   /user/index.php?id=<that course> → OK; change to id=1 → Access denied (no email table).
+3b. Even as site admin: /user/index.php?id=1 → redirect to /admin/user.php (not participants PII list).
+4. /report/competency/index.php?id=1 → Access denied (not “No participants found”).
+5. /report/competency/index.php?id=<course>&user=<other> as student → must show only self.
+6. /report/competency/index.php?id=<course>&user=<self>&mod=<invalid> → no DB error; report still loads.
+7. /report/loglive/index.php?id=<course> as student → access denied; as teacher/admin id=1 → denied or redirect (no site-home IP table via ?id=1).
+8. /contact-us/?sent=1 without submit → no fake Thank you.
+9. /course/edit.php?category=<other cat> without moodle/course:create → access denied (capability, not IDOR).
 ```
 
 Real IDOR issues in custom code were already fixed (registration privilege, chatbot history, support ticket ownership, preference userid) — see sections 1–5 and 13 above.
@@ -242,9 +282,9 @@ php admin/cli/purge_caches.php
 | Resource binding | Support courseid; live-class courseid constant |
 | Prefs IDOR | Non-privileged users forced to own `id`/`userid` on prefs subpages + messaging |
 | Module `?id=` | CM id + enrolment/capability (not user object IDOR) |
-| change_password `?id=` | Course context only; password = session user |
+| change_password `?id=` | **Hardened** — course id ignored (SITEID); password = session user |
 | Screenshot IDOR “Roopa” | Different app (`/var/www/html/change_password.php` + `find_user_by_id`) — dispute |
 | `qlogin` | Not present; query keys stripped |
 | Attendance / assign `?id=` to invalid CM | Access fail + SQL text = debug leak (not IDOR) |
 | customcert `downloadown` | Early login + guest blocked; SQL text = debug leak |
-| Calendar event AJAX | `calendar_view_event_allowed()` + sesskey |
+| Calendar event AJAX | `calendar_view_event_allowed()` + personal ownership + sesskey |

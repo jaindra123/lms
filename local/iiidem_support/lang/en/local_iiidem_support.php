@@ -14,6 +14,7 @@ $string['ticketnew'] = 'Raise a ticket';
 $string['ticketnewlead'] = 'Describe your issue and our support team will respond.';
 $string['ticketsubject'] = 'Subject';
 $string['ticketmessage'] = 'Message';
+$string['invalidtickettext'] = 'Subject or message contains invalid characters or patterns. Please use plain text only.';
 $string['ticketcategory'] = 'Category';
 $string['ticketcourse'] = 'Related course (optional)';
 $string['ticketcourse_help'] = 'Choose a course if your issue is course-specific.';

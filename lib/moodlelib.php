@@ -2215,7 +2215,9 @@ function dayofweek($day, $month, $year) {
 function get_login_url() {
     global $CFG;
 
-    return "$CFG->wwwroot/login/index.php";
+    // Canonical public login URL (no index.php). Web server must map /login →
+    // login/index.php (DDEV: clean-login.conf; Apache: .htaccess / VHost).
+    return "$CFG->wwwroot/login";
 }
 
 /**

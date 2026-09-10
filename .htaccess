@@ -10,6 +10,18 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Canonical login: /login and /login/ → login/index.php (no public dir listing).
+    # Use END so DirectorySlash does not bounce /login → /login/ → 403.
+    RewriteRule ^login/?$ login/index.php [END,QSA]
+
+    # Extensionless scripts: /admin/search → /admin/search.php (staging Apache).
+    # Do not match paths that already have an extension or are real files/dirs.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !\.[^/]+$
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.*)$ $1.php [END,QSA]
+
     # Block sensitive directories (files and trailing-slash listing).
     RewriteRule ^(backups|moodledata|local_dev_logs|docs|scripts)/ - [F,L]
     RewriteRule ^\.(git|ddev|github|grunt|upgradenotes|cursor|vscode)/ - [F,L]
@@ -25,6 +37,10 @@ Options -Indexes
 
     # Apache default /icons/ alias (directory listing + apache_pb.gif fingerprint).
     RewriteRule ^icons(/|$) - [F,L]
+
+    # Optional edge deny for directory-style pluginfile (also handled in PHP).
+    RewriteRule (?:token)?pluginfile\.php/.+/$ - [F,L]
+    RewriteRule webservice/pluginfile\.php/.+/$ - [F,L]
 
     # Source / backup / editor leftovers (common “source code disclosure” scanner hits).
     RewriteRule \.(bak|old|orig|save|swp|swo|tmp|temp|dist|sql|sql\.gz|tar|tar\.gz|tgz|zip|rar|7z|env)$ - [F,L]

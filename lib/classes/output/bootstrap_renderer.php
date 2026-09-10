@@ -209,8 +209,15 @@ class bootstrap_renderer {
 
         // In the name of protocol correctness, monitoring and performance
         // profiling, set the appropriate error headers for machine consumption.
+        // CDAC #18 Instance 1: prefer 403 over 500 — 500 looked like a verbose crash
+        // dump to scanners even when the body was a simple Moodle error shell.
         $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
-        @header($protocol . ' 500 Internal Server Error');
+        $debugui = !empty($CFG->debugdisplay) || (!empty($CFG->debug) && $CFG->debug >= DEBUG_DEVELOPER);
+        if ($debugui) {
+            @header($protocol . ' 500 Internal Server Error');
+        } else {
+            @header($protocol . ' 403 Forbidden');
+        }
 
         // Better disable any caching.
         @header('Content-Type: text/html; charset=utf-8');
@@ -225,6 +232,23 @@ class bootstrap_renderer {
             $strerror = get_string('error');
         } else {
             $strerror = 'Error';
+        }
+
+        // CWE-209: never put exception text / paths into early HTML when debug UI is off.
+        if (!$debugui) {
+            if (function_exists('get_string')) {
+                try {
+                    $message = get_string('genericerror', 'theme_iiidem2');
+                } catch (\Throwable $ignored) {
+                    $message = 'Something went wrong. Please try again. If the problem continues, contact support.';
+                }
+            } else {
+                $message = 'Something went wrong. Please try again. If the problem continues, contact support.';
+            }
+            $moreinfourl = '';
+            $link = null;
+            $backtrace = [];
+            $debuginfo = null;
         }
 
         $content = self::early_error_content($message, $moreinfourl, $link, $backtrace, $debuginfo);

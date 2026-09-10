@@ -424,11 +424,8 @@ function combo_send_uncached($content, $mimetype) {
 
 function combo_not_found($message = '') {
     header('HTTP/1.0 404 not found');
-    if ($message) {
-        echo $message;
-    } else {
-        echo 'Combo resource not found, sorry.';
-    }
+    // CWE-209: never echo admin/config advice (old "Unsupported server… try disabling YUI…").
+    echo 'Combo resource not found, sorry.';
     die;
 }
 
@@ -451,7 +448,7 @@ function combo_params() {
         return array($slashargument, true);
 
     } else {
-        // unsupported server, sorry!
+        // Bare /theme/yui_combo.php or unsupported edge — generic 404 only (CWE-209).
         combo_not_found();
     }
 }

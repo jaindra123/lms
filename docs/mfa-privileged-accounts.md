@@ -6,39 +6,32 @@
 |-------|--------|
 | Title | 21. Absence of Multi-Factor Authentication |
 | Impact | MEDIUM / CVSS 5.3 |
-| URL | `https://staginglms.eci.gov.in/login/index.php` (PoC sometimes `cci.gov.in`) |
+| URL | `https://staginglms.eci.gov.in/login/index.php` |
 | CWE | [CWE-308](https://cwe.mitre.org/data/definitions/308.html) — Use of Single-Factor Authentication |
 | OWASP | A07:2021 – Identification and Authentication Failures |
 | CVSS vector | `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` |
 
-> The application relies on username/password alone. Implement MFA for all privileged accounts.
+> MFA is missing on student login and is implemented for admin login. Implement MFA for users.
 
 ### PoC note
 
-Login page shows username/password only (no second-factor step on the form itself). After remediaiton, privileged users complete password login then are challenged by Moodle **tool_mfa** (TOTP / email) before the session is fully usable. Students remain password-only by design.
+`/login/index.php` shows username/password only (expected). After password, **all** users — including students — are challenged by Moodle **tool_mfa** (TOTP / email OTP) before the session is fully usable. Site admins already hit MFA; students previously skipped it via `factor_role` / `factor_admin` PASS.
 
-## Resolution
-
-Moodle core already ships **Multi-factor authentication** (`admin/tool/mfa`). This site enables it and scopes it to privileged users.
+## Resolution (theme ≥ `2024101040`)
 
 ### Who must use MFA
 
 | Account type | MFA required? |
 |--------------|---------------|
 | Site administrators | Yes |
-| Manager | Yes |
-| Course creator | Yes |
-| Teacher / editing teacher | Yes |
-| Students / authenticated users | No (role factor grants 100 points automatically) |
-
-Password-only login on `/login/index.php` remains for students; privileged users must complete a second factor after password.
+| Manager / course creator / teacher | Yes |
+| **Students / authenticated users** | **Yes** |
 
 ### How it works
 
-1. **`factor_role`** (weight 100): privileged roles return **NEUTRAL** (no points). Everyone else gets **PASS** → 100 points → no MFA prompt.
-2. **`factor_admin`**: same idea for site admins (defence in depth).
-3. **`factor_totp`** (authenticator app) and **`factor_email`** (email OTP): each worth 100 points — privileged users verify with one of these.
-4. **`factor_grace`** (7 days, force setup): allows first login while users register a factor; then forces setup.
+1. **`factor_role` / `factor_admin` disabled** — those factors previously gave students an automatic PASS (100 points) and skipped the challenge.
+2. **`factor_totp`** (authenticator app) and **`factor_email`** (email OTP): each worth 100 points — users verify with one of these.
+3. **`factor_grace`** (7 days, force setup): allows first login while users register a factor; then forces setup.
 
 A user needs **≥ 100 points** from factors in the PASS state to finish login.
 
@@ -46,9 +39,9 @@ A user needs **≥ 100 points** from factors in the PASS state to finish login.
 
 | Item | Purpose |
 |------|---------|
-| `theme/iiidem2/classes/mfa_privileged.php` | Shared enable logic |
+| `theme/iiidem2/classes/mfa_privileged.php` | Enable logic (all users) |
 | `theme/iiidem2/cli/enable_mfa_privileged.php` | CLI to enable / re-apply |
-| Theme upgrade `2024100963` | Applies on `admin/cli/upgrade.php` |
+| Theme upgrade `2024101040` | Applies on `admin/cli/upgrade.php` |
 
 ### Deploy
 
@@ -56,11 +49,13 @@ A user needs **≥ 100 points** from factors in the PASS state to finish login.
 php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 
-# Or run explicitly (e.g. after clone / before upgrade catches up):
+# Or run explicitly:
 php theme/iiidem2/cli/enable_mfa_privileged.php
 # Optional: no grace (immediate MFA):
 php theme/iiidem2/cli/enable_mfa_privileged.php --grace=0
 ```
+
+Ensure **outbound email** works if users rely on Email OTP (`$CFG->noreplyaddress`, SMTP).
 
 ### Admin UI
 
@@ -69,12 +64,12 @@ php theme/iiidem2/cli/enable_mfa_privileged.php --grace=0
 Confirm:
 
 - MFA **enabled**
-- Factors: Role, Admin, Authenticator (TOTP), Email, Grace
-- Role factor roles include Administrator + Manager / Course creator / Teacher
+- Factors: Authenticator (TOTP), Email, Grace — **Role** and **Admin** factors **disabled**
+- Factor order: `totp,email,grace`
 
-### User setup (privileged)
+### User setup (all accounts)
 
-1. Log in (grace allows first access).
+1. Log in with password (grace allows first access).
 2. Open **Preferences → Multi-factor authentication**  
    (`/admin/tool/mfa/user_preferences.php`)
 3. Register an authenticator app (Google Authenticator, Microsoft Authenticator, etc.).
@@ -83,29 +78,31 @@ Confirm:
 ### Verify
 
 ```bash
-# Config should show tool_mfa enabled
 php -r "define('CLI_SCRIPT', true); require 'config.php';
   echo 'mfa=' . get_config('tool_mfa', 'enabled') . PHP_EOL;
-  echo 'order=' . get_config('tool_mfa', 'factor_order') . PHP_EOL;"
+  echo 'order=' . get_config('tool_mfa', 'factor_order') . PHP_EOL;
+  echo 'role=' . get_config('factor_role', 'enabled') . PHP_EOL;
+  echo 'admin=' . get_config('factor_admin', 'enabled') . PHP_EOL;"
+# Expect: mfa=1; order contains totp,email; role=0; admin=0
 
-# As site admin / teacher: after password, expect MFA challenge (or grace setup)
-# As student: password alone completes login
+# As student: after password → /admin/tool/mfa/auth.php (email/TOTP challenge)
+# As site admin: same MFA challenge
 ```
 
 ### Ops notes
 
-- Ensure outbound email works if relying on **Email** factor (`$CFG->noreplyaddress`, SMTP).
-- After the grace period, privileged users without a usable factor cannot complete login until an admin resets factors (**Reset factor** under MFA admin tools).
+- After the grace period, users without a usable factor cannot complete login until an admin resets factors (**Reset factor** under MFA admin tools).
 - Do not enable **No setup** factor — it would bypass MFA.
+- Do not re-enable **Role** / **Admin** factors unless you intentionally want students to skip MFA again.
 
 ## Evidence for auditors
 
 | Control | Implementation |
 |--------|----------------|
 | MFA available | Core `tool_mfa` |
-| Privileged-only enforcement | `factor_role` + `factor_admin` |
+| Student + privileged enforcement | Role/Admin bypass factors **disabled** |
 | Second factors | TOTP + Email OTP |
 | Rollout without lockout | `factor_grace` (7 days) + force setup |
 | Automated enable | Theme upgrade + CLI |
 
-Related: [restrict-admin-access.md](restrict-admin-access.md), [account-lockout.md](account-lockout.md), [login-credentials-lock.md](login-credentials-lock.md).
+Related: [restrict-admin-access.md](restrict-admin-access.md), [account-lockout.md](account-lockout.md), [mfa-email-verification-cleartext.md](mfa-email-verification-cleartext.md).

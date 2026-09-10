@@ -29,6 +29,10 @@ define('NO_MOODLE_COOKIES', true);
 // It is typically used to display images.
 define('NO_DEBUG_DISPLAY', true);
 
+// CDAC directory-listing: trailing-slash pluginfile paths → plain 403.
+require_once(__DIR__ . '/lib/iiidem_pluginfile_directory_guard.php');
+iiidem_reject_pluginfile_directory_listing();
+
 require_once('config.php');
 
 // Allow CORS requests.

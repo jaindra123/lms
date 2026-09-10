@@ -11,7 +11,7 @@ namespace theme_iiidem2;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * HTTP security response headers (CSP, nosniff, XSS, Referrer, CORS).
+ * HTTP security response headers (CSP, nosniff, XSS, Referrer, CORS, HSTS, Clear-Site-Data).
  *
  * @package   theme_iiidem2
  * @copyright 2026 IIIDEM
@@ -25,13 +25,19 @@ final class security_headers {
     /** @var bool */
     private static $clearsitedataqueued = false;
 
+    /** Clear-Site-Data header value required by CDAC #13. */
+    public const CLEAR_SITE_DATA =
+        '"cache", "cookies", "storage", "executionContexts"';
+
     /**
      * Send baseline security headers once per request (web only).
      */
     public static function send(): void {
-        global $CFG;
+        global $CFG, $SESSION;
 
         if (self::$sent) {
+            // Still allow a late Clear-Site-Data after logout in the same request.
+            self::emit_clear_site_data_if_pending();
             return;
         }
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
@@ -51,6 +57,9 @@ final class security_headers {
         // Cross-domain referrer leakage: full URL must not leak to other origins.
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-Frame-Options: SAMEORIGIN');
+        header('Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(self), usb=()');
+        // Allow Razorpay / Webex popups while isolating the opener.
+        header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 
         // Keep Moodle admin setting aligned (weblib.php also emits this header).
         if (empty($CFG->referrerpolicy) || $CFG->referrerpolicy === 'default') {
@@ -68,19 +77,40 @@ final class security_headers {
 
         header('Content-Security-Policy: ' . self::csp_policy());
 
-        if (self::$clearsitedataqueued) {
-            // Auditor requirement: clear browser site data after logout.
-            header('Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"');
-            self::$clearsitedataqueued = false;
-        }
+        self::emit_clear_site_data_if_pending();
 
-        // HSTS only when the site is served over HTTPS.
+        // HSTS when the site is HTTPS (preload matches Apache snippet / CDAC).
         if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
-            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
         }
 
         // Authenticated / login pages must not linger in the browser cache after logout.
         self::send_sensitive_cache_control();
+    }
+
+    /**
+     * Emit Clear-Site-Data when queued (logout) or session flash is set.
+     */
+    private static function emit_clear_site_data_if_pending(): void {
+        global $SESSION;
+
+        if (headers_sent()) {
+            return;
+        }
+
+        $pending = self::$clearsitedataqueued;
+        if (!$pending && isset($SESSION) && !empty($SESSION->theme_iiidem2_clear_site_data)) {
+            $pending = true;
+        }
+        if (!$pending) {
+            return;
+        }
+
+        header('Clear-Site-Data: ' . self::CLEAR_SITE_DATA);
+        self::$clearsitedataqueued = false;
+        if (isset($SESSION)) {
+            unset($SESSION->theme_iiidem2_clear_site_data);
+        }
     }
 
     /**
@@ -101,7 +131,8 @@ final class security_headers {
         }
 
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $isloginflow = str_contains($script, '/login/');
+        $isloginflow = str_contains($script, '/login/')
+            || str_contains($script, '/admin/tool/mfa/');
         $isajax = (defined('AJAX_SCRIPT') && AJAX_SCRIPT)
             || str_contains($script, '/lib/ajax/')
             || str_contains($script, '/webservice/');
@@ -155,7 +186,8 @@ final class security_headers {
     }
 
     /**
-     * Ensure every target=_blank anchor in HTML responses has rel=noopener noreferrer.
+     * Ensure every target=_blank anchor in HTML responses has rel=noopener noreferrer,
+     * and external http(s) links get referrerpolicy=no-referrer (CDAC #28).
      * Auditors inspect raw HTML (admin environment docs links) before JS runs (CDAC #24).
      */
     public static function ensure_noopener_blank_targets_buffer(): void {
@@ -177,37 +209,103 @@ final class security_headers {
     }
 
     /**
+     * Strip sesskey from /login/*.php hrefs/actions in HTML (CDAC #17 session token in URL).
+     * Logout CSRF is supplied via POST (logout_post.js).
+     */
+    public static function ensure_sesskey_url_strip_buffer(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+        if (!empty($GLOBALS['theme_iiidem2_sesskey_url_ob'])) {
+            return;
+        }
+        $GLOBALS['theme_iiidem2_sesskey_url_ob'] = true;
+
+        ob_start(static function (string $buffer): string {
+            return \theme_iiidem2\output\core_renderer::strip_login_sesskey_from_html($buffer);
+        });
+    }
+
+    /**
+     * Whether an absolute URL is cross-origin relative to this site.
+     *
+     * @param string $url
+     * @return bool
+     */
+    private static function is_cross_origin_url(string $url): bool {
+        global $CFG;
+        $parts = @parse_url($url);
+        if (empty($parts['host'])) {
+            return false;
+        }
+        $sitehost = '';
+        if (!empty($CFG->wwwroot)) {
+            $site = @parse_url($CFG->wwwroot);
+            $sitehost = strtolower((string) ($site['host'] ?? ''));
+        }
+        $linkhost = strtolower((string) $parts['host']);
+        if ($sitehost === '' || $linkhost === '') {
+            return true;
+        }
+        return $linkhost !== $sitehost;
+    }
+
+    /**
      * @param string $html
      * @return string
      */
     public static function harden_blank_target_html(string $html): string {
-        if ($html === '' || stripos($html, '_blank') === false) {
+        if ($html === '' || (stripos($html, '<a') === false && stripos($html, '<A') === false)) {
             return $html;
         }
 
         $out = preg_replace_callback(
-            '/<a\b([^>]*?)>/i',
+            '/<a\b([^>]*?)>/is',
             static function (array $m): string {
                 $attrs = $m[1];
-                if (!preg_match('/\btarget\s*=\s*(["\']?)_blank\1/i', $attrs)) {
+                // Match target=_blank with optional quotes / whitespace (admin docs links).
+                $isblank = (bool) preg_match('/\btarget\s*=\s*(["\']?)\s*_blank\s*\1/i', $attrs);
+                $external = false;
+                if (preg_match('/\bhref\s*=\s*(["\'])(https?:\/\/[^"\']+)\1/i', $attrs, $hm)
+                        || preg_match('/\bhref\s*=\s*(https?:\/\/[^\s>]+)/i', $attrs, $hm2)) {
+                    $url = $hm[2] ?? ($hm2[1] ?? '');
+                    $external = $url !== '' && self::is_cross_origin_url($url);
+                }
+
+                if (!$isblank && !$external) {
                     return $m[0];
                 }
-                if (preg_match('/\brel\s*=\s*(["\'])([^"\']*)\1/i', $attrs, $rm)) {
-                    $rel = preg_split('/\s+/', strtolower($rm[2]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                    foreach (['noopener', 'noreferrer'] as $token) {
-                        if (!in_array($token, $rel, true)) {
-                            $rel[] = $token;
+
+                if ($isblank || $external) {
+                    if (preg_match('/\brel\s*=\s*(["\'])([^"\']*)\1/i', $attrs, $rm)) {
+                        $rel = preg_split('/\s+/', strtolower($rm[2]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                        foreach (['noopener', 'noreferrer'] as $token) {
+                            if (!in_array($token, $rel, true)) {
+                                $rel[] = $token;
+                            }
                         }
+                        $attrs = preg_replace(
+                            '/\brel\s*=\s*(["\'])([^"\']*)\1/i',
+                            'rel="' . implode(' ', $rel) . '"',
+                            $attrs,
+                            1
+                        );
+                    } else {
+                        $attrs .= ' rel="noopener noreferrer"';
                     }
-                    $attrs = preg_replace(
-                        '/\brel\s*=\s*(["\'])([^"\']*)\1/i',
-                        'rel="' . implode(' ', $rel) . '"',
-                        $attrs,
-                        1
-                    );
-                } else {
-                    $attrs .= ' rel="noopener noreferrer"';
                 }
+
+                // CDAC #28: element-level policy so path/query never leave the site on click.
+                if ($external && !preg_match('/\breferrerpolicy\s*=/i', $attrs)) {
+                    $attrs .= ' referrerpolicy="no-referrer"';
+                }
+
                 return '<a' . $attrs . '>';
             },
             $html
@@ -246,14 +344,17 @@ final class security_headers {
      * Queue Clear-Site-Data for the logout response (user_loggedout observer).
      */
     public static function queue_clear_site_data(): void {
+        global $SESSION;
+
         self::$clearsitedataqueued = true;
-        // If headers not sent yet, emit immediately (logout redirect path).
+        if (isset($SESSION)) {
+            // Survives if send() already ran earlier in this request.
+            $SESSION->theme_iiidem2_clear_site_data = 1;
+        }
+
         if (!headers_sent()) {
-            // Allow send() to include Clear-Site-Data even if other headers already went out
-            // via an earlier send() in this request.
             if (self::$sent) {
-                header('Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"');
-                self::$clearsitedataqueued = false;
+                self::emit_clear_site_data_if_pending();
             } else {
                 self::send();
             }
@@ -292,6 +393,10 @@ final class security_headers {
 
     /**
      * Practical CSP for Moodle + Razorpay checkout + MathJax CDN (Moodle default).
+     *
+     * Moodle AMD / YUI / Mustache still require 'unsafe-inline' and 'unsafe-eval'
+     * in supported releases. Removing them breaks the LMS UI. Hosts are allow-listed;
+     * object-src none; frame-ancestors self; upgrade-insecure-requests.
      */
     public static function csp_policy(): string {
         $origin = self::site_origin();
@@ -309,9 +414,11 @@ final class security_headers {
             "font-src 'self' data: {$mathjax}",
             "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://checkout-static-next.razorpay.com {$mathjax}",
             "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://*.webex.com https://webex.com",
-            // Bank / payment POSTs leave the site.
+            // Bank / payment POSTs leave the site (https: hosts only).
             "form-action 'self' https:",
             "upgrade-insecure-requests",
+            "worker-src 'self' blob:",
+            "manifest-src 'self'",
         ];
         if ($origin !== '') {
             // Keep media local + https (direct .mp4 / Webex media).

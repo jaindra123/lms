@@ -32,12 +32,16 @@ $params = array('id' => $id);
 $course = $DB->get_record('course', $params, '*', MUST_EXIST);
 require_login($course);
 
-// Site home (id=SITEID): no competency breakdown to open via ?id=1 (CDAC Instance 2).
-if ((int) $course->id === (int) SITEID && !is_siteadmin()) {
+$coursecontext = context_course::instance($course->id);
+
+// CDAC #31: site-home competency URL must never soft-render "No participants found"
+// (Intruder id=1 → 200). Deny for all roles — use a real course id only.
+if ((int) $course->id === (int) SITEID) {
     throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('pluginname', 'report_competency'));
 }
 
-$coursecontext = context_course::instance($course->id);
+require_capability('moodle/competency:coursecompetencyview', $coursecontext);
+
 $context = $coursecontext;
 $currentuser = optional_param('user', null, PARAM_INT);
 $currentmodule = optional_param('mod', 0, PARAM_INT);
@@ -69,11 +73,16 @@ if (!$canviewothers && !is_siteadmin()) {
 $groupmode = groups_get_course_groupmode($course);
 $currentgroup = groups_get_course_group($course, true);
 if (empty($currentuser)) {
-    $gradable = get_enrolled_users($context, 'moodle/competency:coursecompetencygradable', $currentgroup, 'u.id', null, 0, 1);
-    if (empty($gradable)) {
-        $currentuser = 0;
+    // Staff only: default to first gradable participant. Students already pinned to self above.
+    if ($canviewothers || is_siteadmin()) {
+        $gradable = get_enrolled_users($context, 'moodle/competency:coursecompetencygradable', $currentgroup, 'u.id', null, 0, 1);
+        if (empty($gradable)) {
+            $currentuser = 0;
+        } else {
+            $currentuser = array_pop($gradable)->id;
+        }
     } else {
-        $currentuser = array_pop($gradable)->id;
+        $currentuser = (int) $USER->id;
     }
 } else {
     $gradable = get_enrolled_users($context, 'moodle/competency:coursecompetencygradable', $currentgroup, 'u.id');
@@ -123,16 +132,24 @@ $nav = new \report_competency\output\user_course_navigation($currentuser, $cours
 $top = $output->render($nav);
 if ($currentuser > 0) {
     $user = core_user::get_user($currentuser);
-    $usercontext = context_user::instance($currentuser);
-    $userheading = array(
-        'heading' => fullname($user, has_capability('moodle/site:viewfullnames', $context)),
-        'user' => $user,
-        'usercontext' => $usercontext
-    );
-    if ($currentmodule > 0 && $cm) {
-        $title = get_string('filtermodule', 'report_competency', format_string($cm->name));
+    if (!$user || !empty($user->deleted)) {
+        $currentuser = 0;
+    } else {
+        $usercontext = context_user::instance($currentuser, IGNORE_MISSING);
+        if (!$usercontext) {
+            $currentuser = 0;
+        } else {
+            $userheading = array(
+                'heading' => fullname($user, has_capability('moodle/site:viewfullnames', $context)),
+                'user' => $user,
+                'usercontext' => $usercontext
+            );
+            if ($currentmodule > 0 && $cm) {
+                $title = get_string('filtermodule', 'report_competency', format_string($cm->name));
+            }
+            $top .= $output->context_header($userheading, 3);
+        }
     }
-    $top .= $output->context_header($userheading, 3);
 }
 echo $output->container($top, 'clearfix');
 

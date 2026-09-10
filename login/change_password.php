@@ -31,12 +31,16 @@ require_once($CFG->libdir.'/authlib.php');
 require_once($CFG->dirroot.'/webservice/lib.php');
 require_once('lib.php');
 
-$id     = optional_param('id', SITEID, PARAM_INT); // current course
+// Security (CDAC Web Parameter Tampering): `id` historically meant *course* context for
+// breadcrumbs / return URL — never the target userid. Password updates always apply to
+// session $USER. Ignore client-supplied course ids so id=1→4→24 cannot probe courses
+// or trigger invalidcourseid disclosure; keep SITEID as fixed page context.
+$id     = SITEID;
 $return = optional_param('return', 0, PARAM_BOOL); // redirect after password change
 
 $systemcontext = context_system::instance();
 
-$PAGE->set_url('/login/change_password.php', array('id'=>$id));
+$PAGE->set_url('/login/change_password.php');
 
 $PAGE->set_context($systemcontext);
 

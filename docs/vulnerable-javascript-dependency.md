@@ -37,29 +37,32 @@ grep -E "YUI\.add|version: 3\.4\.1|developer\.yahoo\.com/yui" lib/editor/tiny/js
 grep -E "checkXFF|document\.referrer" lib/editor/tiny/js/tinymce/plugins/anchor/plugin.js || echo 'OK: no checkXFF/referrer probe in anchor plugin'
 ```
 
-### 3. DOMPurify — CVE-2025-15599 (#38) and earlier CVEs
+### 3. DOMPurify — CVE-2025-15599 / CVE-2026-0540 (#38)
 
-DOMPurify is **bundled inside TinyMCE** (`tinymce.js` and `themes/silver/theme.js`), not a separate Moodle package.
+DOMPurify is **bundled inside TinyMCE** (`tinymce.js` / `tinymce.min.js` and `themes/silver/theme.js` / `theme.min.js`), not a separate Moodle package.
 
 | Finding | Before | After |
 |---------|--------|--------|
 | #19 | DOMPurify **3.0.5** (TinyMCE 7.3.0) | **3.2.6** (via TinyMCE 7.9.3) |
-| **#38** | DOMPurify **3.2.6** | **3.2.7** (CVE-2025-15599 patch) |
+| #38 | DOMPurify **3.2.6** | **3.2.7** (CVE-2025-15599) |
+| Retest 2026-09 | DOMPurify **3.2.7** flagged | **3.4.15** (CVE-2026-0540+; SAFE_FOR_XML rawtext list) |
 
-**CVE-2025-15599:** XSS sanitization bypass via missing `textarea` in the `SAFE_FOR_XML` attribute regex (affects 3.1.3–3.2.6). Fixed upstream in **3.2.7**.
+**CVE-2025-15599:** XSS via missing `textarea` in `SAFE_FOR_XML` (3.1.3–3.2.6). Fixed in **3.2.7**.  
+**CVE-2026-0540:** XSS via missing rawtext elements (`noscript`, `xmp`, `noembed`, `noframes`, `iframe`) through **3.3.1**. Fixed in **≥ 3.3.2**. Bundle bumped to **3.4.15** (current Cure53 stable).
 
-**PoC URLs:** `/lib/editor/tiny/loader.php/…/themes/silver/theme.js` and `…/tinymce.js` — both embed DOMPurify; both patched.
+**PoC URLs:** `/lib/editor/tiny/loader.php/…/themes/silver/theme.js` and `…/tinymce.js`.
 
 ```bash
 grep -m1 "DOMPurify.version" lib/editor/tiny/js/tinymce/tinymce.js
 grep -m1 "DOMPurify.version" lib/editor/tiny/js/tinymce/themes/silver/theme.js
-# Expect: 3.2.7
+# Expect: 3.4.15
 
-grep -E 'style\|title\|textarea' lib/editor/tiny/js/tinymce/tinymce.js | head -1
-# Expect: SAFE_FOR_XML regex includes textarea
+grep -oE 'style\|script\|title\|xmp\|textarea\|noscript\|iframe\|noembed\|noframes' \
+  lib/editor/tiny/js/tinymce/tinymce.js | head -1
+# Expect: expanded SAFE_FOR_XML close-tag list
 ```
 
-Addresses nesting mXSS / prototype-pollution class findings (e.g. CVE-2024-47875 fixed in ≥ 3.1.3) plus CVE-2025-15599.
+Addresses nesting mXSS / prototype-pollution class findings plus CVE-2025-15599 and CVE-2026-0540.
 
 ### 4. YUI 2.9.0 — CVE-2012-5881 / 5882 / 5883
 
@@ -106,7 +109,7 @@ curl -s 'https://staginglms.eci.gov.in/course/view.php?id=2' | grep -oE 'mathjax
 grep -m1 'TinyMCE version' lib/editor/tiny/js/tinymce/tinymce.js
 grep -m1 "DOMPurify.version" lib/editor/tiny/js/tinymce/tinymce.js
 grep -m1 "DOMPurify.version" lib/editor/tiny/js/tinymce/themes/silver/theme.js
-# Expect: TinyMCE 7.9.3 and DOMPurify 3.2.7
+# Expect: TinyMCE 7.9.3 and DOMPurify 3.4.15
 
 # YUI combo must 404 (Instance 2)
 curl -sI 'https://staginglms.eci.gov.in/theme/yui_combo.php?3.17.2/build/yui/yui-min.js' | head -n 1
@@ -118,5 +121,5 @@ curl -sI 'https://staginglms.eci.gov.in/theme/yui_combo.php?3.17.2/build/yui/yui
 |---------|----------------|-------------|
 | MathJax | 2.7.9 | **3.2.2** CDN + filter loader |
 | TinyMCE | 7.3.0 (+ YUI 3.4.1 fingerprint in theme.js) | **7.9.3** — no YUI treeview in silver theme |
-| DOMPurify | 3.0.5 / 3.2.6 | **3.2.7** (CVE-2025-15599; TinyMCE 7.9.3 bundle patched) |
+| DOMPurify | 3.0.5 / 3.2.6 / 3.2.7 | **3.4.15** (CVE-2025-15599 + CVE-2026-0540; TinyMCE 7.9.3 bundle patched) |
 | YUI 2.9.0 | 2.9.0 | Combo off + **endpoint 404**; residual files in Moodle core |

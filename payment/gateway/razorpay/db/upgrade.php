@@ -42,5 +42,30 @@ function xmldb_paygw_razorpay_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025062910, 'paygw', 'razorpay');
     }
 
+    if ($oldversion < 2025062915) {
+        // CDAC #12: block mock free-pay on staging; require captured; no fee sync-down.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2025062915, 'paygw', 'razorpay');
+    }
+
+    if ($oldversion < 2025062916) {
+        // CWE-209: scrub Razorpay grpc/internal checkout errors shown to users.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2025062916, 'paygw', 'razorpay');
+    }
+
+    if ($oldversion < 2025062917) {
+        // Hide Razorpay order/payment IDs from student emails and PDF invoices.
+        get_string_manager()->reset_caches();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2025062917, 'paygw', 'razorpay');
+    }
+
+    if ($oldversion < 2025062918) {
+        // CDAC Instance 2: omit payer name/email from get_checkout_data JSON.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2025062918, 'paygw', 'razorpay');
+    }
+
     return true;
 }

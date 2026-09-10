@@ -23,12 +23,12 @@ final class session_security {
      * Regenerate the PHP session ID immediately and rotate the CSRF sesskey.
      *
      * Safe to call after complete_user_login() / after_login_completed.
-     * No-ops for CLI, webservice servers, or when headers were already sent.
+     * No-ops for CLI, webservice servers, or when a new id cannot be issued.
      *
      * @return bool True when a new session id was issued
      */
     public static function regenerate_id_now(): bool {
-        global $USER;
+        global $CFG, $USER, $SESSION;
 
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
             return false;
@@ -52,6 +52,7 @@ final class session_security {
         $file = null;
         $line = null;
         if (headers_sent($file, $line)) {
+            // Cannot emit Set-Cookie — browser would keep the pre-login sid (fixation).
             debugging(
                 'theme_iiidem2 session regenerate skipped; headers sent in ' . $file . ':' . $line,
                 DEBUG_DEVELOPER
@@ -59,12 +60,34 @@ final class session_security {
             return false;
         }
 
-        // Issue a new session id and delete the previous server-side session record.
-        session_regenerate_id(true);
+        // Issue a new session id and delete the previous server-side session data.
+        $regenerated = session_regenerate_id(true);
+        $newsid = session_id();
+
+        // If PHP failed to rotate (custom handlers / edge cases), force a new id.
+        if (!$regenerated || $newsid === '' || $newsid === $oldsid) {
+            if (!self::force_new_session_id($oldsid)) {
+                return false;
+            }
+            $newsid = session_id();
+        }
+
+        if ($newsid === '' || $newsid === $oldsid) {
+            return false;
+        }
+
+        // Remove pre-login / prior sid from Moodle sessions table (idempotent).
         \core\session\manager::destroy($oldsid);
 
         $userid = (!empty($USER->id) && !isguestuser($USER)) ? (int) $USER->id : 0;
         \core\session\manager::add_session($userid);
+
+        // Ensure the browser receives the new MoodleSession cookie explicitly.
+        self::emit_moodle_session_cookie($newsid);
+
+        if (isset($SESSION) && is_object($SESSION)) {
+            $SESSION->isnewsessioncookie = true;
+        }
 
         // Rotate Moodle CSRF token bound to the authenticated session.
         if (isset($USER)) {
@@ -73,6 +96,71 @@ final class session_security {
         }
 
         return true;
+    }
+
+    /**
+     * Force a new session id when session_regenerate_id() did not change it.
+     *
+     * @param string $oldsid
+     * @return bool
+     */
+    private static function force_new_session_id(string $oldsid): bool {
+        if (!function_exists('session_create_id')) {
+            return false;
+        }
+        if (headers_sent()) {
+            return false;
+        }
+
+        $created = session_create_id('iiidem');
+        if ($created === false || $created === '' || $created === $oldsid) {
+            return false;
+        }
+
+        // Persist current $_SESSION under the new id, then switch.
+        session_write_close();
+        session_id($created);
+        session_start();
+
+        return session_id() !== '' && session_id() !== $oldsid;
+    }
+
+    /**
+     * Queue Set-Cookie for MoodleSession with Secure / HttpOnly / SameSite.
+     *
+     * @param string $sid
+     */
+    private static function emit_moodle_session_cookie(string $sid): void {
+        global $CFG;
+
+        if ($sid === '' || headers_sent()) {
+            return;
+        }
+
+        $name = 'MoodleSession' . ($CFG->sessioncookie ?? '');
+        $path = $CFG->sessioncookiepath ?? '/';
+        if ($path === '') {
+            $path = '/';
+        }
+        $domain = $CFG->sessioncookiedomain ?? '';
+        $secure = !empty($CFG->cookiesecure);
+        if (!$secure && !empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
+            $secure = true;
+        }
+
+        $params = [
+            'expires' => 0,
+            'path' => $path,
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ];
+        if ($domain !== '') {
+            $params['domain'] = $domain;
+        }
+
+        setcookie($name, $sid, $params);
+        $_COOKIE[$name] = $sid;
     }
 
     /**

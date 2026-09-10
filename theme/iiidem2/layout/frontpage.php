@@ -30,7 +30,7 @@ $templatecontext = [
     'langmenu' => $primarymenu['lang'],
     'isrealuser' => ($USER->id > 1),
     'slides' => theme_iiidem2_get_frontpage_slides(),
-    'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+    'loginurl' => (new moodle_url('/login'))->out(false),
     'registerurl' => theme_iiidem2_get_register_url(),
     'coursesurl' => (new moodle_url('/course/index.php'))->out(false),
 ];

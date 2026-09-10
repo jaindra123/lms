@@ -97,6 +97,9 @@ class report implements renderable, templatable {
 
         $data->usercompetencies = array();
         $user = core_user::get_user($this->userid);
+        if (!$user || !empty($user->deleted)) {
+            return $data;
+        }
 
         $exporter = new user_summary_exporter($user);
         $data->user = $exporter->export($output);
@@ -104,19 +107,32 @@ class report implements renderable, templatable {
         $coursecompetencies = api::list_course_competencies($this->courseid);
         $usercompetencycourses = api::list_user_competencies_in_course($this->courseid, $user->id);
         if ($this->moduleid > 0) {
-            $modulecompetencies = api::list_course_module_competencies_in_course_module($this->moduleid);
-            foreach ($usercompetencycourses as $ucid => $usercompetency) {
-                $found = false;
-                foreach ($modulecompetencies as $mcid => $modulecompetency) {
-                    if ($modulecompetency->get('competencyid') == $usercompetency->get('competencyid')) {
-                        $found = true;
-                        break;
-                    }
+            // CDAC Step 4: invalid/foreign mod must not throw MUST_EXIST ("Can't find data record").
+            $cm = get_coursemodule_from_id('', $this->moduleid, $this->courseid, false, IGNORE_MISSING);
+            if (!$cm) {
+                $this->moduleid = 0;
+                $data->moduleid = 0;
+            } else {
+                try {
+                    $modulecompetencies = api::list_course_module_competencies_in_course_module($cm);
+                } catch (\Throwable $e) {
+                    $this->moduleid = 0;
+                    $data->moduleid = 0;
+                    $modulecompetencies = [];
                 }
+                foreach ($usercompetencycourses as $ucid => $usercompetency) {
+                    $found = false;
+                    foreach ($modulecompetencies as $mcid => $modulecompetency) {
+                        if ($modulecompetency->get('competencyid') == $usercompetency->get('competencyid')) {
+                            $found = true;
+                            break;
+                        }
+                    }
 
-                if (!$found) {
-                    // We need to filter out this competency.
-                    unset($usercompetencycourses[$ucid]);
+                    if (!$found) {
+                        // We need to filter out this competency.
+                        unset($usercompetencycourses[$ucid]);
+                    }
                 }
             }
         }

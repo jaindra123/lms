@@ -34,7 +34,7 @@ $string['pluginname'] = 'IIIDEM 2';
 $THEME->editor_sheets = [];
 $THEME->editor_scss = ['editor'];
 $THEME->usefallback = true;
-$THEME->javascripts = ['ajax_sesskey_header', 'message_xss_guard', 'logout_post'];
+$THEME->javascripts = ['ajax_sesskey_header', 'message_xss_guard', 'form_input_guard', 'logout_post'];
 $THEME->javascripts_footer = ['enterprise_a11y'];
 $THEME->scss = function($theme) {
     return theme_iiidem2_get_main_scss_content($theme);

@@ -18,9 +18,44 @@
 | URL | SQL injection? | Notes |
 |-----|----------------|-------|
 | `/local/iiidem_support/tickets.php` | **No** | Requires login. Loads tickets with `$DB->get_records(..., ['userid' => $userid])` — bound params only. No request parameters enter SQL. FAQ search (AJAX) is **in-PHP** string scoring, not SQL. |
+| `/local/iiidem_support/ticket_new.php` (PoC Instance 2) | **No** | Create uses `$DB->insert_record()` — bound params. Intruder `subject='or select *` was **stored as the ticket title** (303 → ticket created), not executed as SQL. List page then showed those titles as text. |
 | `/lib/ajax/service.php` | **No (core)** | Moodle AJAX/webservice front controller. Calls registered `external_api` methods with typed `PARAM_*` validation. Database access goes through Moodle `$DB` placeholders. Automated scanners commonly flag this endpoint as a false positive because it accepts JSON RPC-style payloads. |
 
-The reported **PR:N** (unauthenticated) score does not match these endpoints: `tickets.php` calls `require_login()`; AJAX service calls normally require an authenticated session + sesskey (or a valid token for WS).
+The reported **PR:N** (unauthenticated) score does not match these endpoints: `tickets.php` / `ticket_new.php` call `require_login()`; AJAX service calls normally require an authenticated session + sesskey (or a valid token for WS).
+
+### Instance 2 PoC (`subject='or select *`) — explained
+
+1. POST `/local/iiidem_support/ticket_new.php` with SQLi-looking `subject`.
+2. Response **303** to `ticket.php?id=N` = ticket **created successfully**.
+3. `tickets.php` lists the same string as the subject column.
+
+That is **stored text**, not query injection. True SQLi would typically error, change result sets, or cause timing — not neatly create a ticket whose title equals the payload.
+
+**Hardening applied (`local_iiidem_support` ≥ `2026061824`):**
+
+- Allow-list / probe rejection on subject & message (`manager::sanitize_ticket_field`).
+- URL-decodes Intruder-style `%7bbase%7d` / `%20or%20` payloads before checks.
+- Form validation rejects payloads like `'or 1=1`, `select`, `sleep`, `{base}`, `alert(1)`, LDAP `*((mail=*))`, etc.
+- Subjects must be plain text (letters/digits + limited punctuation).
+- List/detail output uses `format_string()` for safe display.
+
+### Local retest (DDEV)
+
+1. Log in → open  
+   `https://iiidem-certification.ddev.site/local/iiidem_support/ticket_new.php`
+2. Subject + Message =  
+   `%7bbase%7d,(select%2afrom(select(sleep(20)))a)`  
+   → **must show** `invalidtickettext` / not create a ticket (no 20s sleep).
+3. Same for `{base} or 7=7#` and `alert(1)`.
+4. Normal subject `Cannot access quiz` → ticket created.
+5. Admin list must **not** gain new rows for the probe subjects.
+
+```bash
+ddev exec php admin/cli/upgrade.php --non-interactive
+ddev exec php admin/cli/purge_caches.php
+```
+
+Staging PoC that “ticket raised successfully” with the sleep payload was **stored text** (or old plugin without sanitizer), **not** blind SQLi. True SQLi would delay the DB or change query results — creating a ticket whose title equals the payload does not.
 
 ## Status (custom IIIDEM code)
 

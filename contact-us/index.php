@@ -22,6 +22,10 @@ require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
 global $SESSION;
 
+// Do NOT blank XSS probes in $_POST before validation — that hid err_xss and
+// looked like a successful submit in CDAC PoCs. contact_form::validation() rejects
+// markup / punctuation-only subjects using the raw POST body.
+
 $PAGE->set_context(context_system::instance());
 $PAGE->set_course($SITE);
 $PAGE->set_url(new moodle_url('/contact-us/'));

@@ -14,9 +14,8 @@ global $DB, $USER, $PAGE, $OUTPUT, $CFG;
 
 require_login();
 
-$host = (string) (parse_url($CFG->wwwroot ?? '', PHP_URL_HOST) ?: '');
-// Live production must never complete enrolments via the mock simulator.
-if (\paygw_razorpay\razorpay_helper::is_live_host() || $host === 'iiidemlms.eci.gov.in') {
+// Live / staging must never complete enrolments via the mock simulator.
+if (!\paygw_razorpay\razorpay_helper::mock_payments_allowed()) {
     throw new moodle_exception('nopermissions', 'error', '', 'mock payment');
 }
 

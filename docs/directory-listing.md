@@ -37,7 +37,21 @@ Earlier Tengine PoC (page with `backup/` table row) is the real listing evidence
 | `/wp-login.php` | **404** (not WordPress) |
 | `/index`, `/index.php` | Front page / redirect — normal |
 | `/icons/`, `/icons/apache_pb.gif` | **404/403** — Apache default icon alias disabled (Instance 2) |
-| `pluginfile.php/…/` trailing slash | Moodle **404**/error — not a filesystem index |
+| `pluginfile.php/1/core_admin/logo/…/{rev}/` | **403 Forbidden** plain text — not a filesystem index (Instance 3) |
+| `pluginfile.php/1/core_admin/favicon/…/{rev}/` | **403 Forbidden** plain text |
+| `pluginfile.php/1/core_admin/logo/0x200/{rev}/` | **403 Forbidden** plain text |
+
+### PoC note (Instance 3 — `pluginfile.php/…/` trailing slash)
+
+Report URLs:
+
+- `https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/logo/360x104/1785483068/`
+- `https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/favicon/64x64/1785483068/`
+- `https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/logo/0x200/1785483068/`
+
+These are **slashargument file URLs with no filename** (Moodle stores logo/favicon under dataroot and serves via `pluginfile.php`). They never produced an Apache/nginx `Index of /` table. Before the fix, Moodle showed a themed “Something went wrong” page; scanners still flag the trailing-slash path as directory listing.
+
+**Fix (app):** `lib/iiidem_pluginfile_directory_guard.php` — included from `pluginfile.php`, `tokenpluginfile.php`, and `webservice/pluginfile.php` — returns **plain HTTP 403** (`Forbidden`) with no HTML body. `admin/lib.php` also rejects empty logo/favicon filenames the same way. Real logo URLs with a filename still work (e.g. `…/1785483068/logo.png`).
 
 ### PoC note (Instance 2 — `/icons/`)
 
@@ -156,6 +170,13 @@ curl -s https://staginglms.eci.gov.in/lib/default | grep -iE 'Index of|Parent Di
 # Expect: not image/gif for apache_pb.gif
 curl -sI https://staginglms.eci.gov.in/icons/apache_pb.gif | grep -iE '^HTTP|^[Cc]ontent-[Tt]ype'
 
+# Instance 3 — pluginfile trailing slash (must be 403 plain, not themed HTML)
+curl -sI https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/logo/360x104/1785483068/
+curl -sI https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/favicon/64x64/1785483068/
+curl -sI https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/logo/0x200/1785483068/
+curl -s https://staginglms.eci.gov.in/pluginfile.php/1/core_admin/logo/360x104/1785483068/ \
+  | grep -iE 'Index of|Something went wrong|<html' && echo FAIL || echo OK
+
 # App entry points still work
 curl -sI https://staginglms.eci.gov.in/register/   # 200 (or redirect)
 curl -sI https://staginglms.eci.gov.in/admin/      # redirect to login OK
@@ -164,6 +185,11 @@ curl -sI https://staginglms.eci.gov.in/admin/      # redirect to login OK
 ## Deploy
 
 ```bash
+# Application files (Instance 3 — pluginfile trailing slash)
+# Deploy: pluginfile.php, tokenpluginfile.php, webservice/pluginfile.php,
+#         lib/iiidem_pluginfile_directory_guard.php, admin/lib.php
+php admin/cli/purge_caches.php
+
 # DDEV
 ddev restart
 
@@ -185,5 +211,6 @@ sudo apachectl configtest && sudo systemctl reload httpd
 | Probe scripts | `/info.php` denied |
 | Internal Moodle artefacts | MDL-69333-style location deny |
 | Env config files | Direct HTTP to `config.staging.php` / `config.production.php` forbidden |
+| `pluginfile.php/…/` trailing slash | Plain **403** via `lib/iiidem_pluginfile_directory_guard.php` (no Index of /) |
 
 Related: [source-code-disclosure.md](source-code-disclosure.md), [version-disclosure.md](version-disclosure.md).

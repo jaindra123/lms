@@ -27,6 +27,25 @@ Auditor noted **`PHP 8.2.31`** via `X-Powered-By` and called that build EOL. Rem
 1. **Stop disclosing** version strings in headers (this doc).
 2. **Ops:** run a **supported** PHP on staging/production (this project’s DDEV target is **PHP 8.3**). Hiding headers does not replace upgrading EOL PHP.
 
+### Retest (2026-09) — `GET /` → `Server: Apache`
+
+Burp on `https://staginglms.eci.gov.in/` highlights:
+
+```http
+HTTP/1.1 200 OK
+Server: Apache
+```
+
+| Observation | Assessment |
+|-------------|------------|
+| `Server: Apache` **without** `/2.4.x` or `(Ubuntu)` | **`ServerTokens Prod` effect** — version string already suppressed |
+| No `X-Powered-By: PHP/…` in the same capture | App + edge hide working |
+| Bare product name `Apache` | Residual banner; Moodle PHP **cannot** reliably remove it (httpd sets it after PHP) |
+
+**App status:** version disclosure remediaiton is in place. Remaining `Server: Apache` is **ops edge** — apply [snippets/apache-hide-versions.conf](snippets/apache-hide-versions.conf) (`ServerTokens Prod` + optional `Header unset Server`). Many auditors accept product-only `Server` after versions are gone; full unset is best-effort.
+
+**Dispute / residual:** CWE-200 for **version** strings is addressed when headers have no `Apache/2.4…` and no `PHP/8.x…`. Generic `Server: Apache` alone is low residual fingerprint, not a Moodle code defect.
+
 ### PoC note (#41 — nmap OS fingerprint)
 
 Zenmap / `nmap -T4 -A -v staginglms.eci.gov.in` reported **Operating System: Linux 4.18** (host `164.100.59.10`).

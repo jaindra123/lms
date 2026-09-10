@@ -104,10 +104,12 @@
             {{{ output.standard_footer_html }}}
         </div>
         <div class="footer-section p-3">
-            <div>{{#str}}poweredbymoodle, core{{/str}}</div>
-            {{#output.moodle_release}}
-                <div>{{#str}}version, core{{/str}} {{{ output.moodle_release }}}</div>
-            {{/output.moodle_release}}
+            {{!
+                CDAC #28 Cross Domain Referrer Leakage: do not emit
+                core poweredbymoodle (contains https://moodle.com link).
+                Plain text only — no third-party navigation from page source.
+            }}
+            <div>{{#str}}poweredbyplain, theme_iiidem2{{/str}}</div>
         </div>
     </div>
 </footer>

@@ -19,7 +19,8 @@ class razorpay_helper {
     }
 
     public static function should_use_mock(\stdClass $config): bool {
-        if (self::is_live_host()) {
+        // Mock checkout is opt-in only (never on production; staging needs CFG flag).
+        if (!self::mock_payments_allowed()) {
             return false;
         }
 
@@ -48,15 +49,25 @@ class razorpay_helper {
         $blocked = [
             'iiidemlms.eci.gov.in',
             'lms.eci.gov.in',
+            'staginglms.eci.gov.in', // CDAC UAT — no free mock enrol
         ];
         return in_array($host, $blocked, true);
     }
 
     /**
      * Whether mock payment completion is permitted in this environment.
+     *
+     * Production and staging hosts: always false.
+     * Local/dev: only when $CFG->paygw_razorpay_allow_mock is set.
      */
     public static function mock_payments_allowed(): bool {
-        return !self::is_live_host();
+        global $CFG;
+
+        if (self::is_live_host()) {
+            return false;
+        }
+
+        return !empty($CFG->paygw_razorpay_allow_mock);
     }
 
     public static function get_api_base(\stdClass $config): string {
@@ -259,7 +270,8 @@ class razorpay_helper {
         $remotestatus = strtolower((string) ($payment['status'] ?? ''));
 
         $expectedpaise = self::amount_to_paise((float) $txn->amount);
-        $okstatus = in_array($remotestatus, ['captured', 'authorized'], true);
+        // Enrol only after funds are captured — not merely authorized.
+        $okstatus = ($remotestatus === 'captured');
 
         if ($remoteorder !== (string) $txn->orderid
                 || $remoteamount !== $expectedpaise
@@ -566,14 +578,7 @@ class razorpay_helper {
                             'label' => self::email_string('paymentsuccessemailuserlabel_reference'),
                             'value' => $a->txnref,
                         ],
-                        [
-                            'label' => self::email_string('paymentsuccessemailuserlabel_orderid'),
-                            'value' => $a->orderid,
-                        ],
-                        [
-                            'label' => self::email_string('paymentsuccessemailuserlabel_paymentid'),
-                            'value' => $a->paymentid,
-                        ],
+                        // CDAC: do not expose Razorpay order/payment IDs on student receipts (admin email keeps them).
                     ],
                     'note' => self::email_string('paymentsuccessemailusernote', $a),
                     'ctaurl' => $courseurl,
@@ -642,8 +647,6 @@ class razorpay_helper {
             'paymentsuccessemailuserlabel_amount' => 'Amount Paid',
             'paymentsuccessemailuserlabel_invoice' => 'Invoice Number',
             'paymentsuccessemailuserlabel_reference' => 'Payment Reference',
-            'paymentsuccessemailuserlabel_orderid' => 'Razorpay Order ID',
-            'paymentsuccessemailuserlabel_paymentid' => 'Razorpay Payment ID',
             'paymentsuccessemailuserbody' => 'Dear Student,
 
 This is to confirm that your course fee payment has been received successfully.
@@ -658,8 +661,6 @@ Payment Details:
 Amount Paid: {$a->amount}
 Invoice Number: {$a->invoicenumber}
 Payment Reference: {$a->txnref}
-Razorpay Order ID: {$a->orderid}
-Razorpay Payment ID: {$a->paymentid}
 
 You can access your course using the link below:
 

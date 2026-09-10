@@ -6,87 +6,105 @@
 |-------|--------|
 | Title | Header Issues |
 | Impact | MEDIUM / CVSS 5.4 |
-| URL | Site root / login (report cites `staginglms.cci.gov.in` — retest on IIIDEM Moodle / `staginglms.eci.gov.in`) |
+| URL | Site root / login (`staginglms.eci.gov.in`) |
 | CWE | [CWE-693](https://cwe.mitre.org/data/definitions/693.html) — Protection Mechanism Failure |
 | OWASP | A05:2021 – Security Misconfiguration |
 
-> Implement recommended HTTP security headers (CSP, nosniff, XSS filter, Referrer-Policy, ACAO, Clear-Site-Data).
+> Implement CSP, nosniff, XSS filter, Referrer-Policy, ACAO, Clear-Site-Data. Also cited: misconfigured CSP / HSTS / missing Clear-Site-Data.
 
 ### PoC note
 
-Burp on the homepage showed `Server: Apache/…` and `X-Powered-By: PHP/…` and **did not** list CSP / nosniff / etc. That was pre-hardening (or wrong host / theme not active). After remediaiton, those security headers are present; version banners are suppressed (see [version-disclosure.md](version-disclosure.md)).
+Older captures showed **no** CSP/nosniff and exposed `X-Powered-By`. Current login responses already send CSP, HSTS, nosniff, XSS-Protection, Referrer-Policy, ACAO.
+
+### Retest (2026-09) — `/login/index.php` DevTools
+
+| Auditor claim | What staging showed | Verdict |
+|---------------|---------------------|---------|
+| Misconfigured CSP (`'unsafe-inline'` / `'unsafe-eval'`) | Present in `script-src` / `style-src` | **Dispute as “misconfigured”** — required for Moodle AMD/YUI/Mustache; policy still has `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`, host allow-lists, `upgrade-insecure-requests` |
+| Misconfigured HSTS (no `preload`) | `max-age=31536000; includeSubDomains` only | **Redeploy / fix edge** — app code already sends `; preload`. Align Apache snippet; remove older HSTS without preload |
+| Missing `Clear-Site-Data` on login GET | Absent on `/login/index.php` | **Expected** — header is on **logout** response only. Sending it on login would clear cookies and break sign-in |
+| `Server: Apache` | Present | Separate — [version-disclosure.md](version-disclosure.md) |
+| `service.php?sesskey=` | Still in Network list | Separate — [session-token-in-url.md](session-token-in-url.md) |
 
 ## Implementation
 
 Helper: `theme/iiidem2/classes/security_headers.php`  
-Sent on every web request via:
-
-- `hook_listener::after_config` (covers AJAX / scripts without `$OUTPUT->header()`)
-- `hook_listener::before_http_headers` (full page renders)
-
-Logout Clear-Site-Data via observer on `\core\event\user_loggedout`.
+Sent via `after_config` / `before_http_headers`. Logout Clear-Site-Data via `\core\event\user_loggedout` **and** explicit headers in `login/logout.php`.
 
 ### Headers set
 
 | Header | Value |
 |--------|--------|
-| `Content-Security-Policy` | Restrictive policy (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`, …). Allows Moodle AMD inline/`unsafe-eval`, Razorpay checkout hosts, and MathJax CDN (`cdn.jsdelivr.net`, MathJax **3.2.2**). |
+| `Content-Security-Policy` | `default-src 'self'`; `object-src 'none'`; `frame-ancestors 'self'`; script/style allow Moodle + Razorpay + MathJax CDN; `form-action 'self' https:`; `upgrade-insecure-requests` |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Access-Control-Allow-Origin` | Site’s own origin from `$CFG->wwwroot` (not `*`) |
+| `Access-Control-Allow-Origin` | Site origin from `$CFG->wwwroot` (not `*`) |
 | `X-Frame-Options` | `SAMEORIGIN` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` when wwwroot is HTTPS |
+| `Permissions-Policy` | Restrictive (payment=self) |
+| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` (HTTPS wwwroot) |
 | `Clear-Site-Data` | `"cache", "cookies", "storage", "executionContexts"` **on logout only** |
-| Auth page cache | `Cache-Control: no-store…` for logged-in + `/login/*` / AJAX (see [cache-control-sensitive-pages.md](cache-control-sensitive-pages.md)) |
-| Version disclosure | Removes `X-Powered-By` / related tech headers (see [version-disclosure.md](version-disclosure.md)) |
-
-### Why ACAO is the site origin (not `*`)
-
-Reflecting `*` (or any `Origin`) on an authenticated LMS enables cross-site data reading. Auditors require the header to be **present**; binding it to the LMS origin satisfies that without opening CORS to the world.
 
 ### Why Clear-Site-Data is logout-only
 
-Sending Clear-Site-Data on every response would wipe cookies/storage continuously and break the site. Spec intent is to clear browser data when the user signs out.
+Sending it on `/login/index.php` (or every response) would wipe cookies/storage and break login. Spec intent = clear browser data when the user **signs out**.
 
-### Optional nginx mirror (edge)
-
-```nginx
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-# CSP is set by Moodle; duplicate carefully if also set here.
+```http
+Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
 ```
+
+**Retest:** Log in → Log out → capture **`/login/logout.php`** response headers — not the login page that follows.
+
+### Why CSP still has unsafe-inline / unsafe-eval
+
+Moodle core (AMD, Mustache, YUI) does not run without them in this version. The policy still blocks unexpected hosts (`object-src 'none'`, allow-listed CDNs). Nonce/`strict-dynamic` CSP is a Moodle-core migration, not a one-line fix.
+
+### HSTS `preload`
+
+App sends `preload`. If staging still omits it:
+
+1. Redeploy `theme/iiidem2/classes/security_headers.php` + purge caches  
+2. Apply [snippets/apache-security-headers.conf](snippets/apache-security-headers.conf) (includes `preload`)  
+3. Remove any older edge HSTS line **without** `preload`  
+
+`preload` in the header ≠ enrollment in the Chrome preload list — only keep the directive if ops accepts that commitment.
+
+### Optional Apache mirror
+
+[`docs/snippets/apache-security-headers.conf`](snippets/apache-security-headers.conf). Do **not** duplicate a conflicting CSP at the edge — PHP CSP is source of truth.
 
 ## Deploy
 
 ```bash
 php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
+# Ops: apache-security-headers.conf so HSTS includes preload
 ```
 
-Requires active theme **`iiidem2`**.
+Ship `login/logout.php` for Clear-Site-Data on logout. Theme **`iiidem2`** must be active.
 
-Verify:
+### Verify
 
 ```bash
-curl -sI https://YOUR-HOST/login/index.php | grep -iE \
-  'content-security-policy|x-content-type-options|x-xss-protection|referrer-policy|access-control-allow-origin|x-powered-by'
-# Expect CSP, nosniff, XSS-Protection, Referrer-Policy, ACAO (site origin)
-# Expect: no X-Powered-By
+curl -sI https://staginglms.eci.gov.in/login/index.php | grep -iE \
+  'content-security-policy|strict-transport|clear-site-data|x-powered-by'
 
-# After logout response (or capture logout redirect):
-# Expect Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
+# Expect: CSP present; HSTS with preload; NO Clear-Site-Data on login GET
+
+curl -sI -X POST 'https://staginglms.eci.gov.in/login/logout.php' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -b 'MoodleSession=YOUR_SESSION' \
+  --data 'sesskey=YOUR_SESSKEY&loginpage=1'
+# Expect: Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
+# Expect: Strict-Transport-Security: ... preload
 ```
 
 ## Evidence for auditors
 
 | Requirement | Implementation |
 |-------------|----------------|
-| CSP | `Content-Security-Policy` on all web responses |
-| nosniff | `X-Content-Type-Options: nosniff` |
-| XSS filter | `X-XSS-Protection: 1; mode=block` |
-| Referrer | `strict-origin-when-cross-origin` |
-| ACAO | Own wwwroot origin |
-| Clear-Site-Data | On logout: cache, cookies, storage, executionContexts |
+| CSP present | Yes — allow-list; Moodle needs limited unsafe-inline/eval |
+| nosniff / XSS / Referrer / ACAO | Set |
+| HSTS | `max-age=31536000; includeSubDomains; preload` |
+| Clear-Site-Data | Logout response only — not login GET |

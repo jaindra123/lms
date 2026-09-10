@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 //
-// CLI: enable MFA for privileged accounts (admins, managers, teachers).
+// CLI: enable MFA for ALL accounts (students, teachers, admins).
 //
 // Usage (from Moodle root):
 //   php theme/iiidem2/cli/enable_mfa_privileged.php
@@ -27,10 +27,10 @@ if ($unrecognized) {
 }
 
 if (!empty($options['help'])) {
-    echo "Enable Moodle Multi-Factor Authentication for privileged accounts.
+    echo "Enable Moodle Multi-Factor Authentication for ALL users (CDAC #21).
 
-Privileged = site administrators + roles manager, coursecreator,
-editingteacher, teacher. Students are not prompted for MFA.
+Students, teachers, and site administrators must complete a second factor
+(TOTP authenticator app or email OTP) after password login.
 
 Options:
   --grace=SEC       Grace period for first-time factor setup (default 604800 = 7 days).
@@ -38,7 +38,7 @@ Options:
   --forcesetup=0|1  When grace ends, force factor setup (default 1).
   -h, --help        Show this help
 
-After enable, each privileged user should open:
+After enable, each user should open:
   Preferences → Multi-factor authentication
 and register an authenticator app (TOTP). Email OTP is also available.
 ";
@@ -48,7 +48,7 @@ and register an authenticator app (TOTP). Email OTP is also available.
 $grace = max(0, (int) $options['grace']);
 $forcesetup = !empty($options['forcesetup']) && $options['forcesetup'] !== '0';
 
-cli_writeln('Enabling MFA for privileged accounts…');
+cli_writeln('Enabling MFA for all users (including students)…');
 $lines = \theme_iiidem2\mfa_privileged::enable($grace, $forcesetup);
 foreach ($lines as $line) {
     cli_writeln('  ' . $line);

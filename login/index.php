@@ -29,6 +29,10 @@ require_once('lib.php');
 
 redirect_if_major_upgrade_required();
 
+// NOTE: Do not 302 /login/index.php → /login here. On Apache, /login is a real
+// directory (DirectorySlash → /login/) and a failed dir rewrite returns 403.
+// Clean URL is handled only by nginx/Apache internal rewrite to this script.
+
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly
 $anchor      = optional_param('anchor', '', PARAM_RAW);     // Used to restore hash anchor to wantsurl.
 $loginredirect = optional_param('loginredirect', 1, PARAM_BOOL);   // Used to bypass alternateloginurl.
@@ -47,7 +51,7 @@ if (defined('BEHAT_SITE_RUNNING') && BEHAT_SITE_RUNNING) {
 }
 
 $context = context_system::instance();
-$PAGE->set_url("$CFG->wwwroot/login/index.php");
+$PAGE->set_url(new moodle_url('/login/index.php'));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('login');
 $PAGE->set_cacheable(false);

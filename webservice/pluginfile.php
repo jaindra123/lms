@@ -33,6 +33,9 @@ define('AJAX_SCRIPT', true);
  */
 define('NO_MOODLE_COOKIES', true);
 
+// CDAC directory-listing: trailing-slash pluginfile paths → plain 403.
+require_once(__DIR__ . '/../lib/iiidem_pluginfile_directory_guard.php');
+iiidem_reject_pluginfile_directory_listing();
 
 require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/filelib.php');

@@ -471,7 +471,11 @@ class core_renderer extends \core_renderer {
             error_reporting($CFG->debug ?? 0);
 
             $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
-            if (empty($_SERVER['HTTP_RANGE'])) {
+            // Permission denials → 403; other app errors → 404 (never 500 — CDAC #18).
+            if ($errorcode === 'nopermissions' || $errorcode === 'nopermissiontoviewpage'
+                    || $errorcode === 'courseaccessdenied' || $errorcode === 'notmemberofgroup') {
+                @header($protocol . ' 403 Forbidden');
+            } else if (empty($_SERVER['HTTP_RANGE'])) {
                 @header($protocol . ' 404 Not Found');
             } else if (\core_useragent::check_safari_ios_version(602) && !empty($_SERVER['HTTP_X_PLAYBACK_SESSION_ID'])) {
                 @header($protocol . ' 403 Forbidden');

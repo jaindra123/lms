@@ -89,8 +89,13 @@ class user_course_navigation implements renderable, templatable {
         $data->baseurl = $this->baseurl;
         $data->groupselector = '';
 
-        if (has_any_capability(array('moodle/competency:usercompetencyview', 'moodle/competency:coursecompetencymanage'),
-                $context)) {
+        if (has_any_capability([
+                // Align with index.php canviewothers — only graders/managers get peer picker (CDAC user= IDOR).
+                'moodle/competency:competencygrade',
+                'moodle/competency:usercompetencyreview',
+                'moodle/competency:coursecompetencymanage',
+                'moodle/course:update',
+            ], $context) || is_siteadmin()) {
             $course = $DB->get_record('course', array('id' => $this->courseid));
             $currentgroup = groups_get_course_group($course, true);
             if ($currentgroup !== false) {

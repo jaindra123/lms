@@ -11,10 +11,11 @@ namespace theme_iiidem2;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Enable Multi-Factor Authentication for privileged accounts.
+ * Enable Multi-Factor Authentication for all accounts (students + staff + admins).
  *
- * Uses core tool_mfa: role factor marks privileged users NEUTRAL (must earn
- * 100 points from TOTP/email); other users PASS the role factor and skip MFA.
+ * CDAC #21: student login must not skip MFA. Disables factor_role / factor_admin
+ * (those grant PASS to non-privileged users). Everyone earns ≥100 points via
+ * TOTP or email OTP (grace allows first-time setup).
  *
  * @package   theme_iiidem2
  * @copyright 2026 IIIDEM
@@ -26,7 +27,7 @@ final class mfa_privileged {
     public const DEFAULT_GRACE_SECONDS = 7 * DAYSECS;
 
     /**
-     * Role shortnames treated as privileged (plus site administrators).
+     * Role shortnames previously used for privileged-only MFA (kept for docs/CLI help).
      *
      * @return string[]
      */
@@ -35,37 +36,22 @@ final class mfa_privileged {
     }
 
     /**
-     * Enable MFA and configure factors for privileged accounts.
+     * Enable MFA for every authenticated user (including students).
      *
      * @param int $graceseconds Setup grace period (0 = no grace factor)
      * @param bool $forcesetup Redirect users to set up a factor when grace ends
      * @return string[] Human-readable status lines
      */
     public static function enable(int $graceseconds = self::DEFAULT_GRACE_SECONDS, bool $forcesetup = true): array {
-        global $DB;
-
         $lines = [];
 
-        // Resolve privileged role ids by shortname (portable across sites).
-        $roleids = [];
-        foreach (self::privileged_role_shortnames() as $shortname) {
-            $id = $DB->get_field('role', 'id', ['shortname' => $shortname], IGNORE_MISSING);
-            if ($id) {
-                $roleids[] = (string) (int) $id;
-            }
-        }
-        // Special token recognised by factor_role for site administrators.
-        $rolesconfig = array_merge(['admin'], $roleids);
-        set_config('roles', implode(',', $rolesconfig), 'factor_role');
-        $lines[] = 'factor_role/roles = ' . implode(',', $rolesconfig);
+        // CDAC #21: role/admin factors PASS non-privileged users (students) with 100 pts
+        // and skip the MFA challenge. Disable them so everyone must use TOTP/email.
+        self::disable_factor('role');
+        $lines[] = 'factor_role disabled (was skipping MFA for students)';
 
-        // Role factor: privileged → NEUTRAL (need another factor); others → PASS (100 pts).
-        self::enable_factor('role', 100);
-        $lines[] = 'factor_role enabled (weight 100)';
-
-        // Site-admin singleton (belt-and-suspenders with role "admin").
-        self::enable_factor('admin', 100);
-        $lines[] = 'factor_admin enabled (weight 100)';
+        self::disable_factor('admin');
+        $lines[] = 'factor_admin disabled (was PASSing non-admins)';
 
         // Authenticator app (TOTP) — primary second factor.
         self::enable_factor('totp', 100);
@@ -73,7 +59,7 @@ final class mfa_privileged {
         set_config('totplink', 1, 'factor_totp');
         $lines[] = 'factor_totp enabled (weight 100)';
 
-        // Email OTP — available backup second factor for privileged users.
+        // Email OTP — backup second factor (needs working outbound mail).
         self::enable_factor('email', 100);
         set_config('duration', 30 * MINSECS, 'factor_email');
         set_config('suspend', 0, 'factor_email');
@@ -85,6 +71,9 @@ final class mfa_privileged {
             set_config('forcesetup', $forcesetup ? 1 : 0, 'factor_grace');
             $lines[] = 'factor_grace enabled (period ' . $graceseconds . 's, forcesetup='
                 . ($forcesetup ? '1' : '0') . ')';
+        } else {
+            self::disable_factor('grace');
+            $lines[] = 'factor_grace disabled';
         }
 
         // Master switch + lockout after failed MFA attempts.
@@ -94,13 +83,16 @@ final class mfa_privileged {
         $lines[] = 'tool_mfa/enabled = 1';
         $lines[] = 'tool_mfa/lockout = 10';
 
-        // Prefer role check first, then interactive factors, then grace.
-        $order = ['role', 'admin', 'totp', 'email'];
+        $order = ['totp', 'email'];
         if ($graceseconds > 0) {
             $order[] = 'grace';
         }
         set_config('factor_order', implode(',', $order), 'tool_mfa');
         $lines[] = 'tool_mfa/factor_order = ' . implode(',', $order);
+        $lines[] = 'Scope: ALL users (students, teachers, admins)';
+
+        // Never leave nosetup enabled — it bypasses MFA.
+        self::disable_factor('nosetup');
 
         purge_all_caches();
 
@@ -108,14 +100,28 @@ final class mfa_privileged {
     }
 
     /**
-     * Enable a factor plugin and register it with tool_mfa factor_order.
+     * Enable a factor plugin and register it with tool_mfa.
      *
-     * @param string $factor Factor name (role, totp, …)
+     * @param string $factor Factor name (totp, email, …)
      * @param int $weight Points awarded when the factor PASSes
      */
     private static function enable_factor(string $factor, int $weight): void {
         set_config('enabled', 1, 'factor_' . $factor);
         set_config('weight', $weight, 'factor_' . $factor);
         \tool_mfa\manager::do_factor_action($factor, 'enable');
+    }
+
+    /**
+     * Disable a factor so it cannot grant PASS / bypass.
+     *
+     * @param string $factor Factor name
+     */
+    private static function disable_factor(string $factor): void {
+        set_config('enabled', 0, 'factor_' . $factor);
+        try {
+            \tool_mfa\manager::do_factor_action($factor, 'disable');
+        } catch (\Throwable $e) {
+            // Factor may not be installed; ignore.
+        }
     }
 }

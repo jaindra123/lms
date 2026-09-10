@@ -33,45 +33,180 @@ class hook_listener {
     }
 
     /**
+     * Auth POSTs that call complete_user_login() and must rotate MoodleSession.
+     *
+     * Early header() (CSP/HSTS/etc.) makes PHP session_regenerate_id() unable to
+     * emit a new Set-Cookie — leaving the pre-login sid (session fixation PoC).
+     *
+     * @return bool
+     */
+    private static function is_session_auth_post_request(): bool {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return false;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? '');
+
+        if ($method === 'POST') {
+            $authposts = [
+                '/login/index.php',
+                '/login/token.php',
+                '/login/confirm.php',
+                '/register/index.php',
+            ];
+            foreach ($authposts as $path) {
+                if (str_ends_with($script, $path)) {
+                    return true;
+                }
+            }
+        }
+
+        // OAuth / SSO finish often authenticates on GET or POST under /auth/.
+        if (str_contains($script, '/auth/') && (
+            str_contains($script, 'callback')
+            || str_contains($script, 'redirect')
+            || str_contains($script, 'login')
+        )) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Staging/production: block auth pages over plain HTTP (CDAC #4).
+     *
+     * TLS encryption of password/OTP form bodies is provided by HTTPS. This
+     * guard fails closed if the edge HTTP→HTTPS redirect is missing.
+     */
+    private static function enforce_https_on_auth_pages(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('MOODLE_ENV') && MOODLE_ENV === 'dev') {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $paths = [
+            '/login/index.php',
+            '/login/signup.php',
+            '/login/forgot_password.php',
+            '/login/set_password.php',
+            '/login/change_password.php',
+            '/register/index.php',
+            '/register/',
+            '/admin/tool/mfa/auth.php',
+            '/admin/tool/mfa/',
+        ];
+        $match = false;
+        foreach ($paths as $path) {
+            if ($path === '/register/') {
+                if (str_contains($script, '/register')) {
+                    $match = true;
+                    break;
+                }
+                continue;
+            }
+            if ($path === '/admin/tool/mfa/') {
+                if (str_contains($script, '/admin/tool/mfa/')) {
+                    $match = true;
+                    break;
+                }
+                continue;
+            }
+            if (str_ends_with($script, $path)) {
+                $match = true;
+                break;
+            }
+        }
+        if (!$match) {
+            return;
+        }
+
+        https_enforce::require_https_web();
+    }
+
+    /**
+     * CDAC #33: never allow MFA verificationcode on the query string / Referer risk.
+     *
+     * Legitimate flow is HTTPS POST body only. Strip GET (and REQUEST if it
+     * came from GET) so the OTP is not logged in access logs or shared URLs.
+     * POST submissions are untouched — that is how email MFA validates the code.
+     */
+    private static function scrub_mfa_verificationcode_from_query(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (!str_contains($script, '/admin/tool/mfa/')) {
+            return;
+        }
+
+        if (!array_key_exists('verificationcode', $_GET)) {
+            return;
+        }
+
+        unset($_GET['verificationcode']);
+        // Only clear REQUEST when this was not a POST field (keep form body).
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+                || !array_key_exists('verificationcode', $_POST)) {
+            unset($_REQUEST['verificationcode']);
+        }
+    }
+
+    /**
      * Sanitize public search query params (XSS / injection probes).
      */
     private static function sanitize_course_search_params(): void {
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $hit = false;
-        foreach (['/course/search.php', '/course/index.php', '/message/', '/user/index.php'] as $needle) {
+        $keys = ['search', 'q', 'query', 'keywords'];
+        $pathhit = false;
+        foreach (['/course/', '/message/', '/user/index.php',
+            '/theme/iiidem2/dashboard', '/dashboard', '/admin/'] as $needle) {
             if (str_contains($script, $needle)) {
-                $hit = true;
+                $pathhit = true;
                 break;
             }
         }
-        if (!$hit) {
+        $hasparam = false;
+        foreach ($keys as $key) {
+            if (isset($_GET[$key]) || isset($_POST[$key])) {
+                $hasparam = true;
+                break;
+            }
+        }
+        if (!$pathhit && !$hasparam) {
             return;
         }
-        foreach (['search', 'q', 'query', 'keywords'] as $key) {
-            if (!isset($_GET[$key])) {
-                continue;
-            }
-            if (is_array($_GET[$key])) {
-                $cleaned = [];
-                foreach ($_GET[$key] as $item) {
-                    if (!is_string($item)) {
-                        continue;
-                    }
-                    $clean = self::sanitize_filter_keyword($item);
-                    if ($clean !== '') {
-                        $cleaned[] = $clean;
-                    }
+
+        foreach (['_GET', '_POST', '_REQUEST'] as $superglobal) {
+            foreach ($keys as $key) {
+                if (!isset($GLOBALS[$superglobal][$key])) {
+                    continue;
                 }
-                $_GET[$key] = $cleaned;
-                $_REQUEST[$key] = $cleaned;
-                continue;
+                $val = $GLOBALS[$superglobal][$key];
+                if (is_array($val)) {
+                    $cleaned = [];
+                    foreach ($val as $item) {
+                        if (!is_string($item)) {
+                            continue;
+                        }
+                        $clean = self::sanitize_filter_keyword($item);
+                        if ($clean !== '') {
+                            $cleaned[] = $clean;
+                        }
+                    }
+                    $GLOBALS[$superglobal][$key] = $cleaned;
+                    continue;
+                }
+                if (!is_string($val)) {
+                    continue;
+                }
+                $GLOBALS[$superglobal][$key] = self::sanitize_filter_keyword($val);
             }
-            if (!is_string($_GET[$key])) {
-                continue;
-            }
-            $clean = self::sanitize_filter_keyword($_GET[$key]);
-            $_GET[$key] = $clean;
-            $_REQUEST[$key] = $clean;
         }
     }
 
@@ -79,15 +214,7 @@ class hook_listener {
      * Plain keyword/filter token — no HTML (participants unified filter / search).
      */
     private static function sanitize_filter_keyword(string $value): string {
-        $clean = trim(strip_tags(clean_param($value, PARAM_TEXT)));
-        if (\core_text::strlen($clean) > 200) {
-            $clean = \core_text::substr($clean, 0, 200);
-        }
-        $clean = str_replace(['<', '>'], '', $clean);
-        if (input_validation::contains_dangerous_markup($clean)) {
-            return '';
-        }
-        return $clean;
+        return input_validation::sanitize_keyword_token($value);
     }
 
     /**
@@ -286,15 +413,28 @@ class hook_listener {
      * Never overwrite an existing POST/GET value (filemanager / draftfiles_ajax).
      */
     private static function import_sesskey_from_header(): void {
-        if (!empty($_POST['sesskey']) || !empty($_GET['sesskey'])) {
-            return;
-        }
         $header = '';
         foreach (['HTTP_X_MOODLE_SESSKEY', 'REDIRECT_HTTP_X_MOODLE_SESSKEY', 'HTTP_X_MOODLESESSKEY'] as $key) {
             if (!empty($_SERVER[$key]) && is_string($_SERVER[$key])) {
                 $header = trim($_SERVER[$key]);
                 break;
             }
+        }
+        // Duplicate JS injectors can send the header twice → "key, key".
+        if ($header !== '' && str_contains($header, ',')) {
+            $header = trim(explode(',', $header, 2)[0]);
+        }
+
+        // Normalize duplicated values already copied into request bags.
+        foreach ([&$_POST, &$_GET, &$_REQUEST] as &$bag) {
+            if (!empty($bag['sesskey']) && is_string($bag['sesskey']) && str_contains($bag['sesskey'], ',')) {
+                $bag['sesskey'] = trim(explode(',', $bag['sesskey'], 2)[0]);
+            }
+        }
+        unset($bag);
+
+        if (!empty($_POST['sesskey']) || !empty($_GET['sesskey'])) {
+            return;
         }
         if ($header === '' || \core_text::strlen($header) > 64) {
             return;
@@ -316,15 +456,33 @@ class hook_listener {
             return;
         }
 
-        // Security headers for all web responses (including AJAX that skip $OUTPUT).
-        security_headers::send();
+        // Security headers for AJAX / normal pages. Defer on auth POSTs so
+        // complete_user_login() can still Set-Cookie a new MoodleSession
+        // (session fixation — early header() makes session_regenerate_id fail).
+        if (!self::is_session_auth_post_request()) {
+            security_headers::send();
+        }
         // Authenticated AJAX: force no-store at flush (CDAC Cache-Control PoC on service.php).
         security_headers::ensure_ajax_cache_control_buffer();
         // CDAC #24: target=_blank without rel=noopener in raw HTML (admin environment docs).
         security_headers::ensure_noopener_blank_targets_buffer();
+        // CDAC #17: strip sesskey from logout / login/*.php hrefs in final HTML.
+        security_headers::ensure_sesskey_url_strip_buffer();
 
         // CDAC: form-action PATH_INFO reflection (forgot_password / user/files / etc.).
         self::neutralize_spurious_php_pathinfo();
+
+        // CDAC #4: refuse clear-text HTTP on login / register / MFA (staging/production).
+        self::enforce_https_on_auth_pages();
+
+        // CDAC #33: MFA OTP must never ride in a query string (POST body over TLS only).
+        self::scrub_mfa_verificationcode_from_query();
+
+        // CDAC Web Parameter Tampering: change_password.php?id= (course id, not userid).
+        self::harden_change_password_course_id();
+
+        // CDAC JSON/XML Injection: reject non-integer id on course/section.php (no soft coerce to 0).
+        self::reject_non_integer_section_id();
 
         // Never allow debug footers / SQL / stack in the browser unless local FORCE_DEBUG (CWE-209).
         // Moodle fatal_error() shows Debug info + Stack when $CFG->debugdeveloper is true
@@ -465,14 +623,17 @@ class hook_listener {
     public static function after_login_completed(\core_user\hook\after_login_completed $hook): void {
         global $CFG, $SESSION, $USER;
 
+        // Session fixation: always regenerate MoodleSession immediately after auth.
+        // Must run even if theme switch checks fail — cookie rotation is site policy.
+        session_security::regenerate_id_now();
+
         if (!self::is_theme_active()) {
             return;
         }
 
-        // Session fixation: regenerate session ID immediately after authentication.
-        // Core login_user() already regenerates once; this explicit rotation keeps
-        // the sessions table + CSRF sesskey aligned and is auditable site policy.
-        session_security::regenerate_id_now();
+        // Deferred CSP/HSTS/etc. from after_config on login POST — send now that
+        // the new session cookie has been queued.
+        security_headers::send();
 
         if (isguestuser()) {
             return;
@@ -517,6 +678,11 @@ class hook_listener {
 
         // Re-assert no-store on authenticated pages (Moodle may have sent weaker Cache-Control).
         security_headers::send_sensitive_cache_control();
+
+        // CDAC #24: also start buffer here (after_config may be skipped on some admin paths).
+        security_headers::ensure_noopener_blank_targets_buffer();
+        // CDAC #17: strip sesskey from logout / login/*.php hrefs in final HTML.
+        security_headers::ensure_sesskey_url_strip_buffer();
 
         self::throttle_login_posts();
         self::require_login_credentials_lock_js();
@@ -702,19 +868,155 @@ class hook_listener {
         self::restrict_participants_list_access();
         self::restrict_competency_report_access();
         self::restrict_loglive_site_access();
+        self::harden_change_password_course_id();
+        self::restrict_profile_idor();
+    }
+
+    /**
+     * Block peer profile IDOR on /user/profile.php and /user/view.php.
+     *
+     * CDAC #5: GET /user/profile.php?id=51 as a student showed another learner’s
+     * email. Core allows same-course peers via moodle/user:viewdetails; theme
+     * control_view_profile can miss if plugin_functions cache is stale. This
+     * early guard does not depend on that cache.
+     *
+     * Students → own profile only. Teachers / managers / admins unchanged.
+     * Course-contact (instructor) profiles remain viewable.
+     */
+    private static function restrict_profile_idor(): void {
+        global $USER, $CFG;
+
+        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $isprofile = str_ends_with($script, '/user/profile.php')
+            || str_ends_with($script, '/user/view.php');
+        if (!$isprofile) {
+            return;
+        }
+
+        $targetid = optional_param('id', 0, PARAM_INT);
+        if ($targetid < 1) {
+            $targetid = (int) $USER->id;
+        }
+
+        if ($targetid === (int) $USER->id) {
+            return;
+        }
+
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        $role = \theme_iiidem2_get_user_dashboard_role((int) $USER->id);
+        if ($role === 'admin' || $role === 'teacher') {
+            return;
+        }
+
+        $sys = \context_system::instance();
+        if (has_capability('moodle/user:viewalldetails', $sys) ||
+                has_capability('moodle/site:configview', $sys)) {
+            return;
+        }
+
+        // Teachers of a course the target is enrolled in may open the profile.
+        require_once($CFG->libdir . '/enrollib.php');
+        $shared = enrol_get_all_users_courses($targetid, true);
+        foreach ($shared as $c) {
+            if ((int) $c->id === SITEID) {
+                continue;
+            }
+            $ctx = \context_course::instance((int) $c->id);
+            if (has_capability('moodle/course:manageactivities', $ctx) ||
+                    has_capability('moodle/course:update', $ctx) ||
+                    has_capability('moodle/user:viewalldetails', $ctx)) {
+                return;
+            }
+        }
+
+        // Instructors listed as course contacts remain publicly viewable.
+        if (function_exists('has_coursecontact_role') && has_coursecontact_role($targetid)) {
+            return;
+        }
+
+        throw new \moodle_exception(
+            'usernotavailable',
+            'error',
+            new \moodle_url('/user/profile.php', ['id' => (int) $USER->id])
+        );
+    }
+
+    /**
+     * Force /login/change_password.php to ignore client course `id`.
+     *
+     * Audit PoC treated `?id=` as a userid (IDOR). In Moodle it is only course context;
+     * the password form always binds to session $USER. Pinning SITEID removes
+     * tampering side-effects (different breadcrumbs / invalidcourseid on id=24).
+     */
+    private static function harden_change_password_course_id(): void {
+        if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return;
+        }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (!str_ends_with($script, '/login/change_password.php')) {
+            return;
+        }
+
+        $siteid = (string) SITEID;
+        $_GET['id'] = $siteid;
+        $_REQUEST['id'] = $siteid;
+        if (isset($_POST['id'])) {
+            $_POST['id'] = $siteid;
+        }
+    }
+
+    /**
+     * CDAC JSON/XML Injection on /course/section.php?id=.
+     *
+     * PARAM_INT alone coerces payloads like `{base}' xmlns:xsi=` to 0 and still
+     * returns HTTP 200 with a not-found themed page (scanner “response changed /
+     * input returned”). Reject any id that is not a strict positive integer before
+     * Moodle soft-cleans it — no reflection of the raw payload.
+     */
+    private static function reject_non_integer_section_id(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (!str_ends_with($script, '/course/section.php')) {
+            return;
+        }
+
+        $raw = null;
+        if (array_key_exists('id', $_GET)) {
+            $raw = $_GET['id'];
+        } else if (array_key_exists('id', $_POST)) {
+            $raw = $_POST['id'];
+        } else {
+            return;
+        }
+
+        if (is_array($raw) || !input_validation::is_strict_positive_int($raw)) {
+            throw new \moodle_exception('invalidparameter', 'error');
+        }
     }
 
     /**
      * Harden /user/index.php (enrolled users / participants).
      *
-     * Audit PoC: change id=4 → id=1 (site front page) and read another roster + emails.
-     * - Site course (id=SITEID): site administrators only.
+     * Audit PoC: change id=4 → id=1 (site front page) and read site-wide roster + emails.
+     * - Site course (id=SITEID): denied for everyone; site admins → /admin/user.php
      * - Other courses: teachers/managers only — students must not browse peer PII lists.
      */
     private static function restrict_participants_list_access(): void {
         global $SITE;
 
-        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+        if (!isloggedin() || isguestuser() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
         }
 
@@ -736,16 +1038,17 @@ class hook_listener {
         }
 
         // Front page / site course participants (audit: id=<course> → id=1).
-        // Core allows anyone with moodle/course:viewparticipants at system context
-        // (often Managers / course creators). Match loglive: site roster = site admins only.
-        // is_siteadmin() already returned above — any caller reaching here is denied.
+        // Do not allow even site admins here — that is how the CDAC PoC still “passed”.
+        // Redirect (never throw): throwing from before_http_headers → early_error HTTP 500.
         if ((int) $courseid === (int) SITEID || (int) $courseid === (int) $SITE->id) {
-            throw new \moodle_exception(
-                'nopermissions',
-                'error',
-                new \moodle_url('/'),
-                get_string('participants')
-            );
+            if (is_siteadmin()) {
+                redirect(new \moodle_url('/admin/user.php'));
+            }
+            redirect(new \moodle_url('/'));
+        }
+
+        if (is_siteadmin()) {
+            return;
         }
 
         $coursecontext = \context_course::instance($courseid, IGNORE_MISSING);
@@ -766,24 +1069,21 @@ class hook_listener {
         }
 
         // Pure students (viewparticipants alone): block peer roster / email dump.
-        throw new \moodle_exception(
-            'nopermissions',
-            'error',
-            new \moodle_url('/course/view.php', ['id' => $courseid]),
-            get_string('participants')
-        );
+        // Redirect — do not throw from before_http_headers (CDAC #18 Instance 1 → HTTP 500).
+        redirect(new \moodle_url('/course/view.php', ['id' => $courseid]));
     }
 
     /**
      * Harden /report/competency/index.php.
      *
-     * Audit PoC: change id=1 → id=4 and open peer competency; ?user=37 views another learner.
-     * Non-staff may only view their own competency breakdown (never another user's).
+     * Audit PoC: id=1 soft “No participants found”; id=4 shows peer (“jain -”).
+     * - Site course (SITEID): denied for everyone (no 200 empty page).
+     * - Non-staff: only own user id (never another learner).
      */
     private static function restrict_competency_report_access(): void {
         global $USER;
 
-        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+        if (!isloggedin() || isguestuser() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
         }
 
@@ -797,7 +1097,7 @@ class hook_listener {
             return;
         }
 
-        // Site home course: no competency roster to browse via ?id=1 (audit Instance 2).
+        // Site home: hard deny for all roles (CDAC Intruder id=1 → must not be soft 200).
         if ((int) $courseid === (int) SITEID) {
             throw new \moodle_exception(
                 'nopermissions',
@@ -805,6 +1105,10 @@ class hook_listener {
                 new \moodle_url('/'),
                 get_string('pluginname', 'report_competency')
             );
+        }
+
+        if (is_siteadmin()) {
+            return;
         }
 
         $coursecontext = \context_course::instance($courseid, IGNORE_MISSING);
@@ -837,10 +1141,11 @@ class hook_listener {
     }
 
     /**
-     * Harden live logs: site course id=SITEID must not be open to course teachers via ?id= switch.
+     * Harden live logs: site course id=SITEID must not be open via ?id= switch (CDAC Instance 4).
+     * Teachers and site admins alike — no site-wide IP/event dump on this URL.
      */
     private static function restrict_loglive_site_access(): void {
-        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || WS_SERVER) {
+        if (!isloggedin() || isguestuser() || CLI_SCRIPT || WS_SERVER) {
             return;
         }
 
@@ -855,14 +1160,16 @@ class hook_listener {
             return;
         }
 
-        if (!is_siteadmin()) {
-            throw new \moodle_exception(
-                'nopermissions',
-                'error',
-                new \moodle_url('/'),
-                get_string('livelogs', 'report_loglive')
-            );
+        if (is_siteadmin() && str_ends_with($script, '/report/loglive/index.php')) {
+            redirect(new \moodle_url('/report/loglive/index.php'));
         }
+
+        throw new \moodle_exception(
+            'nopermissions',
+            'error',
+            new \moodle_url('/'),
+            get_string('livelogs', 'report_loglive')
+        );
     }
 
     /**
@@ -947,7 +1254,7 @@ class hook_listener {
         // Early AJAX sesskey helper for /lib/ajax/service.php only (cache-busted).
         $hook->add_html(
             '<script src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024100998']))->out(false) .
+            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024101047']))->out(false) .
             '"></script>'
         );
         $hook->add_html(
@@ -994,7 +1301,7 @@ class hook_listener {
         }
 
         if ($PAGE->pagelayout === 'admin'
-                && preg_match('#/admin/search\.php$#', $PAGE->url->get_path(false))) {
+                && preg_match('#/admin/search(\.php)?$#', $PAGE->url->get_path(false))) {
             $hook->add_html(\theme_iiidem2_admin_search_head_script());
         }
     }

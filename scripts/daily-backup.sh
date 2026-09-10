@@ -3,8 +3,9 @@
 # Intended for staging/production Linux hosts via cron.
 # Keep credentials OUT of the web tree — use /etc/iiidem/backup.env (mode 600).
 #
-# Cron example (02:15 daily):
-#   15 2 * * * /var/www/html/lms_stage/scripts/daily-backup.sh >> /var/log/iiidem-backup.log 2>&1
+# Cron examples (02:15 daily):
+#   Staging:    15 2 * * * /var/www/html/lms_stage/scripts/daily-backup.sh >> /var/log/iiidem-backup.log 2>&1
+#   Production: 15 2 * * * /var/www/html/lms/scripts/daily-backup.sh >> /var/log/iiidem-backup-prod.log 2>&1
 set -euo pipefail
 
 ENV_FILE="${BACKUP_ENV_FILE:-/etc/iiidem/backup.env}"
@@ -13,9 +14,9 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
 fi
 
-# Defaults — override in backup.env (staging paths below).
-SITE_ROOT="${SITE_ROOT:-/var/www/html/lms_stage}"
-MOODLEDATA="${MOODLEDATA:-/var/www/html/moodledata_stage}"
+# Defaults — always override in /etc/iiidem/backup.env for the real host.
+SITE_ROOT="${SITE_ROOT:-/var/www/html/lms}"
+MOODLEDATA="${MOODLEDATA:-/var/www/html/moodledata}"
 BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/iiidem}"
 KEEP_DAYS="${KEEP_DAYS:-7}"
 DB_HOST="${DB_HOST:-127.0.0.1}"
@@ -23,6 +24,8 @@ DB_NAME="${DB_NAME:-}"
 DB_USER="${DB_USER:-}"
 DB_PASS="${DB_PASS:-}"
 INCLUDE_MOODLEDATA="${INCLUDE_MOODLEDATA:-1}"
+# Optional full path if mysqldump is not on PATH (e.g. /usr/bin/mysqldump).
+MYSQLDUMP_BIN="${MYSQLDUMP_BIN:-}"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 DEST="${BACKUP_ROOT}/${STAMP}"
@@ -30,17 +33,53 @@ mkdir -p "$DEST"
 
 log() { echo "[$(date -Is)] $*"; }
 
+resolve_mysqldump() {
+  if [[ -n "$MYSQLDUMP_BIN" && -x "$MYSQLDUMP_BIN" ]]; then
+    echo "$MYSQLDUMP_BIN"
+    return 0
+  fi
+  if command -v mysqldump >/dev/null 2>&1; then
+    command -v mysqldump
+    return 0
+  fi
+  local candidate
+  for candidate in \
+    /usr/bin/mysqldump \
+    /usr/local/bin/mysqldump \
+    /usr/local/mysql/bin/mysqldump \
+    /opt/rh/rh-mysql*/root/usr/bin/mysqldump \
+    /usr/libexec/mysqldump
+  do
+    # shellcheck disable=SC2086
+    for path in $candidate; do
+      if [[ -x "$path" ]]; then
+        echo "$path"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
 if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
   log "ERROR: set DB_NAME and DB_USER in $ENV_FILE"
   exit 1
 fi
 
+if ! MYSQLDUMP="$(resolve_mysqldump)"; then
+  log "ERROR: mysqldump not found. Install client package, e.g.:"
+  log "  dnf install -y mysql  OR  yum install -y mysql  OR  dnf install -y mariadb"
+  log "Or set MYSQLDUMP_BIN=/full/path/to/mysqldump in $ENV_FILE"
+  exit 1
+fi
+
 log "Backup start → $DEST"
+log "Using mysqldump: $MYSQLDUMP"
 
 # --- Database ---
 DUMP="${DEST}/db-${DB_NAME}.sql.gz"
 export MYSQL_PWD="$DB_PASS"
-mysqldump \
+"$MYSQLDUMP" \
   --host="$DB_HOST" \
   --user="$DB_USER" \
   --single-transaction \

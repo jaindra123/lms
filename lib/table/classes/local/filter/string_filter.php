@@ -54,13 +54,20 @@ class string_filter extends filter {
         }
 
         // CDAC #39: participants / dynamic table keywords must not retain HTML/script.
-        $value = trim(strip_tags(clean_param($value, PARAM_TEXT)));
-        $value = str_replace(['<', '>'], '', $value);
-        if ($value === '') {
-            return $this;
-        }
-        if (\core_text::strlen($value) > 200) {
-            $value = \core_text::substr($value, 0, 200);
+        if (class_exists(\theme_iiidem2\input_validation::class)) {
+            $value = \theme_iiidem2\input_validation::sanitize_keyword_token($value);
+            if ($value === '') {
+                return $this;
+            }
+        } else {
+            $value = trim(strip_tags(clean_param($value, PARAM_TEXT)));
+            $value = str_replace(['<', '>'], '', $value);
+            if ($value === '') {
+                return $this;
+            }
+            if (\core_text::strlen($value) > 200) {
+                $value = \core_text::substr($value, 0, 200);
+            }
         }
 
         if (array_search($value, $this->filtervalues) !== false) {

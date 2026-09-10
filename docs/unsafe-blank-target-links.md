@@ -23,19 +23,23 @@ Admin environment / upgrade UI links to Moodle docs with `target="_blank"` and *
 - `https://docs.moodle.org/405/en/admin/environment/moodle`
 - `https://docs.moodle.org/405/en/admin/environment/unicode`
 
-Those come from `core_admin_renderer` → `$OUTPUT->doc_link(..., true)`.
+Those come from `core_admin_renderer` → `$this->doc_link(..., true)` → core `doc_link()`.
 
-## Fixes
+## Fixes (theme ≥ `2024101039`)
 
-### 1. Server-side `doc_link` (HTML source)
+### 1. Core `doc_link` (source of environment docs links)
 
-`theme_iiidem2\output\core_renderer::doc_link()` adds `rel="noopener noreferrer"` whenever a docs link opens in a new window.
+`lib/classes/output/core_renderer.php` — whenever a docs link opens in a new window, set `rel="noopener noreferrer"`.
 
-### 2. HTML response buffer
+### 2. Theme `doc_link` override
 
-`security_headers::ensure_noopener_blank_targets_buffer()` rewrites any remaining `a[target=_blank]` in full-page HTML so Burp/View Source shows `rel` without waiting for JS.
+`theme_iiidem2\output\core_renderer::doc_link()` also sets `rel` before calling parent (belt-and-braces).
 
-### 3. Theme templates (static)
+### 3. HTML response buffer
+
+`security_headers::ensure_noopener_blank_targets_buffer()` rewrites any remaining `a[target=_blank]` in full-page HTML so Burp/View Source shows `rel` without waiting for JS. Started from `after_config` **and** `before_http_headers`.
+
+### 4. Theme templates (static)
 
 | File | Status |
 |------|--------|
@@ -43,7 +47,7 @@ Those come from `core_admin_renderer` → `$OUTPUT->doc_link(..., true)`.
 | `theme/iiidem2/templates/course/schedule.mustache` | `rel="noopener noreferrer"` |
 | Footer / live-class `window.open(...)` | Features include `noopener,noreferrer` |
 
-### 4. Client-side belt-and-braces
+### 5. Client-side belt-and-braces
 
 `theme/iiidem2/javascript/enterprise_a11y.js` (footer JS):
 
@@ -52,12 +56,12 @@ Those come from `core_admin_renderer` → `$OUTPUT->doc_link(..., true)`.
 
 ## Deploy
 
+Ship **core** `lib/classes/output/core_renderer.php` **and** theme:
+
 ```bash
 php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
-
-Theme ≥ `2024100989`.
 
 ## Verify
 
@@ -66,6 +70,9 @@ Theme ≥ `2024100989`.
 curl -s -b 'MoodleSession=…' 'https://staginglms.eci.gov.in/admin/environment.php' \
   | grep -oE 'target="_blank"[^>]*' | head
 # Expect: each match also contains rel="…noopener…"
+
+curl -s -b 'MoodleSession=…' 'https://staginglms.eci.gov.in/admin/environment.php' \
+  | grep -F 'docs.moodle.org' | grep -F 'target="_blank"' | grep -v noopener && echo FAIL || echo OK
 ```
 
 DevTools on `/admin/index.php` / environment: every `target="_blank"` includes `noopener` (and preferably `noreferrer`).
@@ -74,7 +81,7 @@ DevTools on `/admin/index.php` / environment: every `target="_blank"` includes `
 
 | Control | Implementation |
 |--------|----------------|
-| Environment docs links | Theme `doc_link()` sets `rel` |
+| Environment docs links | Core + theme `doc_link()` set `rel` |
 | All HTML pages | Output buffer harden |
 | Dynamic / leftover markup | `enterprise_a11y.js` |
 | Theme static links | Mustache already has `rel` |

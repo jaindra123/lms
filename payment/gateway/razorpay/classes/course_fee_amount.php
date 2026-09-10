@@ -54,9 +54,15 @@ class course_fee_amount {
 
     /**
      * Keep enrol_fee instances in sync with the configured gateway amount.
+     *
+     * Never lowers an existing fee (CDAC #12 underpayment via fee sync).
      */
     public static function sync_enrol_fee_instances(int $accountid, float $amount): void {
         global $DB;
+
+        if ($amount <= 0) {
+            return;
+        }
 
         $instances = $DB->get_records('enrol', [
             'enrol' => 'fee',
@@ -65,7 +71,12 @@ class course_fee_amount {
         ]);
 
         foreach ($instances as $instance) {
-            if ((float) $instance->cost === $amount) {
+            $current = (float) $instance->cost;
+            if ($current === $amount) {
+                continue;
+            }
+            // Do not sync a lower gateway test fee onto enrol.cost.
+            if ($current > 0 && $current > $amount) {
                 continue;
             }
             $DB->set_field('enrol', 'cost', $amount, ['id' => $instance->id]);

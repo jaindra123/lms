@@ -51,17 +51,18 @@ if (empty($course)) {
     $coursename = format_string($SITE->fullname, true, ['context' => $context]);
 }
 
-// Site home (id=SITEID) live logs expose site-wide events + IPs.
-// Course teachers must not open them by changing ?id=<course> → ?id=1 (audit PoC).
-// Only full site administrators may view site-level live logs.
+// Site home (id=SITEID) live logs expose site-wide events + IPs (CDAC Instance 4:
+// id=4 → id=1). Never serve that roster via ?id=SITEID — including for site admins
+// (PoC accounts often have Site administration). Site-level live logs: open
+// /report/loglive/index.php with no id (admin report).
 if (!empty($course) && (int) $course->id === (int) SITEID) {
-    if (!is_siteadmin()) {
-        throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('livelogs', 'report_loglive'));
+    if (is_siteadmin()) {
+        redirect(new moodle_url('/report/loglive/index.php'));
     }
-    require_capability('report/loglive:view', context_system::instance());
-} else {
-    require_capability('report/loglive:view', $context);
+    throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('livelogs', 'report_loglive'));
 }
+
+require_capability('report/loglive:view', $context);
 
 $params = array();
 if ($id != 0) {

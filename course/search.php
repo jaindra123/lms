@@ -25,7 +25,7 @@ require_once("../config.php");
 require_once($CFG->dirroot.'/course/lib.php');
 
 $q         = optional_param('q', '', PARAM_RAW);       // Global search words.
-$search    = optional_param('search', '', PARAM_RAW);  // search words
+$search    = optional_param('search', '', PARAM_TEXT);  // search words
 $page      = optional_param('page', 0, PARAM_INT);     // which page to show
 $perpage   = optional_param('perpage', '', PARAM_RAW); // how many per page, may be integer or 'all'
 $blocklist = optional_param('blocklist', 0, PARAM_INT);

@@ -32,6 +32,8 @@ class local_iiidem_support_ticket_form extends moodleform {
         $mform->addElement('text', 'subject', get_string('ticketsubject', 'local_iiidem_support'), [
             'size' => 64,
             'maxlength' => 255,
+            'pattern' => '[^<>\"\'%;{}]+',
+            'title' => get_string('invalidtickettext', 'local_iiidem_support'),
         ]);
         $mform->setType('subject', PARAM_TEXT);
         $mform->addRule('subject', get_string('required'), 'required', null, 'client');
@@ -40,7 +42,7 @@ class local_iiidem_support_ticket_form extends moodleform {
         $mform->addRule('subject', get_string('maximumchars', '', 255), 'maxlength', 255, 'server');
 
         $mform->addElement('textarea', 'message', get_string('ticketmessage', 'local_iiidem_support'),
-            'rows="6" cols="60" maxlength="5000"');
+            'rows="6" cols="60" maxlength="5000" data-iiidem-no-markup="1"');
         $mform->setType('message', PARAM_TEXT);
         $mform->addRule('message', get_string('required'), 'required', null, 'client');
         $mform->addRule('message', get_string('required'), 'required', null, 'server');
@@ -64,18 +66,25 @@ class local_iiidem_support_ticket_form extends moodleform {
             $errors['category'] = get_string('invalidparameter', 'error');
         }
 
-        $subject = trim((string) ($data['subject'] ?? ''));
+        // Prefer raw POST so PARAM_TEXT cannot hide probe markers before we reject them.
+        $rawsubject = isset($_POST['subject']) && is_string($_POST['subject']) ? trim($_POST['subject']) : '';
+        $subject = $rawsubject !== '' ? $rawsubject : trim((string) ($data['subject'] ?? ''));
         if ($subject === '') {
             $errors['subject'] = get_string('required');
         } else if (\core_text::strlen($subject) > 255) {
             $errors['subject'] = get_string('maximumchars', '', 255);
+        } else if (\local_iiidem_support\manager::sanitize_ticket_field($subject, 255, true) === null) {
+            $errors['subject'] = get_string('invalidtickettext', 'local_iiidem_support');
         }
 
-        $message = trim((string) ($data['message'] ?? ''));
+        $rawmessage = isset($_POST['message']) && is_string($_POST['message']) ? trim($_POST['message']) : '';
+        $message = $rawmessage !== '' ? $rawmessage : trim((string) ($data['message'] ?? ''));
         if ($message === '') {
             $errors['message'] = get_string('required');
         } else if (\core_text::strlen($message) > 5000) {
             $errors['message'] = get_string('maximumchars', '', 5000);
+        } else if (\local_iiidem_support\manager::sanitize_ticket_field($message, 5000, false) === null) {
+            $errors['message'] = get_string('invalidtickettext', 'local_iiidem_support');
         }
 
         $courseid = (int) ($data['courseid'] ?? 0);

@@ -110,7 +110,10 @@ const friendlyFailureMessage = (message) => {
             || lower.includes('server_error')
             || lower.includes('server error')
             || lower.includes('temporarily unavailable')
-            || lower.includes('checkout')) {
+            || lower.includes('checkout')
+            || lower.includes('grpc')
+            || lower.includes('internal error')
+            || lower.includes('request_failed')) {
         return 'Razorpay payment gateway is currently experiencing a temporary service disruption. '
             + 'This issue is on Razorpay side and is not related to our side or payment configuration. '
             + 'Please try again in a few minutes.';
@@ -180,10 +183,7 @@ export const process = (component, paymentArea, itemId, description) => {
                         name: data.brandname,
                         description: data.description,
                         order_id: data.orderid,
-                        prefill: {
-                            name: data.username,
-                            email: data.useremail,
-                        },
+                        // No name/email prefill — avoids PII in get_checkout_data JSON (CDAC).
                         theme: {
                             color: '#0b3d91',
                         },

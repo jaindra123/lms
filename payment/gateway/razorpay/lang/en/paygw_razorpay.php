@@ -53,8 +53,6 @@ $string['paymentsuccessemailuserlabel_course'] = 'Course';
 $string['paymentsuccessemailuserlabel_amount'] = 'Amount Paid';
 $string['paymentsuccessemailuserlabel_invoice'] = 'Invoice Number';
 $string['paymentsuccessemailuserlabel_reference'] = 'Payment Reference';
-$string['paymentsuccessemailuserlabel_orderid'] = 'Razorpay Order ID';
-$string['paymentsuccessemailuserlabel_paymentid'] = 'Razorpay Payment ID';
 $string['paymentsuccessemailuserbody'] = 'Dear Student,
 
 This is to confirm that your course fee payment has been received successfully.
@@ -69,8 +67,6 @@ Payment Details:
 Amount Paid: {$a->amount}
 Invoice Number: {$a->invoicenumber}
 Payment Reference: {$a->txnref}
-Razorpay Order ID: {$a->orderid}
-Razorpay Payment ID: {$a->paymentid}
 
 You can access your course using the link below:
 
@@ -102,7 +98,6 @@ Your payment for "{$a->coursename}" was not completed.
 
 Amount: {$a->amount}
 Reference: {$a->txnref}
-Razorpay order: {$a->orderid}
 Reason: {$a->reason}
 
 You can try again from the course page:

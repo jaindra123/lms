@@ -723,5 +723,164 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024101021, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024101022) {
+        // CDAC Web Parameter Tampering: change_password id pin + calendar authZ.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101022, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101023) {
+        // CDAC #10 Session Fixation: defer security headers on auth POST so
+        // MoodleSession regenerates and Set-Cookie can be emitted.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101023, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101024) {
+        // CDAC #5 profile IDOR: early guard + forced hiddenuserfields / maildisplay.
+        set_config(
+            'hiddenuserfields',
+            'email,city,country,address,phone1,phone2,icq,skype,yahoo,aim,msn,lastaccess,firstaccess,description'
+        );
+        set_config('forceloginforprofiles', 1);
+        set_config('profilesforenrolledusersonly', 1);
+        set_config('defaultpreference_maildisplay', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101024, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101025) {
+        // CDAC #4: HTTPS enforce helper + lang string for auth/OTP pages.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101025, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101026) {
+        // CDAC #13: HSTS preload, Clear-Site-Data on logout, CSP worker/manifest.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101026, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101027) {
+        // CDAC #15 Improper Input Validation: name allow-lists + form_input_guard.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101027, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101028) {
+        // CDAC #15: reject raw markup before strip (contact/register); alnum subject/search.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101028, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101029) {
+        // CDAC #17: strip sesskey from AJAX service.php URLs (header only) + user-menu logout href.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101029, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101030) {
+        // CDAC API Mass Assignment: AJAX batch envelope allowlist (ajax_request_guard).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101030, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101031) {
+        // CDAC input validation: scrub stored course summary XSS; reject filter keyword markup.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101031, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101032) {
+        // CDAC JSON/XML + input returned: strict section id; unknown core_get_string blocked in core.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101032, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101033) {
+        // CDAC #33 MFA OTP: HTTPS required on MFA; strip verificationcode from query string.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101033, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101034) {
+        // CDAC #28 Referrer-Policy: remove moodle.com footer link; harden external anchors.
+        set_config('referrerpolicy', 'strict-origin-when-cross-origin');
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101034, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101035) {
+        // CDAC #31: block site-home participants URL for all roles (id=SITEID IDOR).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101035, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101036) {
+        // CDAC #31 competency: hard-deny id=SITEID; require coursecompetencyview.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101036, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101037) {
+        // CDAC #31 competency Instance 3: peer user= picker only for graders; safe mod=.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101037, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101038) {
+        // CDAC #31 loglive Instance 4: block id=SITEID for all roles (site-wide IP dump).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101038, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101039) {
+        // CDAC #24: core doc_link noopener + HTML buffer on before_http_headers.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101039, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101040) {
+        // CDAC #21: MFA for all users including students (disable role/admin bypass).
+        \theme_iiidem2\mfa_privileged::enable();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101040, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101041) {
+        // CDAC #18 Instance 1: participants deny before output (no early_error HTTP 500).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101041, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101042) {
+        // CDAC #17: sesskey off AJAX URLs (core ajax.js) + logout href + marketing usermenu.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101042, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101043) {
+        // CDAC #15 Improper Input Validation retest: stop POST blanking; course management search scrub.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101043, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101044) {
+        // Clean login URL: /login (navbar + urlrewriteclass + get_login_url).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101044, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101045) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101045, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101046) {
+        // Ensure /login clean URL + mustache navbar cache refresh.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101046, 'theme', 'iiidem2');
+    }
+
     return true;
 }

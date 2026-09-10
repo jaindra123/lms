@@ -114,11 +114,12 @@ function theme_iiidem2_control_view_profile($user, $course = null, $usercontext 
     }
 
     // Course contacts (teachers listed on course) — defer to core allow-list.
+    // Peer students are still blocked below; only the contact themselves is opened.
     if (function_exists('has_coursecontact_role') && has_coursecontact_role($targetid)) {
         return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
     }
 
-    // Students / peers: block viewing another user's profile by id.
+    // Students / peers: block viewing another user's profile by id (CDAC #5 IDOR).
     return \core_user::VIEWPROFILE_PREVENT;
 }
 
@@ -382,7 +383,7 @@ function theme_iiidem2_get_footer_context(): array {
 
     $authlinks = [
         'isloggedin' => $loggedin,
-        'footerloginurl' => (new moodle_url('/login/index.php'))->out(false),
+        'footerloginurl' => (new moodle_url('/login'))->out(false),
     ];
     if ($loggedin) {
         // Do not put sesskey (or any session token) in the logout URL.
@@ -663,7 +664,10 @@ function theme_iiidem2_is_generic_login_landing(string $url): bool {
         '',
         '/',
         '/my',
+        '/my/',
         '/my/index.php',
+        '/login',
+        '/login/',
         '/login/index.php',
     ];
 
@@ -1812,9 +1816,7 @@ function theme_iiidem2_render_public_page(
 function theme_iiidem2_get_marketing_page_context(?string $pagesubtitle = null): array {
     global $USER, $PAGE, $OUTPUT, $SITE;
 
-    $primary = new core\navigation\output\primary($PAGE);
-    $renderer = $PAGE->get_renderer('core');
-    $primarymenu = $primary->export_for_template($renderer);
+    $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
     if ($pagesubtitle === null) {
         $pagesubtitle = get_string('aboutus_lead', 'theme_iiidem2');
@@ -1874,12 +1876,21 @@ function theme_iiidem2_get_contact_page_context(): array {
 function theme_iiidem2_send_contact_message(\stdClass $data): bool {
     global $CFG, $SITE, $USER;
 
-    // Server-side sanitize — never trust client HTML/script in email bodies.
-    $name = \theme_iiidem2\input_validation::clean_public_text((string) ($data->name ?? ''), 100);
-    $subject = \theme_iiidem2\input_validation::clean_public_text((string) ($data->subject ?? ''), 255);
-    $message = \theme_iiidem2\input_validation::clean_public_text((string) ($data->message ?? ''), 5000);
+    // Prefer raw POST for markup checks — formslib PARAM_TEXT strips tags first.
+    $rawname = isset($_POST['name']) && is_string($_POST['name']) ? $_POST['name'] : (string) ($data->name ?? '');
+    $rawsubject = isset($_POST['subject']) && is_string($_POST['subject']) ? $_POST['subject'] : (string) ($data->subject ?? '');
+    $rawmessage = isset($_POST['message']) && is_string($_POST['message']) ? $_POST['message'] : (string) ($data->message ?? '');
+
+    $name = \theme_iiidem2\input_validation::clean_public_text($rawname, 100);
+    $subject = \theme_iiidem2\input_validation::clean_public_text($rawsubject, 255);
+    $message = \theme_iiidem2\input_validation::clean_public_text($rawmessage, 5000);
     $email = trim(clean_param((string) ($data->email ?? ''), PARAM_EMAIL));
     if ($name === null || $subject === null || $message === null || !validate_email($email)) {
+        return false;
+    }
+    if (!\theme_iiidem2\input_validation::is_safe_person_name($name)
+            || !\theme_iiidem2\input_validation::has_alnum_content($subject)
+            || !\theme_iiidem2\input_validation::has_alnum_content($message)) {
         return false;
     }
 
@@ -3283,7 +3294,63 @@ function theme_iiidem2_export_primary_menu(moodle_page $page): array {
         $menu['moremenu']['nodearray'] = theme_iiidem2_filter_register_from_nav_items($menu['moremenu']['nodearray']);
     }
 
+    // CDAC session-token-in-URL: mustache user menu bypasses user_menu() HTML strip.
+    // Logout CSRF stays in POST (logout_post.js); href must not include sesskey.
+    if (!empty($menu['user']['items']) && is_array($menu['user']['items'])) {
+        foreach ($menu['user']['items'] as $item) {
+            if (!is_object($item) || empty($item->url)) {
+                continue;
+            }
+            $raw = $item->url instanceof moodle_url
+                ? $item->url->out(false)
+                : (string) $item->url;
+            if (stripos($raw, 'logout.php') === false && stripos($raw, 'login/') === false) {
+                continue;
+            }
+            if ($item->url instanceof moodle_url) {
+                $clean = new moodle_url($item->url);
+                $clean->remove_params('sesskey');
+                // Force string so Mustache cannot re-expand a stale moodle_url with sesskey.
+                $item->url = $clean->out(false);
+            } else {
+                $item->url = theme_iiidem2_strip_sesskey_query((string) $item->url);
+            }
+        }
+    }
+
     return $menu;
+}
+
+/**
+ * Remove sesskey from a URL query string (CDAC session-token-in-URL).
+ *
+ * @param string $url
+ * @return string
+ */
+function theme_iiidem2_strip_sesskey_query(string $url): string {
+    $parts = parse_url($url);
+    if ($parts === false || empty($parts['query'])) {
+        return $url;
+    }
+    $query = [];
+    parse_str($parts['query'], $query);
+    if (!isset($query['sesskey'])) {
+        return $url;
+    }
+    unset($query['sesskey']);
+    $rebuild = ($parts['path'] ?? '');
+    if ($query !== []) {
+        $rebuild .= '?' . http_build_query($query);
+    }
+    if (!empty($parts['fragment'])) {
+        $rebuild .= '#' . $parts['fragment'];
+    }
+    if (!empty($parts['scheme']) && !empty($parts['host'])) {
+        $rebuild = $parts['scheme'] . '://' . $parts['host']
+            . (!empty($parts['port']) ? ':' . $parts['port'] : '')
+            . $rebuild;
+    }
+    return $rebuild;
 }
 
 /**
@@ -3817,16 +3884,16 @@ function theme_iiidem2_is_admin_index_page(moodle_page $page): bool {
 function theme_iiidem2_admin_index_head_script(): string {
     return <<<'HTML'
 <script>
-(function(){if(!/\/admin\/index\.php$/i.test(location.pathname)){return;}
+(function(){if(!/\/admin\/index(\.php)?$/i.test(location.pathname)){return;}
 function toSearch(href){if(!href){return null;}
-if(href.indexOf('/admin/search.php')!==-1&&href.indexOf('#link')!==-1){
+if((href.indexOf('/admin/search.php')!==-1||href.indexOf('/admin/search')!==-1)&&href.indexOf('#link')!==-1){
 return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'/')+href);}
 var hash=href.indexOf('#link')===0?href:null;
 if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));
 if(c.indexOf('#link')===0){hash=c;}}
-return hash?(location.origin+'/admin/search.php'+hash):null;}
+return hash?(location.origin+'/admin/search'+hash):null;}
 function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){
-location.replace(location.origin+'/admin/search.php'+h);}}
+location.replace(location.origin+'/admin/search'+h);}}
 redirectHash();window.addEventListener('hashchange',redirectHash);
 document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');
 if(!link){return;}var target=toSearch(link.getAttribute('href')||'');if(!target){return;}
@@ -3843,11 +3910,11 @@ HTML;
 function theme_iiidem2_admin_search_head_script(): string {
     return <<<'HTML'
 <script>
-(function(){if(!/\/admin\/search\.php$/i.test(location.pathname)){return;}
+(function(){if(!/\/admin\/search(\.php)?$/i.test(location.pathname)){return;}
 document.addEventListener('click',function(e){
 var link=e.target.closest('.secondary-navigation a[data-toggle="tab"][href],.secondary-navigation a[data-bs-toggle="tab"][href]');
 if(!link){return;}var href=link.getAttribute('href')||'';
-if(!href||href.charAt(0)==='#'||href.indexOf('/admin/search.php')!==-1){return;}
+if(!href||href.charAt(0)==='#'||href.indexOf('/admin/search')!==-1){return;}
 e.preventDefault();e.stopImmediatePropagation();location.assign(href);},true);})();
 </script>
 HTML;
@@ -3993,7 +4060,7 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         $quizzes = theme_iiidem2_get_course_quizzes_context($course);
     }
 
-    $loginurl = new moodle_url('/login/index.php');
+    $loginurl = new moodle_url('/login');
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
     $bodyattributes = $OUTPUT->body_attributes(['uses-drawers', 'iiidem-public-course-view', 'iiidem-course-hero-layout']);
@@ -4715,7 +4782,7 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     $showpreviewblockedmodal = $needspaymentforpreview || $needenrolforpreview;
     $completion = $canpreview ? new completion_info($course) : null;
 
-    $loginurl = new moodle_url('/login/index.php');
+    $loginurl = new moodle_url('/login');
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
     $loginmodal = theme_iiidem2_get_login_modal_context($loginurl->out(false));
     $hasloginmodal = !empty($loginmodal['hasloginmodal']);
@@ -4964,7 +5031,7 @@ function theme_iiidem2_get_login_modal_context(?string $wantsurl = null): array 
 
     return [
         'hasloginmodal' => true,
-        'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+        'loginurl' => (new moodle_url('/login'))->out(false),
         'logintoken' => \core\session\manager::get_login_token(),
         'forgotpasswordurl' => (new moodle_url('/login/forgot_password.php'))->out(false),
         'registerurl' => theme_iiidem2_get_register_url(),
@@ -5426,13 +5493,18 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
         ];
     }
 
+    $summaryraw = \theme_iiidem2\input_validation::strip_script_probes((string) ($course->summary ?? ''));
+    $summaryhtml = \theme_iiidem2\input_validation::purify_html_fragment(
+        format_text($summaryraw, $course->summaryformat, ['context' => $context, 'noclean' => false])
+    );
+    $summaryplain = trim(strip_tags($summaryraw));
+
     $cache[$courseid] = [
-        'coursename' => format_string($course->fullname),
-        'courseshortname' => format_string($course->shortname),
-        'coursesummary' => \theme_iiidem2\input_validation::purify_html_fragment(
-            format_text($course->summary, $course->summaryformat, ['context' => $context, 'noclean' => false])
-        ),
-        'hascoursesummary' => trim(strip_tags($course->summary)) !== '',
+        'coursename' => format_string(\theme_iiidem2\input_validation::purify_plain_title($course->fullname)),
+        'courseshortname' => format_string(\theme_iiidem2\input_validation::purify_plain_title($course->shortname)),
+        'coursesummary' => $summaryhtml,
+        'hascoursesummary' => $summaryhtml !== '' && $summaryplain !== ''
+            && !\theme_iiidem2\input_validation::contains_dangerous_markup($summaryplain),
         'courseimage' => $courseimage,
         'instructordata' => $instructors,
         'hasinstructors' => !empty($instructors),
@@ -5567,7 +5639,7 @@ function theme_iiidem2_get_course_fee_payment_context(stdClass $course): array {
     $costdisplay = theme_iiidem2_get_course_fee_cost_display($feeinstance);
     $description = get_string('purchasedescription', 'enrol_fee', format_string($course->fullname));
     $successurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
-    $loginurl = (new moodle_url('/login/index.php', [
+    $loginurl = (new moodle_url('/login', [
         'wantsurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
     ]))->out(false);
 
@@ -5626,7 +5698,7 @@ function theme_iiidem2_get_course_detail_context(stdClass $course): array {
     $quizzes = theme_iiidem2_get_course_quizzes_context($course);
     $display = theme_iiidem2_get_course_display_context($course);
 
-    $loginurl = new moodle_url('/login/index.php');
+    $loginurl = new moodle_url('/login');
     $loginurl->param('wantsurl', theme_iiidem2_get_course_detail_url($course));
 
     $wantsurl = theme_iiidem2_get_course_detail_url($course);
@@ -5672,7 +5744,7 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
     $display = theme_iiidem2_get_course_display_context($course);
-    $loginurl = new moodle_url('/login/index.php');
+    $loginurl = new moodle_url('/login');
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
 
     $templatecontext = theme_iiidem2_merge_footer_context(array_merge($display, [

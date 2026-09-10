@@ -193,7 +193,8 @@ class manager {
         global $ME, $PAGE, $SESSION, $USER;
 
         // Determine page URL without triggering warnings from $PAGE.
-        if (!preg_match("~(\/admin\/tool\/mfa\/auth.php)~", $ME)) {
+        // Extensionless URLs: nginx keeps REQUEST_URI without .php while SCRIPT_NAME has .php.
+        if (!preg_match('~/admin/tool/mfa/auth(?:\.php)?(?:[?#]|$)~', (string) $ME)) {
             // If URL isn't set, we need to redir to auth.php.
             // This ensures URL and required info is correctly set.
             // Then we arrive back here.
@@ -568,8 +569,9 @@ class manager {
         // Set referer after checks.
         $SESSION->mfa_redir_referer = get_local_referer(true);
 
-        // Don't redirect if already on auth.php.
-        if ($url->compare($authurl, URL_MATCH_BASE)) {
+        // Don't redirect if already on auth.php (or extensionless /auth).
+        $authextless = new \moodle_url('/admin/tool/mfa/auth');
+        if ($url->compare($authurl, URL_MATCH_BASE) || $url->compare($authextless, URL_MATCH_BASE)) {
             return self::NO_REDIRECT;
         }
 
@@ -669,10 +671,13 @@ class manager {
                 $cleanurl = new \moodle_url($FULLME);
             }
             $authurl = new \moodle_url('/admin/tool/mfa/auth.php');
+            $authextless = new \moodle_url('/admin/tool/mfa/auth');
 
             $redir = self::should_require_mfa($cleanurl, $preventredirect);
 
-            if ($redir == self::NO_REDIRECT && !$cleanurl->compare($authurl, URL_MATCH_BASE)) {
+            $isonauth = $cleanurl->compare($authurl, URL_MATCH_BASE)
+                || $cleanurl->compare($authextless, URL_MATCH_BASE);
+            if ($redir == self::NO_REDIRECT && !$isonauth) {
                 // A non-MFA page that should take precedence.
                 // This check is for any pages, such as site policy, that must occur before MFA.
                 // This check allows AJAX and WS requests to fire on these pages without throwing an exception.

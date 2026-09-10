@@ -17,7 +17,34 @@
 
 Burp on `/contact-us/?sent=1` showed large `<script>` / `/* <![CDATA[ */` blocks and dumps mentioning `theme_config`. That is consistent with **developer/debug output** (or theme designer artefacts), not with a normal contact success flag (`?sent=1` is only `PARAM_INT`).
 
-**Normal Moodle** always emits a small `M.cfg` JS bootstrap (wwwroot, sesskey, etc.). That is expected and is **not** the same as debug stack traces or full `theme_config` dumps. After remediaiton, pages must not show Debug info / performance footers / exception traces.
+**Normal Moodle** always emits a small `M.cfg` JS bootstrap (wwwroot, sesskey, `apibase`, theme, userid, etc.). That is expected and is **not** the same as debug stack traces or full `theme_config` dumps. After remediation, pages must not show Debug info / performance footers / exception traces.
+
+### Auditor follow-up: `debug:false` but `apibase` still visible
+
+Burp on `GET /contact-us/` (retest) shows both:
+
+```text
+M.cfg = {
+  "wwwroot":"https://staginglms.eci.gov.in",
+  "apibase":"https://staginglms.eci.gov.in/r.php/api",
+  "sesskey":"…",
+  "theme":"iiidem2",
+  …
+};
+YUI_config = { "debug": false, … };
+```
+
+| Client JS | Meaning | Debug-related? |
+|-----------|---------|----------------|
+| `YUI_config.debug: false` | YUI library debug logging off | Yes — correctly disabled |
+| `M.cfg.apibase` → `…/r.php/api` | Moodle front-end REST base URL for AMD/`core/fetch` | **No** — always present on every Moodle site |
+| `M.cfg.wwwroot` / `theme` / `userId` | Browser bootstrap for the LMS UI | **No** — required, not CWE-489 |
+| `M.cfg.sesskey` | CSRF token for JS (not the session cookie) | Separate finding [#17](session-token-in-url.md); must not be in **URLs** |
+| `M.cfg.developerdebug` | Only when `$CFG->debugdeveloper` is true | Must be **absent** when debug is off |
+
+`apibase` is set unconditionally in core `page_requirements_manager::get_config_for_javascript()` so the browser can call Moodle web services. Removing it would break the LMS UI. It is a public route prefix (authZ still enforced per web service + sesskey/token), not a disclosure from CWE-489 Active Debug Code.
+
+**Verdict:** Debug mode is **already off**. Do **not** remove `apibase`. **Dispute** “API endpoints visible” under this finding — it is standard Moodle `M.cfg`, not residual debug mode.
 
 Related input-validation recommendation on the same report pages (CWE-20): [input-validation.md](input-validation.md), [input-validation-xss.md](input-validation-xss.md).
 
@@ -68,8 +95,11 @@ php -r "define('CLI_SCRIPT', true); require 'config.php'; echo 'env=' . MOODLE_E
 Expect `env=staging` (or production), `debug=0 display=0` without `MOODLE_FORCE_DEBUG`.
 
 ```bash
-curl -s 'https://staginglms.eci.gov.in/contact-us/?sent=1' | grep -iE 'debuginfo|stack trace|theme_config|perfdebug' || true
-# Expect: no matches for debug dumps
+curl -s 'https://staginglms.eci.gov.in/contact-us/?sent=1' | grep -iE 'debuginfo|stack trace|theme_config|perfdebug|developerdebug' || true
+# Expect: no matches for debug dumps / developerdebug
+
+# apibase may still appear — that is normal M.cfg, not debug:
+curl -s 'https://staginglms.eci.gov.in/contact-us/' | grep -o 'apibase[^,]*' | head -1
 ```
 
 ## Deploy

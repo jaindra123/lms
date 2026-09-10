@@ -693,7 +693,7 @@ class core_renderer extends renderer_base {
             } else {
                 $loggedinas = $realuserinfo . get_string('loggedinas', 'moodle', $username);
                 if ($withlinks) {
-                    $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php?sesskey=" . sesskey() . "\">" . get_string('logout') . '</a>)';
+                    $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php\">" . get_string('logout') . '</a>)';
                 }
             }
         } else {
@@ -1963,6 +1963,14 @@ class core_renderer extends renderer_base {
         $newwindowicon = '';
         if (!empty($CFG->doctonewwindow) || $forcepopup) {
             $attributes['target'] = '_blank';
+            // CDAC #24: prevent window.opener tabnabbing on docs / help links.
+            $rel = preg_split('/\s+/', (string) ($attributes['rel'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            foreach (['noopener', 'noreferrer'] as $token) {
+                if (!in_array($token, $rel, true)) {
+                    $rel[] = $token;
+                }
+            }
+            $attributes['rel'] = implode(' ', $rel);
             $newwindowicon = $this->pix_icon(
                 'i/externallink',
                 get_string('opensinnewwindow'),

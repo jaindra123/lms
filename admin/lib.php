@@ -59,6 +59,14 @@ function core_admin_pluginfile($course, $cm, $context, $filearea, $args, $forced
         $size = array_shift($args); // The path hides the size.
         $itemid = clean_param(array_shift($args), PARAM_INT);
         $filename = clean_param(array_shift($args), PARAM_FILE);
+
+        // CDAC directory-listing: incomplete path / trailing slash (no real filename).
+        // Do not render a themed Moodle error page — plain 403 Forbidden.
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            require_once($CFG->libdir . '/iiidem_pluginfile_directory_guard.php');
+            iiidem_send_pluginfile_directory_forbidden();
+        }
+
         $themerev = theme_get_revision();
         if ($themerev <= 0) {
             // Normalise to 0 as -1 doesn't place well with paths.

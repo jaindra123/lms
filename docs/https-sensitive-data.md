@@ -100,6 +100,79 @@ curl -I https://staginglms.eci.gov.in/login/index.php | grep -i strict-transport
 
 Optional: **HTTPS conversion tool** (`/admin/tool/httpsreplace/`) to rewrite old `http://` embedded content.
 
+## Finding #4 — Sensitive Data Exposure / cryptography failures (re-raised)
+
+| Field | Report |
+|-------|--------|
+| Title | Sensitive Data Exposure due to cryptography failures |
+| Impact claimed | HIGH / CVSS 7.5 / CWE-311 |
+| URLs | `/login/index.php`, `/register/`, `/register/verify_otp.php`, Razorpay `otp_submit` |
+
+### Verdict: **Dispute as false positive for HTTPS form POSTs**
+
+Burp Suite **decrypts TLS** and shows the HTTP layer. Seeing `password=` or `code=` in the body of an `https://` request is **normal**. Encryption in transit is **TLS**, not hiding fields from a TLS-intercepting proxy.
+
+| Instance | PoC | Reality |
+|----------|-----|---------|
+| Login | `POST https://…/login/index.php` body `password=Test%401234` | HTTPS form POST — expected |
+| Register OTP | `POST https://…/register/verify_otp.php` body `code=123456` | HTTPS form POST — expected |
+| Razorpay OTP | `POST https://api.razorpay.com/…/otp_submit/…` | Third-party; out of scope |
+
+**Do not** add client-side JavaScript “encryption” of password/OTP before POST — that is not Moodle/standard auth and does not replace TLS (auditors with Burp still see or break the flow).
+
+### Real controls (already / hardened)
+
+| Control | Status |
+|---------|--------|
+| Site on HTTPS only (`$CFG->wwwroot`) | Required on staging/prod |
+| HTTP → HTTPS redirect (Apache/nginx) | Ops — must verify |
+| HSTS (`Strict-Transport-Security`) | Theme `security_headers` + edge |
+| Secure + HttpOnly cookies | `config.php` when wwwroot is https |
+| Login/register refuse plain HTTP | `theme_iiidem2\https_enforce` (staging/prod) |
+| OTP stored hashed (`password_hash`) | `registration_otp` — not cleartext at rest in session |
+| OTP rate limits | `send_otp` / `verify_otp` |
+
+### Finding #4 retest (2026-09) — Instances 1–2
+
+| Instance | PoC (Burp over `https://`) | Verdict |
+|----------|----------------------------|---------|
+| **1** Login password | `POST /login/index.php` body `username=…&password=Test%401234` | **Dispute** — HTTPS form POST; TLS encrypts in transit. Burp MITM decrypts for the tester. |
+| **2** Register OTP | `POST /register/verify_otp.php` body `email=…&code=124565&sesskey=…` | **Dispute** — same; OTP must be POSTed for server verify. |
+
+Recommendation “Encrypt the sensitive fields” at the application layer is **incorrect** for standard Moodle login/OTP. Do **not** ship client-side JS crypto for password/OTP.
+
+**Resolved / in place (real crypto controls):**
+
+- Site `wwwroot` is `https://…`
+- HTTP → HTTPS redirect + HSTS on staging (verify with curl below)
+- `https_enforce` on login/register OTP endpoints (staging/prod)
+- Secure + HttpOnly cookies
+- Registration OTP hashed at rest (`password_hash`) — not stored as cleartext in session
+
+Burp will **always** still show `password=` / `code=` on HTTPS intercepts. That is **not** a fail if TLS + HSTS + Secure cookies are confirmed.
+
+### Instance 3 — Razorpay OTP
+
+Out of scope — host is `api.razorpay.com`. See earlier section.
+
+### Retest evidence for auditors
+
+```bash
+# 1) HTTPS + HSTS
+curl -sI https://staginglms.eci.gov.in/login/index.php | grep -iE 'HTTP/|strict-transport'
+
+# 2) No successful clear-text login
+curl -sI http://staginglms.eci.gov.in/login/index.php | head -5
+# Expect 301/302 to https://
+
+# 3) Cookies after login (browser DevTools)
+# MoodleSession: Secure=yes, HttpOnly=yes
+```
+
+Burp will **still** show `password=` / `code=` on HTTPS captures — that must not be scored as CWE-311 if TLS is confirmed.
+
+Razorpay `otp_submit` will still show `otp=` in Burp over HTTPS — that is **by design of Razorpay**, not a regression of an earlier LMS fix.
+
 ## Scanner PoC analysis (cleartext credentials / PII / OTP)
 
 Typical CDAC-style PoCs show Burp Suite with:

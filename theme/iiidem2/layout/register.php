@@ -24,7 +24,7 @@ $templatecontext = theme_iiidem2_merge_footer_context(array_merge(
     [
         'pagetitle' => $PAGE->title,
         'pagesubtitle' => $pagesubtitle,
-        'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+        'loginurl' => (new moodle_url('/login'))->out(false),
         'config' => ['wwwroot' => $CFG->wwwroot],
         'output' => $OUTPUT,
         'bodyattributes' => $OUTPUT->body_attributes(['pagelayout-marketing', 'iiidem-register-page']),

@@ -13,11 +13,17 @@
 
 > The application does not enforce an appropriate Referrer-Policy, allowing the browser to send the originating URL in the `Referer` header to external domains.
 
+**Recommendation:** Configure a restrictive Referrer-Policy, e.g.:
+
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Referrer-Policy: no-referrer`
+
 ## Affected URLs (report)
 
 | URL |
 |-----|
 | `/` |
+| `/theme/iiidem2/dashboard/index.php` (footer “Powered by Moodle” → `https://moodle.com`) |
 | `/user/profile.php?id=5` |
 | `/course/search.php?search=…` |
 | `/course/index.php?categoryid=3` |
@@ -27,24 +33,21 @@
 
 | Instance | Detail |
 |----------|--------|
-| 1 | Pages with a query string link to another domain (`https://moodle.com/` / `https://download.moodle.org/mobile?…`). Without Referrer-Policy, the full origin URL (path + query) can be sent as `Referer` when the user clicks **Get the mobile app**. |
-
-Report note: “This issue was found in multiple locations under the reported path.”
+| 1 | Pages with a query string link to another domain (`https://moodle.com/` / `https://download.moodle.org/mobile?…`). Without Referrer-Policy, the full origin URL (path + query) can be sent as `Referer` when the user clicks the link. |
+| 2 | Dashboard HTML contained `Powered by <a href="https://moodle.com">Moodle</a>` plus Moodle version text in the (hidden) system footer. |
 
 ## Policy chosen
 
-Suggested policies (either is acceptable; this site uses the first):
+This site uses **`strict-origin-when-cross-origin`** (first suggested value). Element-level **`referrerpolicy="no-referrer"`** is also applied on cross-origin anchors as belt-and-braces.
 
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Referrer-Policy: no-referrer`
-
-| Navigation | Referrer sent |
-|------------|---------------|
+| Navigation | Referrer sent (document policy) |
+|------------|----------------------------------|
 | Same-origin | Full URL |
 | Cross-origin HTTPS→HTTPS | Origin only (`https://host`) — **no path/query** |
 | HTTPS→HTTP (downgrade) | Nothing |
+| External `<a>` after harden | **Nothing** (`referrerpolicy="no-referrer"`) |
 
-## Implementation
+## Implementation (theme ≥ `2024101034`)
 
 | Layer | Detail |
 |-------|--------|
@@ -52,9 +55,11 @@ Suggested policies (either is acceptable; this site uses the first):
 | Theme HTTP header | `security_headers::send()` → `Referrer-Policy: …` |
 | Moodle core | `weblib.php` emits the same when `$CFG->referrerpolicy` is set |
 | HTML meta | `<meta name="referrer" content="strict-origin-when-cross-origin">` via theme hook |
+| Footer PoC | Replaced core `poweredbymoodle` (moodle.com link) with plain `poweredbyplain`; removed version line |
+| External anchors | Response buffer adds `rel="noopener noreferrer"` + `referrerpolicy="no-referrer"` on cross-origin `http(s)` links |
 | `target=_blank` | Also `rel="noopener noreferrer"` ([unsafe-blank-target-links.md](unsafe-blank-target-links.md)) |
 | Mobile app promo | `tool_mobile/setuplink` forced empty — no footer link to `download.moodle.org` ([qr-login-disabled.md](qr-login-disabled.md)) |
-| Smart App Banners | Forced off (meta must not embed current page URL for external app stores) |
+| Apache snippet | [`docs/snippets/apache-security-headers.conf`](snippets/apache-security-headers.conf) |
 
 ### Optional nginx (edge)
 
@@ -74,18 +79,21 @@ Ensure staging secret config does **not** override `$CFG->referrerpolicy` to emp
 ## Verify
 
 ```bash
-curl -sI https://staginglms.eci.gov.in/login/index.php | grep -i referrer-policy
+HOST=staginglms.eci.gov.in
+
+curl -sI "https://${HOST}/theme/iiidem2/dashboard/index.php" | grep -i referrer-policy
 # Expect: Referrer-Policy: strict-origin-when-cross-origin
 
-curl -sI 'https://staginglms.eci.gov.in/course/search.php?search=test' | grep -i referrer-policy
+curl -sL "https://${HOST}/theme/iiidem2/dashboard/index.php" | grep -i 'moodle.com' && echo FAIL || echo OK
+# Expect: OK (no Powered-by moodle.com href)
 
-curl -sL https://staginglms.eci.gov.in/login/index.php | grep -i 'download.moodle.org' && echo FAIL || echo OK
-# Expect: OK (no Get the mobile app cross-domain link)
+curl -sL "https://${HOST}/login/index.php" | grep -i 'name="referrer"' | head
+# Expect: meta name="referrer" content="strict-origin-when-cross-origin"
 ```
 
 Site administration → Security → HTTP security → **Referrer Policy** = `strict-origin-when-cross-origin`.
 
-Browser: from a page with a query string, open DevTools → Network → click any remaining external link → request `Referer` must be **origin only** (no path/query), or absent on downgrade.
+Browser: from a page with a query string, DevTools → Network → click any remaining external link → `Referer` must be **absent** (element policy) or **origin only** (document policy) — never full path/query.
 
 ## Evidence for auditors
 
@@ -95,6 +103,7 @@ Browser: from a page with a query string, open DevTools → Network → click an
 | Config force | `$CFG->referrerpolicy` |
 | Meta fallback | `name="referrer"` |
 | Cross-origin leak of path/query | Prevented |
+| `moodle.com` powered-by link | Removed from footer |
 | `download.moodle.org` promo link | Removed (`setuplink` empty) |
 
-Related: [security-headers.md](security-headers.md), [session-token-in-url.md](session-token-in-url.md), [unsafe-blank-target-links.md](unsafe-blank-target-links.md).
+Related: [security-headers.md](security-headers.md), [session-token-in-url.md](session-token-in-url.md), [unsafe-blank-target-links.md](unsafe-blank-target-links.md), [version-disclosure.md](version-disclosure.md).

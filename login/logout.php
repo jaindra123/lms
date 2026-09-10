@@ -42,6 +42,9 @@ if ($login) {
 if (!isloggedin()) {
     // no confirmation, user has already logged out
     require_logout();
+    if (class_exists('\theme_iiidem2\security_headers')) {
+        \theme_iiidem2\security_headers::queue_clear_site_data();
+    }
     redirect($redirect);
 
 } else if (!confirm_sesskey($sesskey)) {
@@ -60,5 +63,20 @@ foreach($authsequence as $authname) {
 }
 
 require_logout();
+
+// CDAC #13: Clear-Site-Data on the logout HTTP response (before redirect).
+// Must run after require_logout(); do not rely on the next page (login) — that would
+// wipe cookies during sign-in. Auditors checking GET /login/index.php will not see
+// this header; capture logout.php instead.
+if (class_exists('\theme_iiidem2\security_headers')) {
+    \theme_iiidem2\security_headers::queue_clear_site_data();
+    // Force emit even if theme hooks already sent other headers earlier.
+    if (!headers_sent()) {
+        header('Clear-Site-Data: ' . \theme_iiidem2\security_headers::CLEAR_SITE_DATA);
+        if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+        }
+    }
+}
 
 redirect($redirect);

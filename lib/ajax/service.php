@@ -74,8 +74,23 @@ $settings->set_filter(true);
 $settings->set_raw(false);
 
 $haserror = false;
-foreach ($requests as $request) {
-    $response = [];
+foreach ($requests as $reqoffset => $request) {
+    // CDAC API Mass Assignment: allowlist envelope keys; reject privilege keys in args.
+    if (class_exists(\theme_iiidem2\ajax_request_guard::class)) {
+        $guarded = \theme_iiidem2\ajax_request_guard::validate_item($request);
+        if ($guarded !== null) {
+            $index = (is_array($request) && isset($request['index']) && is_numeric($request['index']))
+                ? (int) $request['index']
+                : (int) $reqoffset;
+            $responses[$index] = $guarded;
+            $haserror = true;
+            if (!NO_MOODLE_COOKIES) {
+                break;
+            }
+            continue;
+        }
+    }
+
     $methodname = clean_param($request['methodname'], PARAM_ALPHANUMEXT);
     $index = clean_param($request['index'], PARAM_INT);
     $args = $request['args'];

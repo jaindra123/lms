@@ -30,6 +30,8 @@ class manager {
     }
 
     /**
+     * Categories for ticket form.
+     *
      * @return array
      */
     public static function get_categories(): array {
@@ -40,6 +42,75 @@ class manager {
             'payment' => get_string('category_payment', 'local_iiidem_support'),
             'certificate' => get_string('category_certificate', 'local_iiidem_support'),
         ];
+    }
+
+    /**
+     * Allow-list style validation for ticket subject/message (CDAC #2 SQLi PoC).
+     *
+     * Creates use $DB->insert_record (bound params) — payloads were stored as text,
+     * not executed as SQL. Still reject probe strings so Intruder cannot flood
+     * the ticket list with injection payloads.
+     *
+     * @param string $value Raw field
+     * @param int $maxlen Max length
+     * @param bool $strictsubject Subject uses a tighter character allow-list
+     * @return string|null Clean value, or null if rejected
+     */
+    public static function sanitize_ticket_field(string $value, int $maxlen, bool $strictsubject = false): ?string {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        // Decode URL-encoded Intruder payloads (%7bbase%7d, %20or%20, sleep%2820%29, …).
+        $decoded = $value;
+        for ($i = 0; $i < 2; $i++) {
+            $next = rawurldecode(str_replace('+', ' ', $decoded));
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        $value = trim(clean_param($decoded, PARAM_TEXT));
+        $value = trim(strip_tags($value));
+        if ($value === '' || \core_text::strlen($value) > $maxlen) {
+            return null;
+        }
+
+        // Common SQLi / LDAP / command-injection / XSS probe markers (case-insensitive).
+        $blocked = [
+            '/(--|\/\*|\*\/|;)/',
+            '/\b(select|union|insert|update|delete|drop|alter|exec|execute|sleep|benchmark|load_file|outfile|dumpfile)\b/i',
+            '/\b(or|and)\s+\d+\s*=\s*\d+/i',
+            '/[\'\"]\s*(or|and)\s+/i',
+            '/\bor\s+[\'\"]?\d+[\'\"]?\s*=\s*[\'\"]?\d+/i',
+            '/utl_http|xp_cmdshell|information_schema/i',
+            '/\*+\s*\(\s*objectclass|\*\(\s*mail\s*=/i',
+            '/\|\s*\||&\s*&/',
+            '/<\s*script\b/i',
+            '/(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i',
+            '/\{base\}/i',
+            '/%7b\s*base\s*%7d/i',
+        ];
+        foreach ($blocked as $pattern) {
+            if (preg_match($pattern, $value) || preg_match($pattern, $decoded)) {
+                return null;
+            }
+        }
+
+        if ($strictsubject) {
+            // Letters, numbers, spaces, and limited punctuation only.
+            if (!preg_match('/^[\p{L}\p{N}\s.,!?@:_\-\/+()#]+$/u', $value)) {
+                return null;
+            }
+            // Must include at least one letter or digit (reject lone ")" "&" etc.).
+            if (!preg_match('/[\p{L}\p{N}]/u', $value)) {
+                return null;
+            }
+        }
+
+        return $value;
     }
 
     /**
@@ -213,11 +284,10 @@ class manager {
             throw new \moodle_exception('invalidparameter', 'error');
         }
 
-        $subject = trim(clean_param((string) ($data->subject ?? ''), PARAM_TEXT));
-        $message = trim(clean_param((string) ($data->message ?? ''), PARAM_TEXT));
-        if ($subject === '' || \core_text::strlen($subject) > 255
-                || $message === '' || \core_text::strlen($message) > 5000) {
-            throw new \moodle_exception('invalidparameter', 'error');
+        $subject = self::sanitize_ticket_field((string) ($data->subject ?? ''), 255, true);
+        $message = self::sanitize_ticket_field((string) ($data->message ?? ''), 5000, false);
+        if ($subject === null || $message === null) {
+            throw new \moodle_exception('invalidtickettext', 'local_iiidem_support');
         }
 
         // Rate-limit ticket creation (CDAC: support inquiry flood / missing rate limiting).
@@ -447,7 +517,7 @@ class manager {
         foreach ($records as $ticket) {
             $item = [
                 'id' => (int) $ticket->id,
-                'subject' => $ticket->subject,
+                'subject' => format_string($ticket->subject),
                 'category' => $ticket->category,
                 'categorylabel' => self::get_categories()[$ticket->category] ?? $ticket->category,
                 'status' => $ticket->status,

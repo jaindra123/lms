@@ -128,30 +128,99 @@ final class input_validation {
         if ($value !== strip_tags($value)) {
             return true;
         }
-        if (preg_match('/[<>]|javascript\s*:|data\s*:|on[a-z]+\s*=/i', $value)) {
+        if (preg_match('/[<>]|javascript\s*:|data\s*:|vbscript\s*:|on[a-z]+\s*=/i', $value)) {
+            return true;
+        }
+        // Bare probe tokens often used in CDAC PoCs without angle brackets.
+        if (preg_match('/(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i', $value)) {
+            return true;
+        }
+        if (preg_match('/<\/?\s*(?:script|iframe|object|embed|svg|math|link|meta|base)\b/i', $value)) {
             return true;
         }
         return false;
     }
 
     /**
-     * Clean public form free-text: PARAM_TEXT, length, reject markup.
+     * Person name allow-list: letters (incl. Unicode), spaces, hyphen, apostrophe, period.
+     * Anchored regex covering the entire string (CWE-20 recommendation).
+     */
+    public static function is_safe_person_name(string $value): bool {
+        $value = trim($value);
+        if ($value === '' || \core_text::strlen($value) > self::LEN_NAME) {
+            return false;
+        }
+        if (self::contains_dangerous_markup($value)) {
+            return false;
+        }
+        // Entire string: letters + combining marks, with limited separators.
+        return (bool) preg_match('/^[\p{L}\p{M}]+(?:[\s\'\-\.]+[\p{L}\p{M}]+)*\.?$/u', $value);
+    }
+
+    /**
+     * Plain single-line field (org, city, subject): no markup / control chars.
+     */
+    public static function is_safe_plain_line(string $value, int $maxlen = self::LEN_SHORT): bool {
+        $value = trim($value);
+        if ($value === '' || \core_text::strlen($value) > $maxlen) {
+            return false;
+        }
+        if (self::contains_dangerous_markup($value)) {
+            return false;
+        }
+        if (str_contains($value, '<') || str_contains($value, '>')) {
+            return false;
+        }
+        if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Clean public form free-text: reject markup first, then PARAM_TEXT + length.
+     *
+     * Important: do NOT strip tags and accept the remainder — that turns
+     * `<script>hello</script>` into a successful “hello” submission (CDAC PoC).
      *
      * @return string|null Null when invalid / empty when allowempty and blank
      */
     public static function clean_public_text(string $value, int $maxlen, bool $allowempty = false): ?string {
-        $value = trim(clean_param($value, PARAM_TEXT));
-        $value = trim(strip_tags($value));
-        if ($value === '') {
+        $raw = trim($value);
+        if ($raw === '') {
             return $allowempty ? '' : null;
         }
-        if (self::contains_dangerous_markup($value)) {
+        // Fail closed on any XSS / markup probe in the raw input.
+        if (self::contains_dangerous_markup($raw)) {
             return null;
         }
-        if (\core_text::strlen($value) > $maxlen) {
+        $cleaned = trim(clean_param($raw, PARAM_TEXT));
+        $cleaned = trim(strip_tags($cleaned));
+        if ($cleaned === '') {
+            return $allowempty ? '' : null;
+        }
+        // If cleaning changed the semantic content (tags removed), reject.
+        if ($cleaned !== $raw && self::contains_dangerous_markup($raw)) {
             return null;
         }
-        return $value;
+        // Reject when strip/clean removed angle-bracket content.
+        if (str_contains($raw, '<') || str_contains($raw, '>')) {
+            return null;
+        }
+        if (self::contains_dangerous_markup($cleaned)) {
+            return null;
+        }
+        if (\core_text::strlen($cleaned) > $maxlen) {
+            return null;
+        }
+        return $cleaned;
+    }
+
+    /**
+     * Subject/body must contain at least one letter or digit (not only punctuation).
+     */
+    public static function has_alnum_content(string $value): bool {
+        return (bool) preg_match('/[\p{L}\p{N}]/u', $value);
     }
 
     /**
@@ -229,12 +298,38 @@ final class input_validation {
         if ($html === '') {
             return '';
         }
+        // Decode entities so stored &lt;script&gt; probes are still removed.
+        $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $html = self::strip_script_probes($html);
         $clean = clean_text($html, FORMAT_HTML);
-        $clean = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $clean) ?? $clean;
-        $clean = preg_replace('#<iframe\b[^>]*>.*?</iframe>#is', '', $clean) ?? $clean;
+        $clean = self::strip_script_probes($clean);
         $clean = preg_replace('/\son[a-z]+\s*=\s*(["\']).*?\1/iu', '', $clean) ?? $clean;
         $clean = preg_replace('/\son[a-z]+\s*=\s*[^\s>]+/iu', '', $clean) ?? $clean;
+        // If the fragment is only XSS leftovers (no real prose), blank it.
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($clean)) ?? '');
+        if ($plain !== '' && self::contains_dangerous_markup($plain)) {
+            return '';
+        }
+        if (preg_match('/^\s*(?:alert|prompt|confirm)\s*\(/i', $plain)) {
+            return '';
+        }
         return $clean;
+    }
+
+    /**
+     * Strip script tags and common XSS probe patterns from stored/plain text.
+     * Use before format_text so FORMAT_MOODLE/PLAIN does not re-escape probes as visible text.
+     */
+    public static function strip_script_probes(string $text): string {
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $text) ?? $text;
+        $text = preg_replace('#</?script\b[^>]*>#is', '', $text) ?? $text;
+        $text = preg_replace('#<iframe\b[^>]*>.*?</iframe>#is', '', $text) ?? $text;
+        $text = preg_replace('/javascript\s*:/i', '', $text) ?? $text;
+        // Repeated auditor payloads left as literal text.
+        $text = preg_replace('/<\s*script\b[^>]*>/i', '', $text) ?? $text;
+        $text = preg_replace('/<\s*\/\s*script\s*>/i', '', $text) ?? $text;
+        return $text;
     }
 
     /**
@@ -242,7 +337,60 @@ final class input_validation {
      */
     public static function purify_plain_title(string $value): string {
         $value = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $value = self::strip_script_probes($value);
         $value = trim(strip_tags($value));
-        return clean_param($value, PARAM_TEXT);
+        $value = clean_param($value, PARAM_TEXT);
+        if (self::contains_dangerous_markup($value) || preg_match('/^\s*(?:alert|prompt|confirm)\s*\(/i', $value)) {
+            return '';
+        }
+        return $value;
+    }
+
+    /**
+     * Whether a raw request value is a strict positive decimal integer (allow-list).
+     *
+     * Unlike PARAM_INT (which coerces "{base}'…" → 0), this rejects any non-digit
+     * junk used in JSON/XML injection scanner PoCs.
+     *
+     * @param mixed $raw
+     * @return bool
+     */
+    public static function is_strict_positive_int($raw): bool {
+        if (is_int($raw)) {
+            return $raw > 0;
+        }
+        if (!is_string($raw) && !is_float($raw)) {
+            return false;
+        }
+        $s = trim((string) $raw);
+        return $s !== '' && (bool) preg_match('/^[1-9][0-9]{0,18}$/', $s);
+    }
+
+    /**
+     * Keyword / filter token for participants and search (allow-list style).
+     * Rejects markup and XSS probes entirely (does not strip-then-keep "alert(1)").
+     */
+    public static function sanitize_keyword_token(string $value): string {
+        $raw = trim($value);
+        if ($raw === '') {
+            return '';
+        }
+        if (str_contains($raw, '<') || str_contains($raw, '>')
+                || self::contains_dangerous_markup($raw)) {
+            return '';
+        }
+        $clean = trim(strip_tags(clean_param($raw, PARAM_TEXT)));
+        $clean = str_replace(['<', '>'], '', $clean);
+        if ($clean === '' || !self::has_alnum_content($clean)) {
+            return '';
+        }
+        if (self::contains_dangerous_markup($clean)
+                || preg_match('/(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i', $clean)) {
+            return '';
+        }
+        if (\core_text::strlen($clean) > 200) {
+            $clean = \core_text::substr($clean, 0, 200);
+        }
+        return $clean;
     }
 }

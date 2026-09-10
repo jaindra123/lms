@@ -68,21 +68,41 @@ unset($courseid);
 
 require_login($course);
 
-$systemcontext = context_system::instance();
 $isfrontpage = ($course->id == SITEID);
 
 $frontpagectx = context_course::instance(SITEID);
 
 if ($isfrontpage) {
-    // Site home roster: teachers must not open via ?id=1 (CDAC #31).
-    if (!is_siteadmin()) {
-        throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('participants'));
+    // CDAC #31 Web Parameter Tampering: /user/index.php?id=<course> → id=SITEID
+    // exposed site-wide names + emails. Never serve the site-home participants
+    // roster here — including for site admins (PoC accounts often have Site
+    // administration). Use /admin/user.php for site-wide user management.
+    if (is_siteadmin()) {
+        redirect(new moodle_url('/admin/user.php'));
     }
-    $PAGE->set_pagelayout('admin');
-    course_require_view_participants($systemcontext);
-} else {
-    $PAGE->set_pagelayout('incourse');
-    course_require_view_participants($context);
+    throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('participants'));
+}
+
+$PAGE->set_pagelayout('incourse');
+course_require_view_participants($context);
+
+// CDAC #18 / #31: students must not open the peer roster (names/emails).
+// Deny here — before any HTML — so Moodle does not fall into early_error (HTTP 500)
+// when the same check runs from before_http_headers mid-header.
+if (!is_siteadmin() && !has_any_capability([
+    'moodle/course:update',
+    'moodle/course:viewhiddenuserfields',
+    'moodle/site:viewuseridentity',
+    'moodle/course:enrolreview',
+    'moodle/role:assign',
+    'enrol/manual:enrol',
+], $context)) {
+    throw new \moodle_exception(
+        'nopermissions',
+        'error',
+        new moodle_url('/course/view.php', ['id' => $course->id]),
+        get_string('participants')
+    );
 }
 
 // Trigger events.

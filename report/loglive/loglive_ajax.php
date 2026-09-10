@@ -47,15 +47,11 @@ if (empty($course)) {
     $PAGE->set_context($context);
 }
 
-$syscontext = context_system::instance();
+// CDAC Instance 4: never poll site-home live logs via id=SITEID (AJAX IDOR).
 if (!empty($course) && (int) $course->id === (int) SITEID) {
-    if (!is_siteadmin()) {
-        throw new \moodle_exception('nopermissions', 'error', '', get_string('livelogs', 'report_loglive'));
-    }
-    require_capability('report/loglive:view', $syscontext);
-} else {
-    require_capability('report/loglive:view', $context);
+    throw new \moodle_exception('nopermissions', 'error', '', get_string('livelogs', 'report_loglive'));
 }
+require_capability('report/loglive:view', $context);
 
 if (!$since) {
     echo $since = $since - report_loglive_renderable::CUTOFF;

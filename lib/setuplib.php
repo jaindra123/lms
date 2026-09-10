@@ -139,6 +139,17 @@ function default_exception_handler(Throwable $ex): void {
     // detect active db transactions, rollback and log as error
     abort_all_db_transactions();
 
+    // Always log real exception class/message for ops (HTTP body stays generic when debug off).
+    $logerrmsg = 'Moodle exception [' . get_class($ex) . ']: ' . $ex->getMessage()
+        . ' in ' . $ex->getFile() . ':' . $ex->getLine();
+    error_log($logerrmsg);
+    if (!headers_sent()) {
+        $exclass = preg_replace('/[^a-zA-Z0-9_\\\\]/', '', get_class($ex));
+        if (is_string($exclass) && $exclass !== '') {
+            @header('X-Moodle-Exception: ' . substr(str_replace('\\', '.', $exclass), 0, 80));
+        }
+    }
+
     if (($ex instanceof required_capability_exception) && !CLI_SCRIPT && !AJAX_SCRIPT && !empty($CFG->autologinguests) && !empty($USER->autologinguest)) {
         $SESSION->wantsurl = qualified_me();
         redirect(get_login_url());

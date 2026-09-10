@@ -1022,10 +1022,10 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         $userrevert->titleidentifier = 'logout,moodle';
         $returnobject->navitems[] = $userrevert;
     } else {
-        // Build a logout link.
+        // Build a logout link (CDAC #17: no sesskey in URL — CSRF via POST / logout_post.js).
         $logout = new stdClass();
         $logout->itemtype = 'link';
-        $logout->url = new moodle_url('/login/logout.php', ['sesskey' => sesskey()]);
+        $logout->url = new moodle_url('/login/logout.php');
         $logout->title = get_string('logout');
         $logout->titleidentifier = 'logout,moodle';
         $returnobject->navitems[] = $logout;

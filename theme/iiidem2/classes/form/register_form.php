@@ -31,19 +31,34 @@ class register_form extends \moodleform {
         // Labels above fields — avoids huge empty label column on wide screens.
         $this->set_display_vertical();
 
-        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'), ['maxlength' => 100]);
+        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'), [
+            'maxlength' => 100,
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+            'autocomplete' => 'given-name',
+        ]);
         $mform->setType('firstname', PARAM_TEXT);
         $mform->addRule('firstname', get_string('required'), 'required', null, 'client');
         $mform->addRule('firstname', get_string('required'), 'required', null, 'server');
         $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'), ['maxlength' => 100]);
+        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'), [
+            'maxlength' => 100,
+            'pattern' => '[^<>\"\']*',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+            'autocomplete' => 'additional-name',
+        ]);
         $mform->setType('middlename', PARAM_TEXT);
         $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'), ['maxlength' => 100]);
+        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'), [
+            'maxlength' => 100,
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+            'autocomplete' => 'family-name',
+        ]);
         $mform->setType('lastname', PARAM_TEXT);
         $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
@@ -90,6 +105,8 @@ class register_form extends \moodleform {
         $mform->addElement('text', 'city', get_string('city'), [
             'maxlength' => 120,
             'autocomplete' => 'address-level2',
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
         ]);
         $mform->setType('city', \core_user::get_property_type('city'));
         $mform->addRule('city', get_string('required'), 'required', null, 'client');
@@ -113,46 +130,52 @@ class register_form extends \moodleform {
         $mform->addElement('radio', 'workingcategory', '', get_string('registerresearcher', 'theme_iiidem2'), 'researcher');
         $mform->setType('workingcategory', PARAM_ALPHA);
 
-        $mform->addElement('text', 'organization', get_string('registerorganization', 'theme_iiidem2'));
+        $plainattrs = [
+            'maxlength' => 255,
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+        ];
+
+        $mform->addElement('text', 'organization', get_string('registerorganization', 'theme_iiidem2'), $plainattrs);
         $mform->setType('organization', PARAM_TEXT);
 
-        $mform->addElement('text', 'jobprofile', get_string('registerjobprofile', 'theme_iiidem2'));
+        $mform->addElement('text', 'jobprofile', get_string('registerjobprofile', 'theme_iiidem2'), $plainattrs);
         $mform->setType('jobprofile', PARAM_TEXT);
 
-        $mform->addElement('text', 'jobpostingcountry', get_string('registerjobpostingcountry', 'theme_iiidem2'));
+        $mform->addElement('text', 'jobpostingcountry', get_string('registerjobpostingcountry', 'theme_iiidem2'), $plainattrs);
         $mform->setType('jobpostingcountry', PARAM_TEXT);
 
         $mform->addElement('header', 'workingembheader', get_string('registerworkingembprofile', 'theme_iiidem2'));
 
-        $mform->addElement('text', 'emb_organization', get_string('registerorganisation', 'theme_iiidem2'));
+        $mform->addElement('text', 'emb_organization', get_string('registerorganisation', 'theme_iiidem2'), $plainattrs);
         $mform->setType('emb_organization', PARAM_TEXT);
 
-        $mform->addElement('text', 'emb_designation', get_string('registerdesignation', 'theme_iiidem2'));
+        $mform->addElement('text', 'emb_designation', get_string('registerdesignation', 'theme_iiidem2'), $plainattrs);
         $mform->setType('emb_designation', PARAM_TEXT);
 
-        $mform->addElement('text', 'emb_country', get_string('registerembcountry', 'theme_iiidem2'));
+        $mform->addElement('text', 'emb_country', get_string('registerembcountry', 'theme_iiidem2'), $plainattrs);
         $mform->setType('emb_country', PARAM_TEXT);
 
         $mform->addElement('header', 'studentheader', get_string('registerstudentprofile', 'theme_iiidem2'));
 
-        $mform->addElement('text', 'university', get_string('registeruniversity', 'theme_iiidem2'));
+        $mform->addElement('text', 'university', get_string('registeruniversity', 'theme_iiidem2'), $plainattrs);
         $mform->setType('university', PARAM_TEXT);
 
-        $mform->addElement('text', 'position', get_string('registerposition', 'theme_iiidem2'));
+        $mform->addElement('text', 'position', get_string('registerposition', 'theme_iiidem2'), $plainattrs);
         $mform->setType('position', PARAM_TEXT);
 
-        $mform->addElement('text', 'specialization', get_string('registerspecialization', 'theme_iiidem2'));
+        $mform->addElement('text', 'specialization', get_string('registerspecialization', 'theme_iiidem2'), $plainattrs);
         $mform->setType('specialization', PARAM_TEXT);
 
         $mform->addElement('header', 'instructorheader', get_string('registerinstructorprofile', 'theme_iiidem2'));
 
-        $mform->addElement('text', 'instructor_university', get_string('registeruniversity', 'theme_iiidem2'));
+        $mform->addElement('text', 'instructor_university', get_string('registeruniversity', 'theme_iiidem2'), $plainattrs);
         $mform->setType('instructor_university', PARAM_TEXT);
 
-        $mform->addElement('text', 'instructor_course', get_string('registercourse', 'theme_iiidem2'));
+        $mform->addElement('text', 'instructor_course', get_string('registercourse', 'theme_iiidem2'), $plainattrs);
         $mform->setType('instructor_course', PARAM_TEXT);
 
-        $mform->addElement('text', 'presentcountry', get_string('registerpresentcountry', 'theme_iiidem2'));
+        $mform->addElement('text', 'presentcountry', get_string('registerpresentcountry', 'theme_iiidem2'), $plainattrs);
         $mform->setType('presentcountry', PARAM_TEXT);
 
         $workingfields = [
@@ -408,18 +431,53 @@ class register_form extends \moodleform {
             'instructor_university', 'instructor_course', 'presentcountry',
         ];
         foreach ($textfields as $field) {
-            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? $_POST[$field] : '';
-            if ($raw !== '' && \theme_iiidem2\input_validation::contains_dangerous_markup($raw)) {
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? trim($_POST[$field]) : '';
+            if ($raw === '') {
+                continue;
+            }
+            if (\theme_iiidem2\input_validation::contains_dangerous_markup($raw)
+                    || str_contains($raw, '<') || str_contains($raw, '>')) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                continue;
+            }
+            if (in_array($field, ['firstname', 'middlename', 'lastname'], true)
+                    && !\theme_iiidem2\input_validation::is_safe_person_name($raw)) {
                 $errors[$field] = get_string('err_xss', 'theme_iiidem2');
             }
         }
 
         foreach (['firstname' => true, 'lastname' => false, 'middlename' => false] as $field => $required) {
+            if (!empty($errors[$field])) {
+                continue;
+            }
             $value = trim((string) ($data[$field] ?? ''));
             if ($required && $value === '') {
                 $errors[$field] = get_string('required');
-            } else if (\core_text::strlen($value) > 100) {
+            } else if ($value !== '' && \core_text::strlen($value) > 100) {
                 $errors[$field] = get_string('maximumchars', '', 100);
+            } else if ($value !== '' && !\theme_iiidem2\input_validation::is_safe_person_name($value)) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+            }
+        }
+
+        $plainlines = [
+            'city', 'organization', 'jobprofile', 'jobpostingcountry',
+            'emb_organization', 'emb_designation', 'emb_country',
+            'university', 'position', 'specialization',
+            'instructor_university', 'instructor_course', 'presentcountry',
+        ];
+        foreach ($plainlines as $field) {
+            if (!empty($errors[$field])) {
+                continue;
+            }
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? trim($_POST[$field]) : '';
+            $value = $raw !== '' ? $raw : trim((string) ($data[$field] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            if (!\theme_iiidem2\input_validation::is_safe_plain_line($value, 255)
+                    || !\theme_iiidem2\input_validation::has_alnum_content($value)) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
             }
         }
 

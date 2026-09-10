@@ -154,9 +154,8 @@ class invoice {
         $left = fullname($user) . "\n" . $user->email;
         $right = get_string('invoicenumberlabel', 'paygw_razorpay') . ': ' . $invoicenumber . "\n"
             . get_string('invoicedatelabel', 'paygw_razorpay') . ': ' . $paidon . "\n"
-            . get_string('paymenttxnreflabel', 'paygw_razorpay') . ': ' . ($txn->txnref ?? '') . "\n"
-            . get_string('orderreference', 'paygw_razorpay') . ': ' . ($txn->orderid ?? '') . "\n"
-            . get_string('paymentreference', 'paygw_razorpay') . ': ' . ($txn->paymentid ?? '');
+            . get_string('paymenttxnreflabel', 'paygw_razorpay') . ': ' . ($txn->txnref ?? '');
+        // CDAC: omit Razorpay order/payment IDs from student PDF (kept in admin email / DB).
 
         $y = $doc->GetY();
         $doc->MultiCell(95, 5, $left, 0, 'L', false, 0);

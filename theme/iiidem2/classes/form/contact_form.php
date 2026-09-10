@@ -29,7 +29,14 @@ class contact_form extends \moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('text', 'name', get_string('name'), ['maxlength' => 100]);
+        // pattern rejects < > " ' so XSS probes fail HTML5 validation (no green tick).
+        $plainattrs = [
+            'maxlength' => 100,
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+            'autocomplete' => 'name',
+        ];
+        $mform->addElement('text', 'name', get_string('name'), $plainattrs);
         $mform->setType('name', PARAM_TEXT);
         $mform->addRule('name', get_string('required'), 'required', null, 'client');
         $mform->addRule('name', get_string('required'), 'required', null, 'server');
@@ -42,14 +49,23 @@ class contact_form extends \moodleform {
         $mform->addRule('email', get_string('required'), 'required', null, 'server');
         $mform->setForceLtr('email');
 
-        $mform->addElement('text', 'subject', get_string('subject'), ['maxlength' => 255]);
+        $mform->addElement('text', 'subject', get_string('subject'), [
+            'maxlength' => 255,
+            'pattern' => '[^<>\"\']+',
+            'title' => get_string('err_xss', 'theme_iiidem2'),
+        ]);
         $mform->setType('subject', PARAM_TEXT);
         $mform->addRule('subject', get_string('required'), 'required', null, 'client');
         $mform->addRule('subject', get_string('required'), 'required', null, 'server');
         $mform->addRule('subject', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
         $mform->addRule('subject', get_string('maximumchars', '', 255), 'maxlength', 255, 'server');
 
-        $mform->addElement('textarea', 'message', get_string('message'), 'rows="6" cols="60" maxlength="5000"');
+        $mform->addElement(
+            'textarea',
+            'message',
+            get_string('message'),
+            'rows="6" cols="60" maxlength="5000" data-iiidem-no-markup="1"'
+        );
         $mform->setType('message', PARAM_TEXT);
         $mform->addRule('message', get_string('required'), 'required', null, 'client');
         $mform->addRule('message', get_string('required'), 'required', null, 'server');
@@ -63,7 +79,7 @@ class contact_form extends \moodleform {
     }
 
     /**
-     * Server-side validation.
+     * Server-side validation — checks raw $_POST (formslib PARAM_TEXT strips tags).
      *
      * @param array $data
      * @param array $files
@@ -75,13 +91,41 @@ class contact_form extends \moodleform {
             $errors['email'] = get_string('invalidemail');
         }
 
+        // Raw POST: PARAM_TEXT would turn <script>x</script> into "x" and look “valid”.
         foreach (['name' => 100, 'subject' => 255, 'message' => 5000] as $field => $max) {
-            $value = trim((string) ($data[$field] ?? ''));
-            if ($value === '') {
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? trim($_POST[$field]) : '';
+            $cleaned = trim((string) ($data[$field] ?? ''));
+
+            if ($raw === '' && $cleaned === '') {
                 $errors[$field] = get_string('required');
-            } else if (\core_text::strlen($value) > $max) {
+                continue;
+            }
+
+            if ($raw !== '' && \theme_iiidem2\input_validation::contains_dangerous_markup($raw)) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                continue;
+            }
+            if (str_contains($raw, '<') || str_contains($raw, '>')) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                continue;
+            }
+
+            $value = $raw !== '' ? $raw : $cleaned;
+            if (\core_text::strlen($value) > $max) {
                 $errors[$field] = get_string('maximumchars', '', $max);
-            } else if (\theme_iiidem2\input_validation::contains_dangerous_markup($value)) {
+                continue;
+            }
+
+            if ($field === 'name') {
+                if (!\theme_iiidem2\input_validation::is_safe_person_name($value)) {
+                    $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                }
+                continue;
+            }
+
+            if (!\theme_iiidem2\input_validation::is_safe_plain_line($value, $max)
+                    || !\theme_iiidem2\input_validation::has_alnum_content($value)) {
+                // Reject punctuation-only subjects (@#$$$) and markup.
                 $errors[$field] = get_string('err_xss', 'theme_iiidem2');
             }
         }

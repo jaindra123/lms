@@ -34,7 +34,7 @@ $perpage = optional_param('perpage', null, PARAM_INT);
 $viewmode = optional_param('view', 'default', PARAM_ALPHA); // Can be one of default, combined, courses, or categories.
 
 // Search related params.
-$search = optional_param('search', '', PARAM_RAW); // Search words. Shortname, fullname, idnumber and summary get searched.
+$search = optional_param('search', '', PARAM_TEXT); // Search words. Shortname, fullname, idnumber and summary get searched.
 $blocklist = optional_param('blocklist', 0, PARAM_INT); // Find courses containing this block.
 $modulelist = optional_param('modulelist', '', PARAM_PLUGIN); // Find courses containing the given modules.
 

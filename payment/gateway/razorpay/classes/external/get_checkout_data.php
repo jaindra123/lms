@@ -93,14 +93,14 @@ class get_checkout_data extends external_api {
         }
 
         return [
+            // keyid = Razorpay *public* Key ID (required by Checkout.js). Key Secret never returned.
             'keyid' => trim($config->keyid ?? 'rzp_test_mock'),
             'orderid' => $order['id'],
             'amount' => $order['amount'],
             'currency' => $currency,
             'brandname' => !empty($config->brandname) ? $config->brandname : format_string($GLOBALS['SITE']->shortname),
             'description' => $description,
-            'username' => fullname($USER),
-            'useremail' => (string) $USER->email,
+            // CDAC: do not return payer name/email in checkout JSON (no Checkout prefill).
             'successurl' => $successurl->out(false),
             'mock' => $usemock,
             'mockurl' => $mockurl,
@@ -109,14 +109,12 @@ class get_checkout_data extends external_api {
 
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'keyid' => new external_value(PARAM_TEXT, 'Razorpay key id'),
+            'keyid' => new external_value(PARAM_TEXT, 'Razorpay public Key ID for Checkout.js'),
             'orderid' => new external_value(PARAM_TEXT, 'Razorpay order id'),
             'amount' => new external_value(PARAM_INT, 'Amount in paise'),
             'currency' => new external_value(PARAM_ALPHA, 'Currency code'),
             'brandname' => new external_value(PARAM_TEXT, 'Brand name'),
             'description' => new external_value(PARAM_TEXT, 'Description'),
-            'username' => new external_value(PARAM_TEXT, 'Payer name'),
-            'useremail' => new external_value(PARAM_TEXT, 'Payer email'),
             'successurl' => new external_value(PARAM_URL, 'Redirect URL after success'),
             'mock' => new external_value(PARAM_BOOL, 'Use mock checkout'),
             'mockurl' => new external_value(PARAM_TEXT, 'Mock checkout URL'),

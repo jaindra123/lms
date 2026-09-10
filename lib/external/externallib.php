@@ -105,8 +105,42 @@ class core_external extends external_api {
                       array('stringid'=>$stringid, 'component' => $component, 'lang' => $lang, 'stringparams' => $stringparams));
 
         $stringmanager = get_string_manager();
-        return $stringmanager->get_string($params['stringid'], $params['component'],
-            core_external::format_string_parameters($params['stringparams']), $params['lang']);
+        // CDAC "Input returned in response": unknown identifiers must not echo as [[stringid]].
+        if (!$stringmanager->string_exists($params['stringid'], $params['component'])) {
+            throw new \invalid_parameter_exception('Unknown string identifier');
+        }
+        $formatted = core_external::format_string_parameters($params['stringparams']);
+        $result = $stringmanager->get_string($params['stringid'], $params['component'],
+            $formatted, $params['lang']);
+        return self::assert_safe_lang_string_result($result, $params['stringparams']);
+    }
+
+    /**
+     * Block CDAC "input returned" PoCs: never send Moodle [[…]] missing-string markers
+     * (or markers that embed client stringparams) over AJAX.
+     *
+     * Covers stringid probes ([[canceleWK0…]]) and stringparams probes ([[cancel,eWK0…]]).
+     *
+     * @param string $result
+     * @param array $stringparams Validated external stringparams list
+     * @return string
+     */
+    private static function assert_safe_lang_string_result(string $result, array $stringparams): string {
+        if (preg_match('/^\s*\[\[.*\]\]\s*$/s', $result)) {
+            throw new \invalid_parameter_exception('Unknown string identifier');
+        }
+        if (str_contains($result, '[[')) {
+            foreach ($stringparams as $sp) {
+                if (!is_array($sp) || !array_key_exists('value', $sp)) {
+                    continue;
+                }
+                $val = (string) $sp['value'];
+                if ($val !== '' && str_contains($result, $val)) {
+                    throw new \invalid_parameter_exception('Invalid string parameters');
+                }
+            }
+        }
+        return $result;
     }
 
     /**
@@ -167,12 +201,20 @@ class core_external extends external_api {
                 $lang = current_language();
             }
 
+            // CDAC: do not reflect unknown stringids as [[identifier]] in JSON.
+            if (!$stringmanager->string_exists($string['stringid'], $string['component'])) {
+                throw new \invalid_parameter_exception('Unknown string identifier');
+            }
+
+            $translated = $stringmanager->get_string($string['stringid'], $string['component'],
+                core_external::format_string_parameters($string['stringparams']), $lang);
+            $translated = self::assert_safe_lang_string_result($translated, $string['stringparams']);
+
             $translatedstrings[] = array(
                 'stringid' => $string['stringid'],
                 'component' => $string['component'],
                 'lang' => $lang,
-                'string' => $stringmanager->get_string($string['stringid'], $string['component'],
-                    core_external::format_string_parameters($string['stringparams']), $lang));
+                'string' => $translated);
         }
 
         return $translatedstrings;

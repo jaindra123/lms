@@ -14,6 +14,8 @@ define('AJAX_SCRIPT', true);
 require_once(__DIR__ . '/../config.php');
 require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
+\theme_iiidem2\https_enforce::require_https_json();
+
 require_sesskey();
 
 $PAGE->set_context(context_system::instance());

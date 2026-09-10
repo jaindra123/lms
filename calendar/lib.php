@@ -2235,9 +2235,10 @@ function calendar_can_manage_non_user_event_in_system($event) {
 function calendar_view_event_allowed(calendar_event $event) {
     global $USER;
 
-    // Anyone can see site events.
+    // Site events: logged-in non-guest only (CDAC calendar eventid tampering / IDOR).
+    // Still shared site-wide by design — not another user's private calendar.
     if ($event->courseid && $event->courseid == SITEID) {
-        return true;
+        return isloggedin() && !isguestuser();
     }
 
     if (calendar_can_manage_non_user_event_in_system($event)) {
@@ -2282,12 +2283,12 @@ function calendar_view_event_allowed(calendar_event $event) {
         $mycourses = enrol_get_my_courses('id');
         return isset($mycourses[$courseid]);
     } else if ($event->categoryid) {
-        // If this is a category we need to be able to see the category.
+        // Category events: category must be visible to this user (not merely exist).
         $cat = \core_course_category::get($event->categoryid, IGNORE_MISSING);
-        if (!$cat) {
+        if (!$cat || !$cat->is_uservisible()) {
             return false;
         }
-        return true;
+        return isloggedin() && !isguestuser();
     } else if (!empty($event->courseid)) {
         // If it is a course event we need to be able to manage events in the course, or be in the course.
         if (has_capability('moodle/calendar:manageentries', $event->context)) {
@@ -2296,6 +2297,7 @@ function calendar_view_event_allowed(calendar_event $event) {
 
         return can_access_course(get_course($event->courseid));
     } else if ($event->userid) {
+        // Personal user events: owner or calendar managers only (blocks peer IDOR).
         return calendar_can_manage_user_event($event);
     } else {
         throw new moodle_exception('unknown event type');

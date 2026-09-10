@@ -57,43 +57,69 @@
 
 Dashboards, certificate download, support tickets, live quiz API, payment returns, admin chatbot — already use `require_login` / capabilities / ownership / sesskey as appropriate.
 
-## Scanner finding: `/user/profile.php?id=N` (IDOR)
+## Scanner finding: Broken Access Control (profile / edit IDOR)
 
-| Field | Report value |
-|-------|----------------|
-| Example URL | `https://stagingbms.cci.gov.in/user/profile.php?id=6` |
+| Field | Report |
+|-------|--------|
+| Title | Broken Access Control |
 | CWE | CWE-639 |
-| Note | Host `stagingbms.cci.gov.in` is **not** this LMS (`staginglms.eci.gov.in`) |
+| URLs | `/user/profile.php?id=N`, `/user/edit.php?id=N&course=1` |
 
-### Moodle behaviour (this codebase)
+Moodle core grants same-course peers `moodle/user:viewdetails`. That is not sufficient for this LMS — peer enumeration of profiles/email must be blocked for students.
 
-`user/profile.php`:
+### Instance 1 — `/user/profile.php?id=N` (view)
 
-1. Loads user by `id` (`PARAM_INT`)
-2. Calls `user_can_view_profile($user)` — **server-side authorization**
-3. Theme callback `theme_iiidem2_control_view_profile()` further restricts access:
-   - **Own profile:** allowed
-   - **Teachers / managers / admins:** may view other profiles
-   - **Course contacts:** still viewable (core rule)
-   - **Students viewing peers by changing `?id=`:** **blocked** (`VIEWPROFILE_PREVENT`)
-   - Sensitive fields (`email`, `city`, `phone*`, `lastaccess`, …) hidden from non-privileged viewers via `$CFG->hiddenuserfields`
+Login as student **id=51**, then change `id`.
 
-With `$CFG->forceloginforprofiles = 1` (forced on staging/production in `config.php`):
+| Step | URL | Expected after harden | Staging recheck (2026-09 screenshots) |
+|------|-----|------------------------|----------------------------------------|
+| 1 | Own session (id=51) | Own profile OK | Baseline |
+| 2 | `?id=5` | Deny: “details … not available” | **Denied** (remediation live for this id) |
+| 3 | `?id=3` | **Allow if course contact / instructor** | Instructor “Prof. Chanchal…” — **by design**, not peer IDOR |
+| 4 | `?id=7` | Deleted / unavailable — no peer PII | “account has been deleted” — **not a successful profile dump** |
+| 5 | `?id=32` (peer student) | Deny for pure students | **Still showed “test singh” user details** → guard **not fully effective on staging** for peers (redeploy theme + `upgrade.php` + purge, then retest) |
 
-- Guests / anonymous users cannot open profiles
-- Arbitrary IDOR from a student account to another student fails
+**Repo status:** hardened in `theme_iiidem2` (`restrict_profile_idor` + `theme_iiidem2_control_view_profile`).  
+**Auditor status:** treat Instance 1 as **open until peer `id=32` (and similar) returns deny** for a non-teacher student session.
 
-### Verify on this LMS
+### Instance 2 — `/user/edit.php?id=N&course=1` (edit)
 
-```bash
-# Logged out — must redirect to login (not show profile HTML)
-curl -sI 'https://staginglms.eci.gov.in/user/profile.php?id=2'
+| Step | Action | Expected | Staging recheck |
+|------|--------|----------|-----------------|
+| 1 | `edit.php?id=51` (self) | Edit own profile OK | OK |
+| 2 | Change to `id=32` | Deny: no permission to **Edit user profile** | **Denied** |
+| 3 | Click Continue → other user details | Must **not** equal unauthorized **edit**. If Continue lands on `/user/profile.php?id=32`, that is **Instance 1** (view), not a separate edit IDOR | Edit path **fixed**; remaining risk is Instance 1 view |
 
-# Logged in as student A, open student B — expect access denied (not full profile)
-# Logged in as teacher, open student — expect profile OK
+**Verdict Instance 2:** **Fixed** (core `moodle/user:editprofile` + no student edit of peers). Do not reopen as edit BAC if only profile view still works.
+
+### Controls (Instance 1)
+
+| Control | Behaviour |
+|---------|-----------|
+| `theme_iiidem2_control_view_profile()` | Students → own profile only; teachers/admins OK; course contacts OK |
+| `hook_listener::restrict_profile_idor()` | Early deny on `/user/profile.php` + `/user/view.php` |
+| `$CFG->forceloginforprofiles = 1` | Guests cannot open profiles |
+| `$CFG->profilesforenrolledusersonly = 1` | No profile without enrolment context |
+| `$CFG->hiddenuserfields` (forced in `config.php`) | Hide email/phone/city/… from non-privileged viewers |
+| `defaultpreference_maildisplay = 0` | New accounts do not publish email to participants |
+
+### Retest (pass criteria)
+
+```text
+1. Login as student A (not teacher, not site admin) — confirm occupation/role is student only.
+2. /user/profile.php?id=<peer student> → “not available” / redirect to own profile (MUST fail for id=32-class peers).
+3. /user/profile.php?id=<course contact / instructor> → may still show (allowed).
+4. /user/profile.php?id=<A> → own profile OK.
+5. /user/edit.php?id=<peer>&course=1 → permission error only; no editable form for peer.
+6. Logged out → /user/profile.php?id=2 → login redirect (not profile HTML).
 ```
 
-Hostnames in some CDAC pages (`staginglms.cci.gov.in`, `stagingbms.cci.gov.in`) may differ from `staginglms.eci.gov.in`; retest on the real LMS URL.
+### Verify
+
+```bash
+curl -sI 'https://staginglms.eci.gov.in/user/profile.php?id=2'
+# Expect redirect to login when logged out
+```
 
 ## Deploy to staging
 
@@ -111,6 +137,6 @@ php admin/cli/purge_caches.php
 | AuthN | `require_login()` on privileged scripts; customcert before CM lookup |
 | AuthZ | `require_capability()` / owner id checks / siteadmin |
 | IDOR (custom) | Chatbot history session-bound; cancel bound to courseid |
-| IDOR (profiles) | `user_can_view_profile` + forced `forceloginforprofiles` |
+| IDOR (profiles) | Early theme guard + `control_view_profile` + forced hiddenuserfields / forceloginforprofiles |
 | Customcert download | Guests blocked; PDF requires real userid |
 | Mock pay | POST+sesskey; production host blocked |

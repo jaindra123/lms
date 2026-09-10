@@ -31,5 +31,11 @@ function xmldb_editor_tiny_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024100703, 'editor', 'tiny');
     }
 
+    if ($oldversion < 2024100704) {
+        // CDAC: DOMPurify 3.2.7 → 3.4.15 (CVE-2026-0540+ SAFE_FOR_XML rawtext elements).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024100704, 'editor', 'tiny');
+    }
+
     return true;
 }
