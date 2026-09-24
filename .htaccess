@@ -6,13 +6,39 @@
 
 # Never auto-list directory contents when no index file is present.
 Options -Indexes
+DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Canonical login: /login and /login/ → login/index.php (no public dir listing).
-    # Use END so DirectorySlash does not bounce /login → /login/ → 403.
+    # CDAC prefill/encrypt: this LMS does not host Razorpay's API.
+    RewriteCond %{REQUEST_URI} prefill/encrypt [NC]
+    RewriteRule ^ theme/iiidem2/prefill_encrypt_deny.php [END]
+
+    # CDAC outdated Sentry 7.64.0: LMS does not ship Sentry Browser SDK.
+    RewriteCond %{QUERY_STRING} sentry_(key|client)= [NC,OR]
+    RewriteCond %{REQUEST_URI} /api/[0-9]+/envelope [NC]
+    RewriteRule ^ - [R=404,L]
+
+    # CDAC window.session_token / QR checkout: LMS does not host Razorpay Checkout.
+    RewriteCond %{REQUEST_URI} /v1/checkout/public [NC,OR]
+    RewriteCond %{REQUEST_URI} /v1/checkout/qr_code [NC]
+    RewriteRule ^ - [R=404,L]
+
+    # Canonical login: internally rewrite /login and /login/ to login/index.php.
+    # Never 301 here — Apache DirectorySlash 301 drops POST (login reload, no OTP).
     RewriteRule ^login/?$ login/index.php [END,QSA]
+
+    # Site admin search: /admin/search is not a script; Apache Indexes-off → 403.
+    RewriteRule ^admin/search/?$ admin/search.php [END,QSA]
+
+    # CDAC Directory listing retest: do not map probes to empty/internal PHP.
+    # /config → config.php, /version → version.php (die() 200 blank), /cache/forms → empty forms.php.
+    RewriteRule ^config(\.php)?$ - [R=404,L,NC]
+    RewriteRule ^version(\.php)?$ - [R=404,L,NC]
+    RewriteRule ^cache/forms(\.php)?/?$ - [R=404,L,NC]
+    RewriteRule ^auth/index\.html$ - [R=404,L,NC]
+    RewriteRule ^security(\.php)?$ - [R=404,L,NC]
 
     # Extensionless scripts: /admin/search → /admin/search.php (staging Apache).
     # Do not match paths that already have an extension or are real files/dirs.
@@ -27,7 +53,7 @@ Options -Indexes
     RewriteRule ^\.(git|ddev|github|grunt|upgradenotes|cursor|vscode)/ - [F,L]
     RewriteRule ^agent-transcripts/ - [F,L]
 
-    # Block env-specific config fragments (main config.php must remain reachable).
+    # Block env-specific config fragments (config.php is already 404 above).
     RewriteRule ^config\.(staging|production|dev)\.php$ - [F,L]
     RewriteRule ^config\.(staging|production)\.php\.example$ - [F,L]
     RewriteRule ^config-dist\.php$ - [F,L]
@@ -50,6 +76,38 @@ Options -Indexes
     RewriteRule (^|/)package(-lock)?\.json$ - [F,L]
     RewriteRule (^|/)phpunit\.xml(\.dist)?$ - [F,L]
     RewriteRule (^|/)behat\.yml(\.dist)?$ - [F,L]
+</IfModule>
+
+# CDAC Header Issues: HSTS must include preload (staging Apache previously omitted it).
+# unset first so a weaker vhost "max-age=…; includeSubDomains" does not win.
+# CDAC version disclosure: drop Server / X-Powered-By (PHP cannot strip Apache's Server).
+<IfModule mod_headers.c>
+    Header always unset Strict-Transport-Security
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+
+    # CDAC: COOP must be same-origin (not same-origin-allow-popups).
+    Header always unset Cross-Origin-Opener-Policy
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+
+    Header unset Server
+    Header always unset Server
+    Header unset Server early
+    Header always unset Server early
+    Header edit Server ^.*$ " "
+    Header always edit Server ^.*$ " "
+
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+    Header unset X-AspNet-Version
+    Header always unset X-AspNet-Version
+    Header unset X-AspNetMvc-Version
+    Header always unset X-AspNetMvc-Version
+    Header unset X-Generator
+    Header always unset X-Generator
+
+    # CDAC: deprecated X-UA-Compatible (IE=edge) must not be sent.
+    Header unset X-UA-Compatible
+    Header always unset X-UA-Compatible
 </IfModule>
 
 # Extra deny for editor swap / backup names Apache may serve as static files.

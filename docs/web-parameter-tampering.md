@@ -70,7 +70,7 @@ Host variants in reports (`staginglms.cdac.gov.in`, `staginglma.cci.gov.in`) may
 | `/course/view.php?id=4&registered=1` | Course id + UI flag | `registered=1` only shows a success toast — **no privilege change** |
 | `/?qlogin=…&userid=49` | — | **Not implemented** in this codebase; query keys stripped |
 | `/blog/edit.php?action=add&userid=46` | Ignored `userid` on add | Add uses session user; blogs **disabled** on staging/prod (`$CFG->enableblogs = 0`) |
-| `/lib/ajax/service.php?…core_calendar_get_calendar_event_by_id` | Event id | **Hardened** — `calendar_view_event_allowed()` + personal-event ownership; sesskey required |
+| `/lib/ajax/service.php?…core_calendar_get_calendar_event_by_id` | Event id | **Hardened** — reject `eventid` &lt; 1 / non-int; `calendar_view_event_allowed()` + enrolment; same deny for missing/unauthorized |
 
 CVSS 8.8 / CWE-639 is overstated where changing `id` only selects another **authorized** course module or course the user already can access.
 
@@ -147,23 +147,26 @@ AJAX: `POST /lib/ajax/service.php?…&info=core_calendar_get_calendar_event_by_i
 | Control | Behaviour |
 |---------|-----------|
 | Sesskey | Required (Moodle AJAX) |
+| Strict `eventid` | Must be a positive integer (`0`, `"0"`, negative, junk → deny). Never maps to another row. |
+| Theme `ajax_request_guard` | Intercepts this WS before core; same deny if id is invalid, missing, or unauthorized |
+| Returned id | Must equal the requested `eventid` |
 | `calendar_view_event_allowed()` | Course/module/group/category/site rules |
+| Course events | Enrolled in that course (or `moodle/calendar:manageentries`) — not merely a visible catalogue |
 | Site events | Logged-in non-guest only |
 | Category events | Category must be user-visible |
 | Personal user events | Owner or `moodle/calendar:manageentries` only |
 | Missing / denied `eventid` | Same `nopermissiontoviewcalendar` (no existence oracle) |
 
-**Retest as student:** `eventid` of another user’s **personal** calendar → denied. `eventid` of a course/module event in a course they are **not** enrolled in → denied. Events they already see in their calendar UI may still load (authorized, not IDOR).
+**Retest as student:** `eventid` `0` / `"0"` / missing / non-numeric → `error: true` (`nopermissiontoviewcalendar`), **must not** return e.g. event 9. Another user’s **personal** calendar → denied. Course/module event in a course they are **not** enrolled in → denied. Events they already see in their calendar UI may still load (authorized, not IDOR).
 
-**Staging recheck (2026-09):**
+**PoC (staging):** `POST …core_calendar_get_calendar_event_by_id` with `args.eventid: "0"` previously returned event id 9 (“Live Session on AI”). After this fix that request is denied.
 
 | `eventid` | Result | Meaning |
 |-----------|--------|---------|
-| `8` / `3` | Event/course JSON (e.g. “Live Session on AI”, course `alert(1)`) | User is **authorized** for that course calendar (enrolled) — not IDOR |
-| `30` | `nopermissiontoviewcalendar` | **AuthZ held** — tampered id denied |
-| Changing id among events the student can already see | Different authorized rows | **Expected** Moodle calendar API |
-
-**Verdict:** **Dispute / closed** as Web Parameter Tampering. Pass criteria = deny for out-of-scope / other-user personal events; allow for enrolled course events is normal.
+| `0` / `"0"` | `nopermissiontoviewcalendar` | Invalid / tampered id — **must deny** |
+| Own enrolled course event (e.g. `9`) | Event JSON | Authorized calendar row |
+| Other user’s personal event | `nopermissiontoviewcalendar` | AuthZ held |
+| Event in a course they are not enrolled in | `nopermissiontoviewcalendar` | AuthZ held |
 
 ### 12. Out of scope — `/api/admin/services.php` `eventid` IDOR
 

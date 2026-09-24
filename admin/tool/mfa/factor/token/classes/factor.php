@@ -197,7 +197,7 @@ class factor extends object_factor_base {
         $secretmanager->create_secret($expiry, false, $secret);
 
         // All the prep is now done, we can set this cookie.
-        setcookie($cookie, $secret, $expirytime, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, false, true);
+        setcookie($cookie, $secret, $expirytime, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, is_moodle_cookie_secure(), true);
 
         // Finally emit a log event for storing the cookie.
         $state = [

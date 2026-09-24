@@ -56,8 +56,13 @@ if ($data = $form->get_data()) {
     \core\notification::error(get_string('contactusformerror', 'theme_iiidem2'));
 }
 
+// Never keep a leftover “Thank you” on a new submit (XSS / junk retest).
+if ($form->is_submitted()) {
+    unset($SESSION->theme_iiidem2_contact_form_sent);
+}
+
 // One-time success banner after a real submit (ignore any ?sent= query param).
-$formsent = !empty($SESSION->theme_iiidem2_contact_form_sent);
+$formsent = !empty($SESSION->theme_iiidem2_contact_form_sent) && !$form->is_submitted();
 if ($formsent) {
     unset($SESSION->theme_iiidem2_contact_form_sent);
 }

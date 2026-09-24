@@ -33,41 +33,68 @@ class hook_listener {
     }
 
     /**
-     * Auth POSTs that call complete_user_login() and must rotate MoodleSession.
+     * Requests that authenticate and must rotate MoodleSession (session fixation).
      *
      * Early header() (CSP/HSTS/etc.) makes PHP session_regenerate_id() unable to
-     * emit a new Set-Cookie — leaving the pre-login sid (session fixation PoC).
+     * emit a new Set-Cookie — leaving the pre-login sid (CDAC PoC).
+     *
+     * Covers password POST, clean /login URL, OAuth2 callback, SSO, MFA.
      *
      * @return bool
      */
-    private static function is_session_auth_post_request(): bool {
+    private static function is_session_auth_request(): bool {
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
             return false;
         }
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return false;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return false;
+        }
 
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? '');
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
+        $haystack = strtolower($script . ' ' . $path);
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
-        if ($method === 'POST') {
-            $authposts = [
-                '/login/index.php',
-                '/login/token.php',
-                '/login/confirm.php',
-                '/register/index.php',
-            ];
-            foreach ($authposts as $path) {
-                if (str_ends_with($script, $path)) {
-                    return true;
-                }
+        // Moodle OAuth2 / OIDC finish (SSO): GET or POST /admin/oauth2callback.php
+        if (str_contains($haystack, 'oauth2callback')
+                || str_contains($haystack, '/auth/oauth2/')
+                || str_contains($haystack, '/local/iiidem_sso/')) {
+            return true;
+        }
+
+        // MFA step-up (auth.php) — keep headers deferred so a second rotate can Set-Cookie.
+        if (str_contains($haystack, '/admin/tool/mfa/auth')) {
+            return true;
+        }
+
+        if ($method !== 'POST') {
+            return false;
+        }
+
+        // Password / confirm / register / token login POSTs (including /login clean URL).
+        $postneedles = [
+            '/login/index.php',
+            '/login/index',
+            '/login/token.php',
+            '/login/token',
+            '/login/confirm.php',
+            '/login/confirm',
+            '/register/index.php',
+            '/register/index',
+        ];
+        foreach ($postneedles as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
             }
         }
 
-        // OAuth / SSO finish often authenticates on GET or POST under /auth/.
-        if (str_contains($script, '/auth/') && (
-            str_contains($script, 'callback')
-            || str_contains($script, 'redirect')
-            || str_contains($script, 'login')
-        )) {
+        // Exact /login or /login/ (extensionless rewrite).
+        $norm = rtrim($path, '/');
+        if ($norm === '/login' || str_ends_with($script, '/login')) {
             return true;
         }
 
@@ -162,10 +189,10 @@ class hook_listener {
      */
     private static function sanitize_course_search_params(): void {
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $keys = ['search', 'q', 'query', 'keywords'];
+        $keys = ['search', 'q', 'query', 'keywords', 'searchvalue'];
         $pathhit = false;
-        foreach (['/course/', '/message/', '/user/index.php',
-            '/theme/iiidem2/dashboard', '/dashboard', '/admin/'] as $needle) {
+        foreach (['/course/', '/message/', '/user/index.php', '/my/courses.php', '/my/',
+            '/theme/iiidem2/dashboard', '/dashboard'] as $needle) {
             if (str_contains($script, $needle)) {
                 $pathhit = true;
                 break;
@@ -208,6 +235,149 @@ class hook_listener {
                 $GLOBALS[$superglobal][$key] = self::sanitize_filter_keyword($val);
             }
         }
+    }
+
+    /**
+     * CDAC: Insufficient Rate Limiting on Prefill Data Encryption API.
+     *
+     * Razorpay hosts POST /v1/standard_checkout/checkout/prefill/encrypt.
+     * This LMS never implements or proxies it. Requests to that path on our
+     * origin are refused with HTTP 429 so Intruder against staginglms cannot
+     * mint prefill_data_v1 here.
+     */
+    private static function deny_lms_prefill_encrypt(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
+        if (!preg_match('#prefill/encrypt#i', $path) && !preg_match('#prefill/encrypt#i', $uri)) {
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Retry-After: 600');
+            header('Cache-Control: no-store');
+            http_response_code(429);
+        }
+        echo input_validation::json_encode_safe([
+            'ok' => false,
+            'success' => false,
+            'error' => 'ratelimit',
+            'message' => get_string('ratelimited', 'theme_iiidem2'),
+        ]);
+        exit;
+    }
+
+    /**
+     * CDAC: Outdated Sentry JavaScript Browser SDK (7.64.0).
+     *
+     * That SDK is Razorpay Checkout’s (`Origin: api.razorpay.com` → ingest.sentry.io).
+     * This LMS does not ship Sentry. Replay of Sentry envelope URLs on our origin
+     * is 404 so scanners cannot treat staginglms as a Sentry client.
+     */
+    private static function deny_lms_sentry_ingest(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
+        $query = (string) (parse_url($uri, PHP_URL_QUERY) ?: '');
+        $envelope = (bool) preg_match('#/api/\d+/envelope/?#i', $path);
+        $sentryq = (bool) preg_match('#sentry_key=|sentry_client=#i', $query . '&' . $uri);
+        if (!$envelope && !$sentryq) {
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            http_response_code(404);
+        }
+        echo input_validation::json_encode_safe([
+            'ok' => false,
+            'success' => false,
+            'error' => 'notfound',
+        ]);
+        exit;
+    }
+
+    /**
+     * CDAC: "Windows Session token" / QR checkout status — Razorpay hosts
+     * /v1/checkout/public and /v1/checkout/qr_code/... (not this LMS).
+     * Replay of those paths on our origin is 404.
+     */
+    private static function deny_lms_checkout_public(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
+        $haystack = $path !== '' ? $path : $uri;
+        if (!preg_match('#/v1/checkout/(public|qr_code)(/|$)#i', $haystack)
+                && !preg_match('#/v1/checkout/(public|qr_code)#i', $uri)) {
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            http_response_code(404);
+        }
+        echo input_validation::json_encode_safe([
+            'ok' => false,
+            'success' => false,
+            'error' => 'notfound',
+        ]);
+        exit;
+    }
+
+    /**
+     * CDAC: "Page is accessible without login" — payment-success URLs
+     * (?razorpaypayment=success) must not render the public course page.
+     * Guests are sent to Log in (no autologin guest).
+     */
+    private static function require_login_for_payment_result(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (str_contains($script, '/login/')) {
+            return;
+        }
+
+        $hit = false;
+        foreach (['razorpaypayment', 'pnbpayment', 'icicipayment'] as $key) {
+            $raw = strtolower(trim((string) ($_GET[$key] ?? $_POST[$key] ?? '')));
+            if ($raw === 'success') {
+                $hit = true;
+                break;
+            }
+        }
+        if (!$hit) {
+            return;
+        }
+        if (function_exists('isloggedin') && isloggedin() && !isguestuser()) {
+            return;
+        }
+        require_login(null, false);
     }
 
     /**
@@ -450,16 +620,55 @@ class hook_listener {
      * @param \core\hook\after_config $hook
      */
     public static function after_config(\core\hook\after_config $hook): void {
+        try {
+            self::after_config_inner($hook);
+        } catch (\Error $e) {
+            error_log('theme_iiidem2 after_config: ' . $e->getMessage()
+                . ' in ' . $e->getFile() . ':' . $e->getLine());
+        }
+    }
+
+    /**
+     * Inner after_config work (isolated so a missing class cannot 403 every URL).
+     *
+     * @param \core\hook\after_config $hook
+     */
+    private static function after_config_inner(\core\hook\after_config $hook): void {
         global $CFG;
+
+        // Unwrap encrypted password / MFA OTP even if another theme is forced on a page.
+        if (class_exists(field_crypto::class)) {
+            field_crypto::unwrap_post_fields();
+            field_crypto::ensure_keys();
+        }
+        if (class_exists(session_security::class)) {
+            session_security::force_idle_timeout();
+        }
+
+        // CDAC: payment-success query must not skip login (public course browse).
+        self::require_login_for_payment_result();
 
         if (!self::is_theme_active()) {
             return;
         }
 
-        // Security headers for AJAX / normal pages. Defer on auth POSTs so
+        // Brute force: IP throttle + CAPTCHA before authenticate_user_login()
+        // and before ob_start so a failed challenge can still 303.
+        self::throttle_login_posts();
+        if (class_exists(login_captcha::class)) {
+            login_captcha::enforce_on_login_post();
+        }
+
+        // Buffer auth completions so session_regenerate_id() can still Set-Cookie
+        // (CDAC: MoodleSession unchanged after login when headers were already sent).
+        if (self::is_session_auth_request() && !headers_sent() && ob_get_level() === 0) {
+            ob_start();
+        }
+
+        // Security headers for AJAX / normal pages. Defer on auth completions so
         // complete_user_login() can still Set-Cookie a new MoodleSession
         // (session fixation — early header() makes session_regenerate_id fail).
-        if (!self::is_session_auth_post_request()) {
+        if (!self::is_session_auth_request()) {
             security_headers::send();
         }
         // Authenticated AJAX: force no-store at flush (CDAC Cache-Control PoC on service.php).
@@ -468,6 +677,10 @@ class hook_listener {
         security_headers::ensure_noopener_blank_targets_buffer();
         // CDAC #17: strip sesskey from logout / login/*.php hrefs in final HTML.
         security_headers::ensure_sesskey_url_strip_buffer();
+        // CDAC Header Issues: nonce every script/style so CSP can drop script unsafe-inline.
+        security_headers::ensure_csp_nonce_html_buffer();
+        // CDAC: Private IP address disclosed (report/log iplookup).
+        security_headers::ensure_private_ip_html_buffer();
 
         // CDAC: form-action PATH_INFO reflection (forgot_password / user/files / etc.).
         self::neutralize_spurious_php_pathinfo();
@@ -506,11 +719,7 @@ class hook_listener {
             }
         }
 
-        // CDAC #40: keep idle session timeout short on staging/production (CWE-613).
-        if (defined('MOODLE_ENV') && MOODLE_ENV !== 'dev') {
-            $CFG->sessiontimeout = 30 * 60;
-            $CFG->sessiontimeoutwarning = 5 * 60;
-        }
+        // CDAC #40: idle timeout is forced in session_security::force_idle_timeout().
 
         // Reject unknown “quick login” style tokens (not implemented here; CDAC PoC used ?qlogin=…&userid=).
         foreach (['qlogin', 'autologin', 'logintoken_userid', 'qrlogin'] as $badkey) {
@@ -545,11 +754,21 @@ class hook_listener {
         // Course search XSS probes: strip tags / PARAM_TEXT before optional_param (CDAC search=<script>).
         self::sanitize_course_search_params();
 
+        // CDAC prefill/encrypt: this LMS does not host Razorpay's API. Any request
+        // to that path on our origin is denied with 429 (rate-limit response).
+        self::deny_lms_prefill_encrypt();
+
+        // CDAC outdated Sentry 7.64.0: LMS does not ship that SDK.
+        self::deny_lms_sentry_ingest();
+
+        // CDAC window.session_token: LMS does not host Razorpay Checkout public.
+        self::deny_lms_checkout_public();
+
         // CDAC #39: purify course/question rich text on save (Instructor Data, summary, etc.).
         self::sanitize_richtext_content_post();
 
         // Reaffirm cookie flags early (covers AJAX that never hit before_http_headers).
-        session_security::enforce_httponly_on_set_cookie_headers();
+        session_security::enforce_cookie_attributes();
 
         // Belt-and-braces: admin must not use theme designer mode (see config.php too).
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
@@ -631,7 +850,7 @@ class hook_listener {
             return;
         }
 
-        // Deferred CSP/HSTS/etc. from after_config on login POST — send now that
+        // Deferred CSP/HSTS/etc. from after_config on login — send now that
         // the new session cookie has been queued.
         security_headers::send();
 
@@ -645,6 +864,20 @@ class hook_listener {
 
         // Theme lib.php is not loaded yet during login; helpers live there.
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        if (class_exists(\local_iiidem_onboard\manager::class)) {
+            \local_iiidem_onboard\manager::grant_current_local_officer();
+            $dest = \local_iiidem_onboard\manager::post_login_landing();
+            if ($dest) {
+                $wants = (string) ($SESSION->wantsurl ?? '');
+                $path = (string) parse_url($wants, PHP_URL_PATH);
+                if ($wants === '' || \theme_iiidem2_is_generic_login_landing($wants)
+                        || str_contains($path, '/course/view') || str_contains($path, '/user/edit')) {
+                    $SESSION->wantsurl = $dest;
+                }
+                return;
+            }
+        }
 
         if (!empty($SESSION->wantsurl) && !\theme_iiidem2_is_generic_login_landing($SESSION->wantsurl)) {
             return;
@@ -664,34 +897,56 @@ class hook_listener {
      * @param \core\hook\output\before_http_headers $hook
      */
     public static function before_http_headers(\core\hook\output\before_http_headers $hook): void {
+        try {
+            self::before_http_headers_inner($hook);
+        } catch (\Error $e) {
+            // Missing class / parse issues only. Do not swallow moodle_exception
+            // (redirect() for profile IDOR and other access guards).
+            error_log('theme_iiidem2 before_http_headers: ' . $e->getMessage()
+                . ' in ' . $e->getFile() . ':' . $e->getLine());
+        }
+    }
+
+    /**
+     * Inner header hook (isolated so a missing helper cannot 403 every URL).
+     *
+     * @param \core\hook\output\before_http_headers $hook
+     */
+    private static function before_http_headers_inner(\core\hook\output\before_http_headers $hook): void {
         global $CFG, $PAGE, $COURSE, $USER;
+
+        if (class_exists(session_security::class)) {
+            session_security::enforce_session_limits();
+        }
 
         if (!self::is_theme_active()) {
             return;
         }
 
-        // Security headers for all web responses (including AJAX that skip $OUTPUT).
-        security_headers::send();
-
-        // Ensure MoodleSession / MoodleID Set-Cookie headers include HttpOnly.
-        session_security::enforce_httponly_on_set_cookie_headers();
-
-        // Re-assert no-store on authenticated pages (Moodle may have sent weaker Cache-Control).
-        security_headers::send_sensitive_cache_control();
-
-        // CDAC #24: also start buffer here (after_config may be skipped on some admin paths).
-        security_headers::ensure_noopener_blank_targets_buffer();
-        // CDAC #17: strip sesskey from logout / login/*.php hrefs in final HTML.
-        security_headers::ensure_sesskey_url_strip_buffer();
-
-        self::throttle_login_posts();
-        self::require_login_credentials_lock_js();
-
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
-        // Run once per request. If a guard throws, Moodle re-enters header() while
-        // rendering the error page — running again would print the same message twice.
+        // Access guards before any header() so redirect() can still 303
+        // (CDAC admin profile.php?id=5 IDOR).
+        self::require_login_credentials_lock_js();
         self::run_request_access_guards();
+
+        // Security headers for all web responses (including AJAX that skip $OUTPUT).
+        if (class_exists(security_headers::class)) {
+            security_headers::send();
+        }
+
+        // Ensure MoodleSession / MoodleID Set-Cookie includes Domain, Secure, HttpOnly, SameSite.
+        if (class_exists(session_security::class)) {
+            session_security::enforce_cookie_attributes();
+        }
+
+        // Re-assert no-store on authenticated pages (Moodle may have sent weaker Cache-Control).
+        if (class_exists(security_headers::class)) {
+            security_headers::send_sensitive_cache_control();
+            security_headers::ensure_noopener_blank_targets_buffer();
+            security_headers::ensure_sesskey_url_strip_buffer();
+            security_headers::ensure_private_ip_html_buffer();
+        }
 
         \theme_iiidem2_extend_admin_secondary_nav($PAGE);
 
@@ -723,6 +978,8 @@ class hook_listener {
      * CDAC finding #8 cited /login/index.php without request throttling.
      */
     private static function throttle_login_posts(): void {
+        global $SESSION;
+
         if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
         }
@@ -736,9 +993,12 @@ class hook_listener {
         }
 
         $ip = 'ip:' . rate_limit::client_ip();
-        // 20 login POSTs / 5 min, 60 / hour per IP (account lockout still applies per user).
-        rate_limit::require_allowed('login_post_ip', 20, 300, $ip);
-        rate_limit::require_allowed('login_post_ip_hour', 60, 3600, $ip);
+        // 10 login POSTs / 5 min, 30 / hour per IP (account lockout still applies per user).
+        if (!rate_limit::allow('login_post_ip', 10, 300, $ip)
+                || !rate_limit::allow('login_post_ip_hour', 30, 3600, $ip)) {
+            $SESSION->loginerrormsg = get_string('ratelimited', 'theme_iiidem2');
+            redirect(new \moodle_url('/login/index.php'));
+        }
     }
 
     /**
@@ -765,6 +1025,9 @@ class hook_listener {
                 break;
             }
         }
+        if (!$match && str_contains($script, '/admin/tool/mfa/')) {
+            $match = true;
+        }
         if (!$match && ($PAGE->pagelayout ?? '') === 'login') {
             $match = true;
         }
@@ -772,7 +1035,10 @@ class hook_listener {
             return;
         }
 
-        $PAGE->requires->js(new \moodle_url('/theme/iiidem2/javascript/login_credentials_lock.js'));
+        $PAGE->requires->js(new \moodle_url(
+            '/theme/iiidem2/javascript/login_credentials_lock.js',
+            ['v' => '2024101084']
+        ));
     }
 
     /**
@@ -863,6 +1129,7 @@ class hook_listener {
         }
 
         $done = true;
+        self::require_login_for_payment_result();
         self::restrict_student_attendance_pages();
         self::restrict_preferences_userid_tampering();
         self::restrict_participants_list_access();
@@ -873,24 +1140,23 @@ class hook_listener {
     }
 
     /**
-     * Block peer profile IDOR on /user/profile.php and /user/view.php.
+     * Block profile IDOR on /user/profile.php and /user/view.php.
      *
-     * CDAC #5: GET /user/profile.php?id=51 as a student showed another learner’s
-     * email. Core allows same-course peers via moodle/user:viewdetails; theme
-     * control_view_profile can miss if plugin_functions cache is stale. This
-     * early guard does not depend on that cache.
+     * Deny by default (including site admins). CDAC PoC: login as admin, GET
+     * /user/profile.php?id=5|3|32 and read another user's email. Site admins
+     * have every capability, so capability checks must not grant this page.
+     * Account management remains on /admin/user.php and /user/editadvanced.php.
      *
-     * Students → own profile only. Teachers / managers / admins unchanged.
-     * Course-contact (instructor) profiles remain viewable.
+     * Redirect (never throw): throwing from before_http_headers → HTTP 500.
      */
     private static function restrict_profile_idor(): void {
         global $USER, $CFG;
 
-        if (!isloggedin() || isguestuser() || is_siteadmin() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+        if (!isloggedin() || isguestuser() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
         }
 
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
         $isprofile = str_ends_with($script, '/user/profile.php')
             || str_ends_with($script, '/user/view.php');
         if (!$isprofile) {
@@ -902,72 +1168,64 @@ class hook_listener {
             $targetid = (int) $USER->id;
         }
 
-        if ($targetid === (int) $USER->id) {
-            return;
-        }
+        $courseid = optional_param('course', 0, PARAM_INT);
 
         require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
-        $role = \theme_iiidem2_get_user_dashboard_role((int) $USER->id);
-        if ($role === 'admin' || $role === 'teacher') {
+        if (theme_iiidem2_user_may_view_profile($targetid, $courseid)) {
             return;
         }
 
-        $sys = \context_system::instance();
-        if (has_capability('moodle/user:viewalldetails', $sys) ||
-                has_capability('moodle/site:configview', $sys)) {
-            return;
+        $ownurl = new \moodle_url('/user/profile.php', ['id' => (int) $USER->id]);
+        if (is_siteadmin()) {
+            redirect(
+                new \moodle_url('/admin/user.php'),
+                get_string('usernotavailable', 'error'),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
         }
-
-        // Teachers of a course the target is enrolled in may open the profile.
-        require_once($CFG->libdir . '/enrollib.php');
-        $shared = enrol_get_all_users_courses($targetid, true);
-        foreach ($shared as $c) {
-            if ((int) $c->id === SITEID) {
-                continue;
-            }
-            $ctx = \context_course::instance((int) $c->id);
-            if (has_capability('moodle/course:manageactivities', $ctx) ||
-                    has_capability('moodle/course:update', $ctx) ||
-                    has_capability('moodle/user:viewalldetails', $ctx)) {
-                return;
-            }
-        }
-
-        // Instructors listed as course contacts remain publicly viewable.
-        if (function_exists('has_coursecontact_role') && has_coursecontact_role($targetid)) {
-            return;
-        }
-
-        throw new \moodle_exception(
-            'usernotavailable',
-            'error',
-            new \moodle_url('/user/profile.php', ['id' => (int) $USER->id])
+        redirect(
+            $ownurl,
+            get_string('usernotavailable', 'error'),
+            null,
+            \core\output\notification::NOTIFY_ERROR
         );
     }
 
     /**
-     * Force /login/change_password.php to ignore client course `id`.
+     * Ignore / drop client `id` on /login/change_password.php (web parameter tampering).
      *
-     * Audit PoC treated `?id=` as a userid (IDOR). In Moodle it is only course context;
-     * the password form always binds to session $USER. Pinning SITEID removes
-     * tampering side-effects (different breadcrumbs / invalidcourseid on id=24).
+     * CDAC Instance 1: GET ?id=1 was treated as a userid. In Moodle `id` is only
+     * a course context for breadcrumbs; the password always belongs to session
+     * $USER. Redirect GET so the address bar cannot show a tampered id.
      */
     private static function harden_change_password_course_id(): void {
         if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
         }
 
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        if (!str_ends_with($script, '/login/change_password.php')) {
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $path = str_replace('\\', '/', (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: ''));
+        $onpage = str_ends_with($script, '/login/change_password.php')
+            || str_ends_with(rtrim($path, '/'), '/login/change_password');
+        if (!$onpage) {
             return;
         }
 
-        $siteid = (string) SITEID;
-        $_GET['id'] = $siteid;
-        $_REQUEST['id'] = $siteid;
-        if (isset($_POST['id'])) {
-            $_POST['id'] = $siteid;
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
+        $hadid = array_key_exists('id', $_GET)
+            || preg_match('/(?:^|&)id=/i', $query);
+
+        unset($_GET['id'], $_REQUEST['id'], $_POST['id']);
+
+        if ($method === 'GET' && $hadid) {
+            $keep = [];
+            if (!empty($_GET['return']) || preg_match('/(?:^|&)return=/i', $query)) {
+                $keep['return'] = 1;
+            }
+            redirect(new \moodle_url('/login/change_password.php', $keep));
         }
     }
 
@@ -1243,28 +1501,52 @@ class hook_listener {
     ): void {
         global $PAGE, $CFG;
 
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+
+        $nonceattr = security_headers::nonce_attribute();
+        // Block Sardine WebSockets before any later checkout/fraud script can run.
+        $hook->add_html(
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/websocket_guard.js', ['v' => '2024101081']))->out(false) .
+            '"></script>'
+        );
+        // Encrypt password / MFA OTP in POST (must run on login + MFA even if layout differs).
+        $hook->add_html(
+            '<script' . $nonceattr . ' type="application/json" id="iiidem-field-crypto">' .
+            field_crypto::public_json() .
+            '</script>'
+        );
+        $hook->add_html(
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/field_crypto.js', ['v' => '2024101092']))->out(false) .
+            '"></script>'
+        );
+
         if (!self::is_theme_active()) {
             return;
         }
-
-        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
 
         // Belt-and-braces Referrer-Policy for documents (also sent as HTTP header).
         $hook->add_html('<meta name="referrer" content="strict-origin-when-cross-origin">');
         // Early AJAX sesskey helper for /lib/ajax/service.php only (cache-busted).
         $hook->add_html(
-            '<script src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024101047']))->out(false) .
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024101089']))->out(false) .
             '"></script>'
         );
         $hook->add_html(
-            '<script src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/message_xss_guard.js'))->out(false) .
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/message_xss_guard.js', ['v' => '2024101075']))->out(false) .
             '"></script>'
         );
         $hook->add_html(
-            '<script src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/logout_post.js'))->out(false) .
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/form_input_guard.js', ['v' => '2024101103']))->out(false) .
+            '"></script>'
+        );
+        $hook->add_html(
+            '<script' . $nonceattr . ' src="' .
+            (new \moodle_url('/theme/iiidem2/javascript/logout_post.js', ['v' => '2024101077']))->out(false) .
             '"></script>'
         );
         // Reduce bfcache of authenticated HTML in older agents.
@@ -1275,7 +1557,7 @@ class hook_listener {
             );
             // CDAC #29: Back after logout must not show stale authenticated UI.
             $hook->add_html(
-                '<script src="' .
+                '<script' . $nonceattr . ' src="' .
                 (new \moodle_url('/theme/iiidem2/javascript/auth_nocache_back.js'))->out(false) .
                 '"></script>'
             );
@@ -1286,12 +1568,12 @@ class hook_listener {
             $scriptpath = $CFG->dirroot . '/theme/iiidem2/javascript/admin_registration_profile.js';
             $profilescript = is_readable($scriptpath) ? file_get_contents($scriptpath) : '';
             $hook->add_html(
-                '<style>' .
+                '<style' . $nonceattr . '>' .
                 '.fitem:has([name="profile_field_iiidem_emb"]),' .
                 '.fitem:has([name="profile_field_iiidem_electoral_practitioner"])' .
                 '{display:none!important}' .
                 '</style>' .
-                ($profilescript !== '' ? '<script>' . $profilescript . '</script>' : '')
+                ($profilescript !== '' ? '<script' . $nonceattr . '>' . $profilescript . '</script>' : '')
             );
         }
 
@@ -1326,6 +1608,51 @@ class hook_listener {
             null,
             'contactus'
         );
+
+        if (isloggedin() && !isguestuser()) {
+            $sys = \context_system::instance();
+            if (class_exists(\local_iiidem_onboard\manager::class)) {
+                \local_iiidem_onboard\manager::grant_current_local_officer();
+            }
+            if (class_exists(\local_iiidem_onboard\types::class)
+                    && \local_iiidem_onboard\types::can_onboard_any($sys)) {
+                $exists = false;
+                foreach ($view->children as $child) {
+                    if ($child->key === 'iiidem_onboard') {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $view->add(
+                        get_string('onboardtrainers', 'local_iiidem_onboard'),
+                        new \moodle_url('/local/iiidem_onboard/index.php'),
+                        \navigation_node::TYPE_CUSTOM,
+                        null,
+                        'iiidem_onboard'
+                    );
+                }
+            }
+            if (class_exists(\local_ecinet\constants::class)
+                    && \local_ecinet\constants::can_access($sys)) {
+                $exists = false;
+                foreach ($view->children as $child) {
+                    if ($child->key === 'local_ecinet') {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $view->add(
+                        get_string('ecinet', 'local_ecinet'),
+                        new \moodle_url('/local/ecinet/index.php'),
+                        \navigation_node::TYPE_CUSTOM,
+                        null,
+                        'local_ecinet'
+                    );
+                }
+            }
+        }
 
         if (!empty($view->children)) {
             foreach ($view->children as $child) {

@@ -144,9 +144,14 @@ function default_exception_handler(Throwable $ex): void {
         . ' in ' . $ex->getFile() . ':' . $ex->getLine();
     error_log($logerrmsg);
     if (!headers_sent()) {
-        $exclass = preg_replace('/[^a-zA-Z0-9_\\\\]/', '', get_class($ex));
-        if (is_string($exclass) && $exclass !== '') {
-            @header('X-Moodle-Exception: ' . substr(str_replace('\\', '.', $exclass), 0, 80));
+        $isdev = defined('MOODLE_ENV') && MOODLE_ENV === 'dev';
+        if ($isdev) {
+            $exclass = preg_replace('/[^a-zA-Z0-9_\\\\]/', '', get_class($ex));
+            if (is_string($exclass) && $exclass !== '') {
+                @header('X-Moodle-Exception: ' . substr(str_replace('\\', '.', $exclass), 0, 80));
+            }
+        } else {
+            @header_remove('X-Moodle-Exception');
         }
     }
 

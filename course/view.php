@@ -56,7 +56,11 @@ if (!empty($name)) {
 
 $course = $DB->get_record('course', $params, '*', MUST_EXIST);
 
+require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+theme_iiidem2_require_login_for_payment_result();
+
 // Public / unenrolled course browse (theme_iiidem2) — before require_login().
+// Payment-success URLs never take this path (login required above).
 // Logged-in users who are not yet enrolled must stay on /course/view.php (marketing layout)
 // instead of being redirected to /enrol/index.php.
 if ((int) $course->id !== SITEID && $course->visible) {

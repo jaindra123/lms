@@ -14,5 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-// This file is intentionally empty.
-// It will be changed to emit debugging in MDL-82836 for Moodle 5.0.
+// Intentionally not a public page (MDL-82836 placeholder). Direct HTTP → 404.
+http_response_code(404);
+exit;

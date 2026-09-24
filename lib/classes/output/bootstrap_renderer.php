@@ -133,11 +133,9 @@ class bootstrap_renderer {
         global $CFG;
 
         $content = "<div class='alert-danger'>$message</div>";
-        // Check whether debug is set.
-        $debug = (!empty($CFG->debug) && $CFG->debug >= DEBUG_DEVELOPER);
-        // Also check we have it set in the config file. This occurs if the method to read the config table from the
-        // database fails, reading from the config table is the first database interaction we have.
-        $debug = $debug || (!empty($CFG->config_php_settings['debug'])  && $CFG->config_php_settings['debug'] >= DEBUG_DEVELOPER );
+        $isdev = defined('MOODLE_ENV') && MOODLE_ENV === 'dev';
+        $debug = $isdev && (!empty($CFG->debug) && $CFG->debug >= DEBUG_DEVELOPER);
+        $debug = $debug || ($isdev && !empty($CFG->config_php_settings['debug'])  && $CFG->config_php_settings['debug'] >= DEBUG_DEVELOPER );
         if ($debug) {
             if (!empty($debuginfo)) {
                 // Remove all nasty JS.
@@ -212,7 +210,8 @@ class bootstrap_renderer {
         // CDAC #18 Instance 1: prefer 403 over 500 — 500 looked like a verbose crash
         // dump to scanners even when the body was a simple Moodle error shell.
         $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
-        $debugui = !empty($CFG->debugdisplay) || (!empty($CFG->debug) && $CFG->debug >= DEBUG_DEVELOPER);
+        $isdev = defined('MOODLE_ENV') && MOODLE_ENV === 'dev';
+        $debugui = $isdev && (!empty($CFG->debugdisplay) || (!empty($CFG->debug) && $CFG->debug >= DEBUG_DEVELOPER));
         if ($debugui) {
             @header($protocol . ' 500 Internal Server Error');
         } else {
@@ -221,7 +220,7 @@ class bootstrap_renderer {
 
         // Better disable any caching.
         @header('Content-Type: text/html; charset=utf-8');
-        @header('X-UA-Compatible: IE=edge');
+        @header_remove('X-UA-Compatible');
         @header('Cache-Control: no-store, no-cache, must-revalidate');
         @header('Cache-Control: post-check=0, pre-check=0', false);
         @header('Pragma: no-cache');

@@ -882,5 +882,314 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024101046, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024101056) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101056, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101058) {
+        \theme_iiidem2\field_crypto::ensure_keys();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101058, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101059) {
+        // CDAC Broken Access Control: deny-by-default profile IDOR (no siteadmin bypass).
+        set_config(
+            'hiddenuserfields',
+            'email,city,country,address,phone1,phone2,icq,skype,yahoo,aim,msn,lastaccess,firstaccess,description'
+        );
+        set_config('forceloginforprofiles', 1);
+        set_config('profilesforenrolledusersonly', 1);
+        set_config('defaultpreference_maildisplay', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101059, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101060) {
+        // CDAC Payment Amount Manipulation: success modal only after real enrolment.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101060, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101061) {
+        // CDAC session fixation: rotate MoodleSession on SSO/OAuth callback + login POST.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101061, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101062) {
+        // CDAC Web Parameter Tampering: drop change_password.php?id= from the URL.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101062, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101063) {
+        // CDAC Web Parameter Tampering Instance 4: reject tampered calendar eventid.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101063, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101064) {
+        // CDAC Header Issues: CSP nonce (no script unsafe-inline), HSTS preload, login Clear-Site-Data.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101064, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101065) {
+        // CDAC version disclosure: unset Server / X-Powered-By (Apache .htaccess + PHP).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101065, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101066) {
+        // CDAC Improper Input Validation retest: reject/blank XSS + punctuation-only fields.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101066, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101067) {
+        // CDAC Instance 5–6: reject SQL-scanner fragments in message/course search.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101067, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101068) {
+        // CDAC Session token in URL: Tiny/H5P sendBeacon sesskey in POST, not query.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101068, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101069) {
+        // Do not run HTML nonce/link buffers on requirejs.php (core/first SyntaxError).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101069, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101070) {
+        // CWE-209 retest: staging debug off; participants deny is redirect not HTTP 500.
+        set_config('yuicomboloading', 0);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101070, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101071) {
+        // CWE-209 Instance 4: service-nologin templates POST body, never args/sesskey in URL.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101071, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101072) {
+        // CWE-548: hide /config, /version, /auth/index.html, /cache/forms (404, not blank 200).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101072, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101073) {
+        set_config('sessiontimeout', 30 * 60);
+        set_config('sessiontimeoutwarning', 5 * 60);
+        \theme_iiidem2\field_crypto::ensure_keys();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101073, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101074) {
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101074, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101075) {
+        // My Courses / AJAX searchvalue: reject JSON/XML injection probes.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101075, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101076) {
+        // Keep report-builder JSON in string_filter so /admin/user.php can render.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101076, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101077) {
+        // CDAC Sardine WebSocket: no LMS-origin fraud SDK; rate-limit checkout start.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101077, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101078) {
+        // core/first: never wrap requirejs.php output; HTTP 301 HTML is not JS.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101078, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101079) {
+        // CDAC prefill/encrypt: abort LMS-origin fetch/XHR; 429 that path on this host.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101079, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101080) {
+        // CDAC outdated Sentry 7.64.0: block LMS-origin Sentry SDK/ingest.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101080, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101081) {
+        // CDAC window.session_token: block Checkout public iframe on LMS origin.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101081, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101082) {
+        // CDAC Key ID: strip keyid/orderid/PII from get_checkout_data AJAX even if paygw is stale.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101082, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101083) {
+        // CDAC API Mass Assignment: videojs lang allowlist + extra arg reject.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101083, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101084) {
+        // CDAC: do not store login password in the browser (autocomplete off; clear after encrypt).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101084, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101085) {
+        // CDAC COOP: same-origin (no cross-origin popup opener).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101085, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101086) {
+        // CDAC: drop deprecated X-UA-Compatible (IE=edge).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101086, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101087) {
+        // CDAC: payment-success URL requires login (no public success modal).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101087, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101088) {
+        // CDAC: mask private IPs in logs/HTML (no iplookup for RFC1918).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101088, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101089) {
+        // CDAC: Moodle Session Key Exposure — sesskey off HTML attrs/URLs.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101089, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101090) {
+        // Login: hide SSO / identity-provider buttons (ECINET test).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101090, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101091) {
+        // Staging: missing theme helper must not 403 the whole site.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101091, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101092) {
+        // Staging Apache: POST /login 301 to /login/ dropped credentials (no OTP).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101092, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101093) {
+        // Staging Apache: keep .php on /admin/* (extensionless /admin/search → 403).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101093, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101094) {
+        // CDAC BAC: profile IDOR redirect must run before headers (admin ?id=5).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101094, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101095) {
+        // CDAC brute force: lockout forced in config.php; login CAPTCHA + IP throttle.
+        set_config('lockoutthreshold', 5);
+        set_config('lockoutwindow', 30 * 60);
+        set_config('lockoutduration', 30 * 60);
+        set_config('displayloginfailures', 1);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101095, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101096) {
+        // CDAC weak password: force complexity, reuse limit, check on login.
+        set_config('passwordpolicy', 1);
+        set_config('minpasswordlength', 8);
+        set_config('minpassworddigits', 1);
+        set_config('minpasswordlower', 1);
+        set_config('minpasswordupper', 1);
+        set_config('minpasswordnonalphanum', 1);
+        set_config('maxconsecutiveidentchars', 3);
+        set_config('passwordpolicycheckonlogin', 1);
+        set_config('passwordreuselimit', 5);
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101096, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101097) {
+        // CDAC improper input validation: register fields cannot keep <script> while typing.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101097, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101098) {
+        // Register password eye sits inside the field (broken CSS had dropped the overlay rule).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101098, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101099) {
+        // CDAC duplicate HSTS: PHP no longer emits Strict-Transport-Security (Apache once).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101099, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101100) {
+        // CDAC insecure cookies: explicit Domain + Secure/HttpOnly/SameSite=Lax on session cookies.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101100, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101101) {
+        // CDAC improper security headers: CSP without Razorpay/unsafe-inline; DENY framing on public pages.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101101, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101102) {
+        // DDEV login redirect loop: do not set cookie Domain on public-suffix hosts.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101102, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101103) {
+        // Register OTP spinner: Chrome-valid HTML pattern; do not block create on SMTP.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101103, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101104) {
+        // Register: no "Leave site?" after OTP; keep verified email across reload.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101104, 'theme', 'iiidem2');
+    }
+
     return true;
 }

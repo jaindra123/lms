@@ -63,6 +63,15 @@ function report_usersessions_format_duration($duration) {
  * @return string
  */
 function report_usersessions_format_ip($ip) {
+    global $CFG;
+
+    $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+    if (is_readable($helper)) {
+        require_once($helper);
+    }
+    if (class_exists(\theme_iiidem2\private_ip::class)) {
+        return \theme_iiidem2\private_ip::html((string) $ip);
+    }
     if (strpos($ip, ':') !== false) {
         // For now ipv6 is not supported yet.
         return $ip;

@@ -19,6 +19,9 @@ defined('MOODLE_INTERNAL') || die();
  */
 final class session_security {
 
+    /** @var bool Whether this request already issued a new session id. */
+    private static bool $rotatedthistime = false;
+
     /**
      * Regenerate the PHP session ID immediately and rotate the CSRF sesskey.
      *
@@ -29,6 +32,10 @@ final class session_security {
      */
     public static function regenerate_id_now(): bool {
         global $CFG, $USER, $SESSION;
+
+        if (self::$rotatedthistime) {
+            return true;
+        }
 
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
             return false;
@@ -95,7 +102,21 @@ final class session_security {
             sesskey();
         }
 
+        self::$rotatedthistime = true;
         return true;
+    }
+
+    /**
+     * Immediately after Moodle records a successful login (before page output).
+     *
+     * @param \core\event\user_loggedin $event
+     */
+    public static function user_loggedin(\core\event\user_loggedin $event): void {
+        unset($event);
+        self::regenerate_id_now();
+        if (class_exists(password_policy::class)) {
+            password_policy::enforce_age_on_login();
+        }
     }
 
     /**
@@ -126,7 +147,7 @@ final class session_security {
     }
 
     /**
-     * Queue Set-Cookie for MoodleSession with Secure / HttpOnly / SameSite.
+     * Queue Set-Cookie for MoodleSession with Path, Domain, Secure, HttpOnly, SameSite=Lax.
      *
      * @param string $sid
      */
@@ -137,16 +158,13 @@ final class session_security {
             return;
         }
 
-        $name = 'MoodleSession' . ($CFG->sessioncookie ?? '');
-        $path = $CFG->sessioncookiepath ?? '/';
-        if ($path === '') {
-            $path = '/';
+        $name = session_name();
+        if ($name === '' || $name === 'PHPSESSID') {
+            $name = 'MoodleSession' . ($CFG->sessioncookie ?? '');
         }
-        $domain = $CFG->sessioncookiedomain ?? '';
-        $secure = !empty($CFG->cookiesecure);
-        if (!$secure && !empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
-            $secure = true;
-        }
+        $path = self::cookie_path();
+        $domain = self::cookie_domain();
+        $secure = self::cookies_must_be_secure();
 
         $params = [
             'expires' => 0,
@@ -161,6 +179,88 @@ final class session_security {
 
         setcookie($name, $sid, $params);
         $_COOKIE[$name] = $sid;
+    }
+
+    /** Idle timeout (seconds) on staging/production. */
+    public const IDLE_SECONDS = 1800;
+
+    /** Hard cap from login time, even if the tab stays active (CWE-613, 16h PoC). */
+    public const ABSOLUTE_SECONDS = 28800;
+
+    /**
+     * Force a short idle timeout into $CFG (and mdl_config so M.cfg matches).
+     */
+    public static function force_idle_timeout(): void {
+        global $CFG;
+
+        if (!self::should_force_timeout()) {
+            return;
+        }
+
+        $CFG->sessiontimeout = self::IDLE_SECONDS;
+        $CFG->sessiontimeoutwarning = 5 * MINSECS;
+
+        if (!empty($CFG->version)) {
+            $current = (int) get_config('core', 'sessiontimeout');
+            if ($current !== self::IDLE_SECONDS) {
+                set_config('sessiontimeout', self::IDLE_SECONDS);
+                set_config('sessiontimeoutwarning', 5 * MINSECS);
+            }
+        }
+    }
+
+    /**
+     * Staging, production, and any eci.gov.in host — not a long-lived local session.
+     */
+    public static function should_force_timeout(): bool {
+        $allowlong = (string) (getenv('MOODLE_ALLOW_LONG_SESSION') ?: '');
+        if (in_array(strtolower($allowlong), ['1', 'true', 'yes', 'on'], true)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Log the user out when idle timeout already elapsed or login is older than the hard cap.
+     */
+    public static function enforce_session_limits(): void {
+        global $USER;
+
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+        if (!function_exists('isloggedin') || !isloggedin() || isguestuser()) {
+            return;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (!self::should_force_timeout()) {
+            return;
+        }
+        if (str_contains($script, '/login/') || str_contains($script, '/admin/tool/mfa/')) {
+            return;
+        }
+
+        $loginat = (int) ($USER->currentlogin ?? 0);
+        if ($loginat > 0 && (time() - $loginat) > self::ABSOLUTE_SECONDS) {
+            self::expire_and_send_to_login();
+        }
+    }
+
+    /**
+     * Destroy the browser session and send the user to login (HTML) or stop (AJAX).
+     */
+    private static function expire_and_send_to_login(): void {
+        require_logout();
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return;
+        }
+        if (!headers_sent()) {
+            redirect(new \moodle_url('/login/index.php'));
+        }
     }
 
     /**
@@ -224,16 +324,126 @@ final class session_security {
     }
 
     /**
-     * Ensure sensitive Moodle cookies in outgoing Set-Cookie headers include HttpOnly.
+     * Ensure sensitive Moodle cookies in outgoing Set-Cookie headers include
+     * HttpOnly, Secure (HTTPS), SameSite=Lax, and Domain=wwwroot-host.
      *
      * Uses core cookie_helper to patch headers already queued for MoodleSession* / MoodleID*.
      */
     public static function enforce_httponly_on_set_cookie_headers(): void {
-        global $CFG;
+        self::enforce_cookie_attributes();
+    }
+
+    /**
+     * Patch queued Set-Cookie headers and again at flush (late session cookies).
+     */
+    public static function enforce_cookie_attributes(): void {
+        static $callbackregistered = false;
 
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
             return;
         }
+
+        self::patch_set_cookie_headers();
+
+        if ($callbackregistered || headers_sent()) {
+            return;
+        }
+        $callbackregistered = true;
+        header_register_callback(static function (): void {
+            self::patch_set_cookie_headers();
+        });
+    }
+
+    /**
+     * wwwroot host for the Domain cookie attribute (empty = host-only).
+     *
+     * DDEV / localhost / IPs stay host-only: Domain=*.ddev.site is rejected
+     * (public suffix) and login then redirect-loops before MFA.
+     */
+    public static function cookie_domain(): string {
+        global $CFG;
+
+        $host = '';
+        if (!empty($CFG->wwwroot)) {
+            $host = strtolower((string) (parse_url($CFG->wwwroot, PHP_URL_HOST) ?? ''));
+        }
+        if (self::cookie_domain_forbidden($host)) {
+            return '';
+        }
+
+        $domain = strtolower(trim((string) ($CFG->sessioncookiedomain ?? '')));
+        if ($domain !== '') {
+            $domain = ltrim($domain, '.');
+            if (!self::cookie_domain_forbidden($domain)) {
+                return $domain;
+            }
+        }
+        return $host;
+    }
+
+    /**
+     * Hosts that must not receive a Domain= cookie attribute.
+     */
+    public static function cookie_domain_forbidden(string $host): bool {
+        $host = strtolower(ltrim(trim($host), '.'));
+        if ($host === '' || $host === 'localhost') {
+            return true;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return true;
+        }
+        foreach (['.ddev.site', '.localhost', '.local'] as $suffix) {
+            if (str_ends_with($host, $suffix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cookie Path: wwwroot subdirectory, or "/" when the LMS is the site root.
+     */
+    public static function cookie_path(): string {
+        global $CFG;
+
+        $path = (string) ($CFG->sessioncookiepath ?? '');
+        if ($path !== '' && str_starts_with($path, '/')) {
+            return $path;
+        }
+        if (!empty($CFG->wwwroot)) {
+            $wwwpath = (string) (parse_url($CFG->wwwroot, PHP_URL_PATH) ?? '');
+            if ($wwwpath !== '' && $wwwpath !== '/') {
+                return rtrim($wwwpath, '/') . '/';
+            }
+        }
+        return '/';
+    }
+
+    /**
+     * Secure flag when the site is served over HTTPS.
+     */
+    public static function cookies_must_be_secure(): bool {
+        global $CFG;
+
+        if (!empty($CFG->cookiesecure)) {
+            return true;
+        }
+        if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
+            return true;
+        }
+        $https = (string) ($_SERVER['HTTPS'] ?? '');
+        if ($https !== '' && strtolower($https) !== 'off') {
+            return true;
+        }
+        return strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    }
+
+    /**
+     * @return void
+     */
+    private static function patch_set_cookie_headers(): void {
+        global $CFG;
+
         if (headers_sent()) {
             return;
         }
@@ -243,12 +453,24 @@ final class session_security {
             'MoodleSession' . $suffix,
             'MoodleID' . $suffix,
         ];
+        foreach (headers_list() as $headerline) {
+            if (preg_match('/^Set-Cookie:\s*(MFA_TOKEN_[^=\s;]+)/i', $headerline, $m)) {
+                $names[] = $m[1];
+            }
+        }
+        $names = array_values(array_unique(array_filter($names)));
+
+        $attrs = ['HttpOnly', 'SameSite=Lax'];
+        if (self::cookies_must_be_secure()) {
+            $attrs[] = 'Secure';
+        }
+        $domain = self::cookie_domain();
+        if ($domain !== '') {
+            $attrs[] = 'Domain=' . $domain;
+        }
 
         foreach ($names as $name) {
-            if ($name === '') {
-                continue;
-            }
-            \core\session\utility\cookie_helper::add_attributes_to_cookie_response_header($name, ['HttpOnly']);
+            \core\session\utility\cookie_helper::add_attributes_to_cookie_response_header($name, $attrs);
         }
     }
 }

@@ -12,7 +12,7 @@ $callbacks = [
     [
         'hook' => \core\hook\after_config::class,
         'callback' => [\theme_iiidem2\hook_listener::class, 'after_config'],
-        'priority' => 100,
+        'priority' => 1000,
     ],
     [
         // Reject .php / script uploads at file-storage (repository AJAX + Private files).
@@ -23,7 +23,7 @@ $callbacks = [
     [
         'hook' => \core_user\hook\after_login_completed::class,
         'callback' => [\theme_iiidem2\hook_listener::class, 'after_login_completed'],
-        'priority' => 100,
+        'priority' => 1000,
     ],
     [
         'hook' => \core\hook\navigation\primary_extend::class,

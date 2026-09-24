@@ -73,9 +73,6 @@ if (class_exists('\theme_iiidem2\security_headers')) {
     // Force emit even if theme hooks already sent other headers earlier.
     if (!headers_sent()) {
         header('Clear-Site-Data: ' . \theme_iiidem2\security_headers::CLEAR_SITE_DATA);
-        if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
-            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
-        }
     }
 }
 

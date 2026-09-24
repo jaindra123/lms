@@ -14,7 +14,14 @@
         var input = root.querySelector('.iiidem-support-chatbot__input');
         var send = root.querySelector('[data-action="send"]');
         var body = root.querySelector('.iiidem-support-chatbot__body');
-        var sesskey = root.dataset.sesskey;
+        var sesskey = (function() {
+            try {
+                if (window.M && M.cfg && M.cfg.sesskey) {
+                    return M.cfg.sesskey;
+                }
+            } catch (e) {}
+            return '';
+        })();
 
         function setBody(html) {
             body.innerHTML = html;

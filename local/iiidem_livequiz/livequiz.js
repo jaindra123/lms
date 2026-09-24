@@ -12,7 +12,7 @@
     var apiurl = root.getAttribute('data-apiurl');
     var courseid = root.getAttribute('data-courseid');
     var cmid = root.getAttribute('data-cmid');
-    var sesskey = root.getAttribute('data-sesskey');
+    var sesskey = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
     var pollMs = 5000;
 
     function esc(text) {

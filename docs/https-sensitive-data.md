@@ -59,7 +59,7 @@ server {
 Inside the HTTPS `server { }`:
 
 ```nginx
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 add_header X-Content-Type-Options nosniff always;
 add_header X-XSS-Protection "1; mode=block" always;
 add_header Referrer-Policy strict-origin-when-cross-origin always;
@@ -69,7 +69,7 @@ add_header X-Frame-Options "SAMEORIGIN" always;
 
 ### 3. TLS versions and ciphers (LUCKY13 / CBC)
 
-Allow **TLS 1.2+** only (disable TLS 1.0 / 1.1). Prefer **AEAD** suites only (AES-GCM, ChaCha20-Poly1305) — **disable CBC** cipher suites where possible (LUCKY13).
+Allow **TLS 1.2+** only (disable TLS 1.0 / 1.1). Prefer **AEAD** suites only (AES-GCM, ChaCha20-Poly1305) — **disable CBC** cipher suites (LUCKY13 / SSL Labs WEAK CBC-SHA256). Production `iiidemlms.eci.gov.in` Tengine/nginx/Apache must `include` [`docs/snippets/nginx-tls-no-cbc.conf`](snippets/nginx-tls-no-cbc.conf) (or the Apache sibling) on the `listen 443 ssl` / `:443` vhost.
 
 Ready-to-apply snippets and verification: [lucky13-cbc-ciphers.md](lucky13-cbc-ciphers.md), [`docs/snippets/nginx-tls-no-cbc.conf`](snippets/nginx-tls-no-cbc.conf).
 
@@ -126,7 +126,7 @@ Burp Suite **decrypts TLS** and shows the HTTP layer. Seeing `password=` or `cod
 |---------|--------|
 | Site on HTTPS only (`$CFG->wwwroot`) | Required on staging/prod |
 | HTTP → HTTPS redirect (Apache/nginx) | Ops — must verify |
-| HSTS (`Strict-Transport-Security`) | Theme `security_headers` + edge |
+| HSTS (`Strict-Transport-Security`) | Apache `.htaccess` only (once) |
 | Secure + HttpOnly cookies | `config.php` when wwwroot is https |
 | Login/register refuse plain HTTP | `theme_iiidem2\https_enforce` (staging/prod) |
 | OTP stored hashed (`password_hash`) | `registration_otp` — not cleartext at rest in session |

@@ -28,12 +28,13 @@ Earlier Tengine PoC (page with `backup/` table row) is the real listing evidence
 | `/register/` | **200** app page (`register/index.php`) — not a file list |
 | `/admin/`, `/admin/lib`, `/admin/cron`, `/admin/upgrade` | Login redirect / admin UI — not a file list |
 | `/auth/upgrade`, `/auth/index`, `/analytics/upgrade` | Login redirect or Moodle routing — not a file list |
-| `/auth/index.html` | Empty Moodle placeholder (**200**, 0 bytes) — prevents listing; not a file table |
+| `/auth/index.html` | **404** — empty placeholder must not be a 200 blank page |
 | `/notes` / `/notes/` | Moodle notes UI (`notes/index.php`) — not a file list |
 | `/about-us/index.php`, `/about-us/index` | Theme/page route or redirect — not a file list |
 | `/backup/` (core) | **403** when autoindex off (no `index.php`; named scripts still work) |
 | `/backups/` (ops dumps) | **403** deny-all |
-| `/README`, `/composer`, `/package`, `/version`, `/security`, `/config` | **404** / redirect / blocked artefact rules — not a listing |
+| `/README`, `/composer`, `/package`, `/version`, `/security`, `/config` | **404** — do **not** rewrite `/config`→`config.php` or `/version`→`version.php` |
+| `/cache/forms` | **404** — empty `cache/forms.php` must not be a 200 blank page |
 | `/wp-login.php` | **404** (not WordPress) |
 | `/index`, `/index.php` | Front page / redirect — normal |
 | `/icons/`, `/icons/apache_pb.gif` | **404/403** — Apache default icon alias disabled (Instance 2) |
@@ -58,6 +59,16 @@ These are **slashargument file URLs with no filename** (Moodle stores logo/favic
 Burp / browser: `https://staginglms.eci.gov.in/icons/` showed **Index of /icons** (a.gif, apache_pb.gif, …) and `GET /icons/apache_pb.gif` returned **200** GIF + `Server: Apache`. That is the **stock Apache `/icons/` Alias**, not Moodle. Disable the Alias and block `/icons/` at the edge (see below). Host in some lines is `cci.gov.in` — retest on `eci.gov.in`.
 
 Report CWE link CWE-1104 on this page is mis-tagged; listing is **CWE-548**.
+
+### PoC note (CDAC retest — blank 200 on `/config`, `/version`, `/auth/index.html`, `/cache/forms`)
+
+Screenshots were **empty 200 pages**, not `Index of /` tables. Cause:
+
+- Extensionless rewrite mapped `/config` → `config.php` and `/version` → `version.php` (`defined('MOODLE_INTERNAL') || die()` → blank 200).
+- `/cache/forms` mapped to empty `cache/forms.php`.
+- `/auth/index.html` is a 0-byte placeholder.
+
+**Fix:** those URLs (and the `.php` twins) return **404**. `config.php` / `version.php` remain includeable via PHP `require`. Delete empty `auth/index.html` on staging if present; nginx/Apache still 404 the URL.
 
 ## Risk
 
@@ -128,6 +139,18 @@ location ~* ^/config\.(staging|production|dev)\.php$ { deny all; return 403; }
 location = /info.php { deny all; return 403; }
 location = /phpinfo.php { deny all; return 403; }
 location = /test.php { deny all; return 403; }
+
+# Empty/internal scripts (CDAC retest — hide /config /version /cache/forms /auth/index.html)
+location = /config { return 404; }
+location = /config.php { return 404; }
+location = /version { return 404; }
+location = /version.php { return 404; }
+location = /security { return 404; }
+location = /security.php { return 404; }
+location = /cache/forms { return 404; }
+location = /cache/forms.php { return 404; }
+location = /cache/forms/ { return 404; }
+location = /auth/index.html { return 404; }
 ```
 
 Prefer keeping `dataroot` **outside** the document root on production (`$CFG->dataroot`).
@@ -164,6 +187,15 @@ curl -sI https://staginglms.eci.gov.in/wp-login.php
 curl -sI https://staginglms.eci.gov.in/icons/
 curl -sI https://staginglms.eci.gov.in/icons/apache_pb.gif
 
+# CDAC retest — must be 404 (not blank 200)
+curl -sI https://staginglms.eci.gov.in/config
+curl -sI https://staginglms.eci.gov.in/config.php
+curl -sI https://staginglms.eci.gov.in/version
+curl -sI https://staginglms.eci.gov.in/version.php
+curl -sI https://staginglms.eci.gov.in/auth/index.html
+curl -sI https://staginglms.eci.gov.in/cache/forms
+curl -sI https://staginglms.eci.gov.in/cache/forms.php
+
 # Expect 403/404/3xx — not 200 with <title>Index of
 curl -s https://staginglms.eci.gov.in/backup/ | grep -iE 'Index of|Parent Directory|<a href="backup/' && echo FAIL || echo OK
 curl -s https://staginglms.eci.gov.in/lib/default | grep -iE 'Index of|Parent Directory' && echo FAIL || echo OK
@@ -185,10 +217,13 @@ curl -sI https://staginglms.eci.gov.in/admin/      # redirect to login OK
 ## Deploy
 
 ```bash
-# Application files (Instance 3 — pluginfile trailing slash)
-# Deploy: pluginfile.php, tokenpluginfile.php, webservice/pluginfile.php,
-#         lib/iiidem_pluginfile_directory_guard.php, admin/lib.php
+# Directory listing retest — hide /config /version /auth/index.html /cache/forms
+# Deploy: .htaccess, config.php, version.php, cache/forms.php, cache/.htaccess, auth/.htaccess
+# Staging Tengine: include docs/snippets/nginx-directory-listing.conf then reload nginx.
+# Staging Apache: AllowOverride + docs/snippets/apache-directory-listing.conf
+# Delete empty auth/index.html on the server if it exists.
 php admin/cli/purge_caches.php
+php admin/cli/upgrade.php --non-interactive
 
 # DDEV
 ddev restart
@@ -212,5 +247,6 @@ sudo apachectl configtest && sudo systemctl reload httpd
 | Internal Moodle artefacts | MDL-69333-style location deny |
 | Env config files | Direct HTTP to `config.staging.php` / `config.production.php` forbidden |
 | `pluginfile.php/…/` trailing slash | Plain **403** via `lib/iiidem_pluginfile_directory_guard.php` (no Index of /) |
+| `/config`, `/version`, `/cache/forms`, `/auth/index.html` | **404** (not blank 200; no extensionless map to empty PHP) |
 
 Related: [source-code-disclosure.md](source-code-disclosure.md), [version-disclosure.md](version-disclosure.md).

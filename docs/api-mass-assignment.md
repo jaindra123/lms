@@ -5,21 +5,20 @@
 | Field | Report |
 |-------|--------|
 | Title | API Mass Assignment |
-| Impact | MEDIUM (typical report) |
-| CWE | [CWE-915](https://cwe.mitre.org/data/definitions/915.html) — Improperly Controlled Modification of Dynamically-Determined Object Attributes |
+| Recommendation | Implement strict server-side input validation and define an explicit allowlist/schema of permitted API parameters |
 | Endpoint | `POST /lib/ajax/service.php` (`media_videojs_get_language`) |
 
-> Implement strict server-side input validation and define an explicit allowlist/schema of permitted API parameters.
+## PoC
 
-### PoC (auditor)
-
-**Step 1 — baseline** (succeeds):
+**Step 1 — permitted schema** (`lang` only):
 
 ```json
 [{"index":0,"methodname":"media_videojs_get_language","args":{"lang":"en"}}]
 ```
 
-**Step 2 — injected object** (second array element, not inside `args`):
+Returns Video.js English strings (`error: false`). That is the **allowed** call.
+
+**Step 2 — extra object / privilege keys** (not in the schema):
 
 ```json
 [
@@ -28,37 +27,33 @@
 ]
 ```
 
-Observed response: error (`codingerror` / generic message) — **not** privilege elevation. Roles and admin status are never taken from AJAX JSON; they come from the Moodle session and capability checks.
+or extra keys inside `args`:
 
-**Staging recheck (2026-09):** Step 1 returns Video.js strings (`error: false`). Step 2 with `"isadmin"/"issso"/"role":"admin"` returns `errorcode: codingerror` / generic message — **no admin session, no role change**. **Dispute / closed** as CWE-915.
+```json
+[{"index":0,"methodname":"media_videojs_get_language","args":{"lang":"en","isadmin":true}}]
+```
 
-## How Moodle already prevents mass assignment
+Must **not** grant admin/SSO/role. Must fail closed with `invalidparameter`.
 
-| Layer | Behaviour |
-|-------|-----------|
-| Per-function schema | `external_function_parameters` / `execute_parameters()` (e.g. `media_videojs` allows only `lang`) |
-| `external_api::validate_parameters()` | **Throws** on unexpected keys in `args` (`Unexpected keys (…) detected`) |
-| AuthZ | `require_capability` / login / sesskey — not binder flags like `isadmin` |
+## LMS remediations (`theme_iiidem2` ≥ `2024101083`)
 
-Injecting `"isadmin":true` **inside** `args` for `media_videojs_get_language` is rejected by schema validation. The auditor’s Step 2 adds a **malformed second batch item** (no `methodname` / `args`) — that is not object mass assignment; it is an invalid batch envelope.
+| Layer | Allowlist / validation |
+|-------|------------------------|
+| Batch envelope | Only `index`, `methodname`, `args`. Extra keys (`isadmin`, `role`, …) → `invalidparameter`. |
+| Forbidden arg keys | `isadmin`, `issso`, `role`, `roles`, `capability`, `sesskey`, `wstoken`, `auth`, … |
+| `media_videojs_get_language` schema | **Only** `lang`. Extra or missing keys rejected. |
+| `lang` value | Must match `xx` or `xx-YY` / `xx_YY` **and** exist as `media/player/videojs/videojs/lang/{lang}.json` (realpath, no `..`). |
+| Moodle schema | `external_function_parameters` still rejects unexpected keys on every other AJAX method. |
+| AuthZ | Roles / admin come from the session, never from JSON. |
 
-## Additional control (theme ≥ `2024101030`)
+`get_language_content()` no longer concatenates `$lang` into a file path without an allowlist.
 
-| Piece | Role |
-|-------|------|
-| `theme_iiidem2\ajax_request_guard` | Allowlist envelope keys: `index`, `methodname`, `args` only |
-| Forbidden keys in `args` | `isadmin`, `issso`, `role`, `roles`, `admin`, `capability`, … |
-| `lib/ajax/service.php` | Calls the guard before `call_external_function`; fail-closed on cookie sessions |
+## Retest
 
-Rejected calls return `errorcode: invalidparameter` (no stack / no privilege grant).
-
-## Dispute guidance
-
-| Claim | Response |
-|-------|----------|
-| Adding `isadmin` / `role` elevates privileges | **False** — never mapped to `$USER` / roles |
-| HTTP 200 with `error: true` means mass assignment worked | **False** — Moodle AJAX uses 200 + JSON error payload |
-| Need allowlist of parameters | **Already present** in each external function schema; envelope allowlist added for the batch shape |
+1. `args: {"lang":"en"}` → `error: false`, JSON language pack.
+2. Second batch item `{"isadmin":true,"issso":true,"role":"admin"}` → `invalidparameter`, user still not admin.
+3. `args: {"lang":"en","isadmin":true}` → `invalidparameter`.
+4. `args: {"lang":"../config"}` → `invalidparameter` (not a file read).
 
 ## Deploy
 
@@ -67,28 +62,4 @@ php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
-Deploy both `theme/iiidem2` (guard class) and `lib/ajax/service.php`.
-
-## Verify
-
-```bash
-# Baseline — must succeed (error:false)
-# POST service.php body:
-# [{"index":0,"methodname":"media_videojs_get_language","args":{"lang":"en"}}]
-
-# Mass-assignment style second object — must fail, no admin grant:
-# [ {...valid...}, {"isadmin":true,"issso":true,"role":"admin"} ]
-# Expect: invalidparameter (or generic error), user still non-admin
-
-# Extra key inside args — must fail:
-# [{"index":0,"methodname":"media_videojs_get_language","args":{"lang":"en","isadmin":true}}]
-```
-
-## Evidence for auditors
-
-| Control | Implementation |
-|--------|----------------|
-| Schema allowlist per API | Moodle `external_function_parameters` |
-| Reject unknown `args` keys | `external_api::validate_parameters` |
-| Reject privilege keys / bad envelope | `ajax_request_guard` + `service.php` |
-| No role from JSON | Session + capabilities only |
+Deploy `theme/iiidem2`, `lib/ajax/service.php`, and `media/player/videojs` (`get_language.php` + `plugin.php`).

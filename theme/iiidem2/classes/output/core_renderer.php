@@ -265,6 +265,27 @@ class core_renderer extends \core_renderer {
     }
 
     /**
+     * Login form: inject theme CAPTCHA when Google reCAPTCHA is not configured.
+     *
+     * @param \core_auth\output\login $form
+     * @return string
+     */
+    public function render_login(\core_auth\output\login $form): string {
+        global $SITE;
+
+        $context = $form->export_for_template($this);
+        $context->sitename = format_string($SITE->fullname, true, [
+            'context' => \context_course::instance(SITEID),
+            'escape' => false,
+        ]);
+        if (empty($context->recaptcha) && class_exists(\theme_iiidem2\login_captcha::class)
+                && !\theme_iiidem2\login_captcha::google_enabled()) {
+            $context->recaptcha = \theme_iiidem2\login_captcha::html();
+        }
+        return $this->render_from_template('core/loginform', $context);
+    }
+
+    /**
      * Login info strip — same logout / login URL hardening.
      *
      * @param bool|null $withlinks
@@ -275,51 +296,66 @@ class core_renderer extends \core_renderer {
     }
 
     /**
-     * Remove sesskey from /login/*.php query strings in rendered HTML (CDAC HTML source PoC).
-     * Logout CSRF is supplied via POST (logout_post.js). Session id remains cookie-only.
+     * Remove sesskey from URLs and data-sesskey attributes in HTML
+     * (CDAC: Moodle Session Key Exposure). Logout CSRF is POST (logout_post.js).
      *
      * @param string $html
      * @return string
      */
     public static function strip_login_sesskey_from_html(string $html): string {
-        if ($html === '' || (stripos($html, 'logout.php') === false && stripos($html, 'login/') === false)) {
+        if ($html === '') {
             return $html;
         }
-        return preg_replace_callback(
-            '#((?:href|action)=["\'])([^"\']*login/[^"\']*\.php[^"\']*)(["\'])#i',
-            static function (array $m): string {
-                $prefix = $m[1];
-                $url = html_entity_decode($m[2], ENT_QUOTES);
-                $suffix = $m[3];
-                $parts = parse_url($url);
-                if ($parts === false) {
-                    return $m[0];
-                }
-                $query = [];
-                if (!empty($parts['query'])) {
-                    parse_str($parts['query'], $query);
-                }
-                if (!isset($query['sesskey'])) {
-                    return $m[0];
-                }
-                unset($query['sesskey']);
-                $path = $parts['path'] ?? '';
-                $rebuild = $path;
-                if (!empty($query)) {
-                    $rebuild .= '?' . http_build_query($query);
-                }
-                if (!empty($parts['fragment'])) {
-                    $rebuild .= '#' . $parts['fragment'];
-                }
-                if (!empty($parts['scheme']) && !empty($parts['host'])) {
-                    $rebuild = $parts['scheme'] . '://' . $parts['host']
-                        . (!empty($parts['port']) ? ':' . $parts['port'] : '')
-                        . $rebuild;
-                }
-                return $prefix . s($rebuild) . $suffix;
-            },
-            $html
-        ) ?? $html;
+
+        $html = preg_replace('/\sdata-sesskey=(["\'])[^"\']*\1/i', '', $html) ?? $html;
+
+        if (stripos($html, 'sesskey=') !== false) {
+            $html = preg_replace_callback(
+                '#((?:href|src|data|action|formaction)=["\'])([^"\']*)(["\'])#i',
+                static function (array $m): string {
+                    $url = html_entity_decode($m[2], ENT_QUOTES);
+                    if (!preg_match('/[?&]sesskey=/i', $url)) {
+                        return $m[0];
+                    }
+                    $parts = parse_url($url);
+                    if ($parts === false) {
+                        return $m[0];
+                    }
+                    $query = [];
+                    if (!empty($parts['query'])) {
+                        parse_str($parts['query'], $query);
+                    }
+                    if (!isset($query['sesskey'])) {
+                        return $m[0];
+                    }
+                    unset($query['sesskey']);
+                    $path = $parts['path'] ?? '';
+                    $rebuild = $path;
+                    if (!empty($query)) {
+                        $rebuild .= '?' . http_build_query($query);
+                    }
+                    if (!empty($parts['fragment'])) {
+                        $rebuild .= '#' . $parts['fragment'];
+                    }
+                    if (!empty($parts['scheme']) && !empty($parts['host'])) {
+                        $rebuild = $parts['scheme'] . '://' . $parts['host']
+                            . (!empty($parts['port']) ? ':' . $parts['port'] : '')
+                            . $rebuild;
+                    }
+                    return $m[1] . s($rebuild) . $m[3];
+                },
+                $html
+            ) ?? $html;
+        }
+
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (str_contains($script, '/login/index.php')
+                || str_contains($script, '/login/signup.php')
+                || str_contains($script, '/login/forgot_password.php')) {
+            $html = preg_replace('/("sesskey"\s*:\s*")[^"]*(")/', '$1$2', $html) ?? $html;
+        }
+
+        return $html;
     }
 
     /**

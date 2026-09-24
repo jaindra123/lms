@@ -1,0 +1,5 @@
+# Hide empty placeholder /auth/index.html (blank 200). Do not list /auth/.
+Options -Indexes
+<Files "index.html">
+    Require all denied
+</Files>

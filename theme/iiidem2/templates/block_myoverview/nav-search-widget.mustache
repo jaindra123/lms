@@ -1,0 +1,16 @@
+{{!
+    @template block_myoverview/nav-search-widget
+
+    IIIDEM theme override — reject JSON/XML / markup probes in My Courses search.
+}}
+<div class="mb-1 me-1 flex-grow-1">
+    {{< core/search_input_auto }}
+        {{$label}}{{#str}}
+            searchcourses, block_myoverview
+        {{/str}}{{/label}}
+        {{$placeholder}}{{#str}}
+            search, core
+        {{/str}}{{/placeholder}}
+        {{$additionalattributes}}maxlength="200" data-iiidem-no-markup="1" pattern="[^<>&quot;'{}[\]]+" title="{{#str}}err_xss, theme_iiidem2{{/str}}"{{/additionalattributes}}
+    {{/ core/search_input_auto }}
+</div>

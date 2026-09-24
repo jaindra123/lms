@@ -53,6 +53,16 @@ class string_filter extends filter {
             throw new TypeError("The value supplied was of type '{$type}'. A string was expected.");
         }
 
+        // Report builder stores JSON in string_filter('parameters'). Keyword
+        // sanitizer treats { } [ ] as injection; emptying it makes json_decode(null)
+        // throw and /admin/user.php shows a generic error instead of the user list.
+        if ($this->name === 'parameters') {
+            if (array_search($value, $this->filtervalues, true) === false) {
+                $this->filtervalues[] = $value;
+            }
+            return $this;
+        }
+
         // CDAC #39: participants / dynamic table keywords must not retain HTML/script.
         if (class_exists(\theme_iiidem2\input_validation::class)) {
             $value = \theme_iiidem2\input_validation::sanitize_keyword_token($value);

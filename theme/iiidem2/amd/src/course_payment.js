@@ -205,27 +205,11 @@ define([], function() {
             trigger.disabled = true;
             showLoading(trigger);
 
-            var razorpayWatch = window.setInterval(function() {
-                if (document.querySelector(
-                    '.razorpay-container, .razorpay-backdrop, .razorpay-checkout-frame, iframe[src*="razorpay"]'
-                )) {
-                    window.clearInterval(razorpayWatch);
-                    // Checkout is visible — drop overlay; keep button locked until result.
-                    var overlay = document.getElementById(LOADING_ID);
-                    if (overlay) {
-                        overlay.remove();
-                    }
-                    document.body.classList.remove('iiidem-payment-loading-open');
-                }
-            }, 200);
-
             processPayment(gateway, component, paymentArea, itemId, description)
                 .then(function() {
-                    window.clearInterval(razorpayWatch);
                     hideLoading(trigger);
                 })
                 .catch(function(err) {
-                    window.clearInterval(razorpayWatch);
                     hideLoading(trigger);
                     showPaymentError(extractErrorMessage(err));
                 });

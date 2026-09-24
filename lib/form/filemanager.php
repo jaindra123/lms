@@ -477,7 +477,6 @@ class form_filemanager implements renderable {
             'maxfiles'=>$this->options->maxfiles,
             'ctx_id'=>$PAGE->context->id, // TODO ?
             'course'=>$PAGE->course->id, // TODO ?
-            'sesskey'=>sesskey(),
             ));
     }
 }

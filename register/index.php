@@ -32,6 +32,7 @@ $PAGE->set_heading(get_string('registerpagetitle', 'theme_iiidem2'));
 // intl-tel-input CSS stays in $THEME->sheets so Moodle rewrites [[pix:]] flag sprites.
 // Load library in <head> so it is available before the register inline init.
 $PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/intl-tel-input/intlTelInput.min.js'), true);
+$PAGE->requires->js(new moodle_url('/theme/iiidem2/javascript/register_password_policy.js', ['v' => '2024101104']));
 $PAGE->requires->js_call_amd('theme_iiidem2/register_occupation', 'init');
 
 // Do NOT blank XSS probes in $_POST — register_form::validation() rejects markup
@@ -55,7 +56,11 @@ if ($data = $form->get_data()) {
         $userid = theme_iiidem2_create_registered_user($submission);
         \theme_iiidem2\registration_otp::clear();
         $user = core_user::get_user($userid);
-        theme_iiidem2_send_registration_emails($user, $submission);
+        // Queue welcome mail — SMTP timeouts must not hold the "Verifying" overlay.
+        $mailtask = new \theme_iiidem2\task\send_registration_emails();
+        $mailtask->set_custom_data(['userid' => (int) $userid]);
+        $mailtask->set_userid((int) $userid);
+        \core\task\manager::queue_adhoc_task($mailtask);
         // Privilege elevation: complete_user_login regenerates the session id
         // (core + theme_iiidem2 session_security via after_login_completed).
         complete_user_login($user);
@@ -194,6 +199,41 @@ if ($flagdata !== '') {
   z-index: 40 !important;
   overflow: visible !important;
 }
+.iiidem-register-form .felement:has(> .iiidem-register-password-wrap) {
+  display: block !important;
+}
+.iiidem-register-password-wrap {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 44px;
+}
+.iiidem-register-password-wrap input.form-control {
+  display: block !important;
+  width: 100% !important;
+  padding-right: 2.75rem !important;
+}
+.iiidem-register-password-toggle {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0.35rem !important;
+  left: auto !important;
+  z-index: 6 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #8a94a6;
+  cursor: pointer;
+  transform: none !important;
+  float: none !important;
+}
 ', ['id' => 'iiidem-iti-flags']);
 }
 
@@ -223,6 +263,7 @@ $otpstrings = [
     'required' => $otpstring('registerotprequiredcode', 'Enter the 6-digit verification code.'),
     'loadingtitle' => $otpstring('registerotploadingtitle', 'Verifying your email'),
     'loadingtext' => $otpstring('registerotploadingtext', 'Please wait while we verify your code and create your account…'),
+    'timeout' => $otpstring('registerotptimeout', 'This is taking longer than expected. Please try again.'),
 ];
 ?>
 <div id="iiidem-register-otp-modal" class="iiidem-register-otp-modal" hidden aria-hidden="true">
@@ -263,6 +304,7 @@ $otpstrings = [
 window.IIIDEM_REGISTER_OTP = {
     sendUrl: <?php echo json_encode($otpsendurl); ?>,
     verifyUrl: <?php echo json_encode($otpverifyurl); ?>,
+    verifiedEmail: <?php echo json_encode(\theme_iiidem2\registration_otp::verified_email()); ?>,
     strings: <?php echo json_encode($otpstrings); ?>
 };
 </script>
@@ -274,6 +316,20 @@ window.IIIDEM_REGISTER_OTP = {
     var form = document.querySelector('.iiidem-register-form form.mform, form.mform');
     if (!form) {
         return;
+    }
+
+    // Keep POST on this page's origin so http→https does not prompt "Leave site?".
+    try {
+        var formAction = new URL(form.getAttribute('action') || form.action || '', window.location.href);
+        form.setAttribute('action', formAction.pathname + formAction.search);
+    } catch (err) {
+        form.setAttribute('action', '/register/');
+    }
+
+    function allowUnloadForSubmit() {
+        form.dataset.formDirty = 'false';
+        form.dataset.formSubmitted = 'true';
+        window.onbeforeunload = null;
     }
 
     var registerWrap = document.querySelector('.iiidem-register-form') || form.parentElement;
@@ -308,9 +364,9 @@ window.IIIDEM_REGISTER_OTP = {
     var approvedPhone = '';
     var phoneCheckSequence = 0;
     var bypassPhoneCheck = false;
-    var otpVerifiedEmail = '';
-    var bypassOtpGate = false;
     var otpCfg = window.IIIDEM_REGISTER_OTP || {};
+    var otpVerifiedEmail = String(otpCfg.verifiedEmail || '').toLowerCase();
+    var bypassOtpGate = false;
     var otpModal = document.getElementById('iiidem-register-otp-modal');
     var otpInput = document.getElementById('iiidem-register-otp-input');
     var otpStatus = otpModal ? otpModal.querySelector('[data-otp-status]') : null;
@@ -384,6 +440,25 @@ window.IIIDEM_REGISTER_OTP = {
             '<span class="fa fa-eye-slash" aria-hidden="true" data-icon="hidden"></span>' +
             '<span class="fa fa-eye d-none" aria-hidden="true" data-icon="visible"></span>';
         wrap.appendChild(button);
+
+        wrap.style.setProperty('position', 'relative', 'important');
+        wrap.style.setProperty('display', 'block', 'important');
+        wrap.style.setProperty('width', '100%', 'important');
+        input.style.setProperty('display', 'block', 'important');
+        input.style.setProperty('width', '100%', 'important');
+        input.style.setProperty('padding-right', '2.75rem', 'important');
+        button.style.setProperty('position', 'absolute', 'important');
+        button.style.setProperty('top', '0', 'important');
+        button.style.setProperty('right', '0.35rem', 'important');
+        button.style.setProperty('left', 'auto', 'important');
+        button.style.setProperty('width', '2.5rem', 'important');
+        button.style.setProperty('height', '44px', 'important');
+        button.style.setProperty('margin', '0', 'important');
+        button.style.setProperty('padding', '0', 'important');
+        button.style.setProperty('border', '0', 'important');
+        button.style.setProperty('background', 'transparent', 'important');
+        button.style.setProperty('transform', 'none', 'important');
+        button.style.setProperty('z-index', '6', 'important');
 
         button.addEventListener('click', function () {
             var show = input.getAttribute('type') === 'password';
@@ -1498,7 +1573,17 @@ window.IIIDEM_REGISTER_OTP = {
         otpModal.hidden = true;
         otpModal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('iiidem-register-otp-open');
-        pendingSubmitter = null;
+    }
+
+    function otpEndpoint(url) {
+        try {
+            var resolved = new URL(url, window.location.href);
+            resolved.protocol = window.location.protocol;
+            resolved.host = window.location.host;
+            return resolved.toString();
+        } catch (err) {
+            return url;
+        }
     }
 
     function postOtp(url, payload) {
@@ -1507,16 +1592,31 @@ window.IIIDEM_REGISTER_OTP = {
             body.set(key, payload[key]);
         });
         body.set('sesskey', (window.M && M.cfg) ? M.cfg.sesskey : '');
-        return fetch(url, {
+        var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var timer = null;
+        if (controller) {
+            timer = window.setTimeout(function() {
+                controller.abort();
+            }, 20000);
+        }
+        var opts = {
             method: 'POST',
             credentials: 'same-origin',
             headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
             body: body.toString()
-        }).then(function(response) {
+        };
+        if (controller) {
+            opts.signal = controller.signal;
+        }
+        return fetch(otpEndpoint(url), opts).then(function(response) {
             if (!response.ok) {
                 throw new Error('OTP request failed');
             }
             return response.json();
+        }).finally(function() {
+            if (timer) {
+                window.clearTimeout(timer);
+            }
         });
     }
 
@@ -1550,6 +1650,12 @@ window.IIIDEM_REGISTER_OTP = {
                 }
                 return false;
             }
+            if (result.alreadyverified) {
+                otpVerifiedEmail = email;
+                closeOtpModal();
+                startOtpFlow(pendingSubmitter);
+                return true;
+            }
             setOtpStatus(result.message || '');
             return true;
         }).catch(function() {
@@ -1561,6 +1667,18 @@ window.IIIDEM_REGISTER_OTP = {
             setOtpError('Could not send verification code. Please try again.');
             return false;
         });
+    }
+
+    var otpLoadingTimer = null;
+
+    function restoreOtpButtons() {
+        otpBusy = false;
+        if (otpVerifyBtn) {
+            otpVerifyBtn.disabled = false;
+        }
+        if (otpResendBtn) {
+            otpResendBtn.disabled = false;
+        }
     }
 
     function showOtpLoading() {
@@ -1589,9 +1707,20 @@ window.IIIDEM_REGISTER_OTP = {
             otpVerifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>'
                 + ((otpCfg.strings && otpCfg.strings.verifying) || 'Verifying…');
         }
+        otpLoadingTimer = window.setTimeout(function() {
+            hideOtpLoading();
+            restoreOtpButtons();
+            setOtpStatus('');
+            setOtpError((otpCfg.strings && otpCfg.strings.timeout)
+                || 'This is taking longer than expected. Please try again.');
+        }, 25000);
     }
 
     function hideOtpLoading() {
+        if (otpLoadingTimer) {
+            window.clearTimeout(otpLoadingTimer);
+            otpLoadingTimer = null;
+        }
         var overlay = document.getElementById('iiidem-register-otp-loading');
         if (overlay) {
             overlay.remove();
@@ -1627,51 +1756,55 @@ window.IIIDEM_REGISTER_OTP = {
         showOtpLoading();
         postOtp(otpCfg.verifyUrl, {email: email, code: code}).then(function(result) {
             if (!result.ok) {
-                otpBusy = false;
                 hideOtpLoading();
-                if (otpVerifyBtn) {
-                    otpVerifyBtn.disabled = false;
-                }
-                if (otpResendBtn) {
-                    otpResendBtn.disabled = false;
-                }
+                restoreOtpButtons();
                 setOtpStatus('');
                 setOtpError(result.message || 'Invalid verification code.');
                 return;
             }
             otpVerifiedEmail = email;
-            // Keep loader visible through form submit / account creation.
+            var submitter = pendingSubmitter;
             closeOtpModal();
             bypassEmailCheck = true;
             bypassPhoneCheck = true;
             bypassOtpGate = true;
             try {
                 if (!validateRequiredBeforeSubmit()) {
+                    hideOtpLoading();
+                    restoreOtpButtons();
                     return;
                 }
+                if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                    hideOtpLoading();
+                    restoreOtpButtons();
+                    if (typeof form.reportValidity === 'function') {
+                        form.reportValidity();
+                    }
+                    return;
+                }
+                allowUnloadForSubmit();
                 if (typeof form.requestSubmit === 'function') {
-                    if (pendingSubmitter) {
-                        form.requestSubmit(pendingSubmitter);
+                    if (submitter) {
+                        form.requestSubmit(submitter);
                     } else {
                         form.requestSubmit();
                     }
                 } else {
                     form.submit();
                 }
+            } catch (err) {
+                hideOtpLoading();
+                restoreOtpButtons();
+                setOtpError((otpCfg.strings && otpCfg.strings.timeout)
+                    || 'This is taking longer than expected. Please try again.');
             } finally {
                 bypassEmailCheck = false;
                 bypassPhoneCheck = false;
                 bypassOtpGate = false;
             }
         }).catch(function() {
-            otpBusy = false;
             hideOtpLoading();
-            if (otpVerifyBtn) {
-                otpVerifyBtn.disabled = false;
-            }
-            if (otpResendBtn) {
-                otpResendBtn.disabled = false;
-            }
+            restoreOtpButtons();
             setOtpStatus('');
             setOtpError('Could not verify the code. Please try again.');
         });
@@ -1680,6 +1813,28 @@ window.IIIDEM_REGISTER_OTP = {
     function startOtpFlow(submitter) {
         var email = emailInput ? String(emailInput.value || '').trim().toLowerCase() : '';
         pendingSubmitter = submitter || null;
+        if (email && otpVerifiedEmail === email) {
+            bypassEmailCheck = true;
+            bypassPhoneCheck = true;
+            bypassOtpGate = true;
+            try {
+                allowUnloadForSubmit();
+                if (typeof form.requestSubmit === 'function') {
+                    if (submitter) {
+                        form.requestSubmit(submitter);
+                    } else {
+                        form.requestSubmit();
+                    }
+                } else if (validateRequiredBeforeSubmit()) {
+                    form.submit();
+                }
+            } finally {
+                bypassEmailCheck = false;
+                bypassPhoneCheck = false;
+                bypassOtpGate = false;
+            }
+            return;
+        }
         // Re-validate email quality before opening OTP (blocks disposable / test domains).
         checkEmailAvailability().then(function(ok) {
             if (!ok) {
@@ -1727,12 +1882,20 @@ window.IIIDEM_REGISTER_OTP = {
             return;
         }
         if (email && otpVerifiedEmail === email) {
+            allowUnloadForSubmit();
             return;
         }
 
         e.preventDefault();
         e.stopImmediatePropagation();
         startOtpFlow(e.submitter || null);
+    }, true);
+
+    form.addEventListener('invalid', function () {
+        if (document.getElementById('iiidem-register-otp-loading')) {
+            hideOtpLoading();
+            restoreOtpButtons();
+        }
     }, true);
 
     if (otpModal) {

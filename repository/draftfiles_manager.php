@@ -36,8 +36,18 @@ require_once('../config.php');
 require_once($CFG->libdir.'/filelib.php');
 require_once('lib.php');
 
-require_sesskey();
 require_login();
+
+// CSRF: mutating actions need sesskey. Browse (object embed / noscript picker) must
+// not put sesskey in the URL (CDAC: Moodle Session Key Exposure).
+$action = optional_param('action', '', PARAM_ALPHA);
+$mutating = in_array($action, ['deletedraft', 'rename', 'downloaddir', 'zip', 'unzip', 'mkdir'], true);
+if ($action === 'movefile' && optional_param('targetpath', '', PARAM_PATH) !== '') {
+    $mutating = true;
+}
+if ($mutating) {
+    require_sesskey();
+}
 
 // disable blocks in this page
 $PAGE->set_pagelayout('embedded');
@@ -71,7 +81,7 @@ $PAGE->set_context($user_context);
 
 $fs = get_file_storage();
 
-$params = array('ctx_id' => $contextid, 'itemid' => $itemid, 'env' => $env, 'course'=>$courseid, 'maxbytes'=>$maxbytes, 'areamaxbytes'=>$areamaxbytes, 'maxfiles'=>$maxfiles, 'subdirs'=>$subdirs, 'sesskey'=>sesskey());
+$params = array('ctx_id' => $contextid, 'itemid' => $itemid, 'env' => $env, 'course'=>$courseid, 'maxbytes'=>$maxbytes, 'areamaxbytes'=>$areamaxbytes, 'maxfiles'=>$maxfiles, 'subdirs'=>$subdirs);
 $PAGE->set_url('/repository/draftfiles_manager.php', $params);
 $filepicker_url = new moodle_url("/repository/filepicker.php", $params);
 
@@ -116,6 +126,7 @@ case 'renameform':
     echo '  <input id="newfilename" name="newfilename" type="text" value="'.s($filename).'" />';
     echo '  <input name="filename" type="hidden" value="'.s($filename).'" />';
     echo '  <input name="draftpath" type="hidden" value="'.s($draftpath).'" />';
+    echo '  <input name="sesskey" type="hidden" value="'.s(sesskey()).'" />';
     echo '  <input type="submit" value="'.s(get_string('rename', 'moodle')).'" />';
     echo ' </form>';
     echo $OUTPUT->footer();
@@ -220,6 +231,7 @@ case 'mkdirform':
     echo html_writer::label(get_string('entername', 'repository'), 'newdirname', array('class' => 'accesshide'));
     echo '  <input name="newdirname" id="newdirname" type="text" />';
     echo '  <input name="draftpath" type="hidden" value="'.s($draftpath).'" />';
+    echo '  <input name="sesskey" type="hidden" value="'.s(sesskey()).'" />';
     echo '  <input type="submit" value="'.s(get_string('makeafolder', 'moodle')).'" />';
     echo ' </form>';
     echo $OUTPUT->footer();

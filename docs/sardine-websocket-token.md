@@ -5,49 +5,45 @@
 | Field | Report |
 |-------|--------|
 | Title | Authentication Token Exposed in Client-Side WebSocket Communication |
-| Service | Sardine fraud/risk (`api.sardine.ai`) |
-| Claims | Token in WebSocket; new token on connect; rate-limit token generation; tokens after Moodle logout |
+| Service | Sardine fraud/risk (`wss://api.sardine.ai/v1/events/stream`) |
+| Claims | `deviceToken` in WebSocket; new token on connect; rate-limit token minting; tokens after Moodle logout |
 
-## Verdict: **Dispute — not this LMS**
+`deviceToken` / `deviceId` are Sardine **device** identifiers, not Moodle `MoodleSession` / `sesskey`. They were loaded by **Razorpay Checkout.js** embedded on the LMS origin. This LMS no longer embeds that SDK.
 
-| Evidence | Meaning |
-|----------|---------|
-| WebSocket URL | `wss://api.sardine.ai/v1/events/stream` (or HTTPS upgrade to that host) |
-| Payload `location` / checkout URL | `https://api.razorpay.com/v1/checkout/public?…` |
-| `referrer` | `https://staginglms.eci.gov.in/` (page that opened Checkout) |
-| `flow`: `checkout` | Razorpay Checkout fraud SDK |
-| Token fields | `deviceToken` / `deviceId` — Sardine **device** identifiers, not Moodle `MoodleSession` / `sesskey` |
+## Fix (theme_iiidem2 2024101077, paygw_razorpay 2025062922)
 
-This repository has **no** Sardine client, WebSocket code, or `deviceToken` handling (workspace search: zero matches). Razorpay Checkout embeds Sardine for risk scoring. LMS operators cannot rate-limit or change Sardine’s token APIs.
+| Claim | Control |
+|-------|---------|
+| Token in LMS-origin WebSocket | CSP `connect-src 'self'` — `api.sardine.ai` / `wss:` to Sardine is **not** allowed. Early `websocket_guard.js` throws `SecurityError` if a script still calls `new WebSocket` to `*.sardine.ai`. |
+| Checkout.js / iframe minting tokens on LMS | CSP no longer allow-lists `checkout.razorpay.com`, `cdn.razorpay.com`, `api.razorpay.com`, or `lumberjack.razorpay.com` for script / connect / frame. Pay Now **redirects** to a hosted Payment Link (`window.location.assign`). |
+| Rate-limit token-generation | The only LMS request that starts a payment session is `paygw_razorpay_get_checkout_data`: **3 / 10 min per user**, **5 / 10 min per IP**, **8 / hour per IP**. Guests and logged-out sessions are rejected. |
+| Tokens after Moodle logout | Checkout WS requires a live Moodle session. Logout POST runs `iiidemCloseRiskSockets()` (close sockets, drop Razorpay/Sardine iframes, drop `deviceToken` sessionStorage) then `Clear-Site-Data` including `executionContexts`. Replay of `get_checkout_data` without `MoodleSession` fails `require_login`. |
 
-### “Token exposed to the client”
+Sardine/Razorpay may still mint device tokens **on their own origins** after the browser has left the LMS. That is outside this application. LMS pages must not open `api.sardine.ai`.
 
-By design, a browser fraud SDK must hold a device/session token in the client to send telemetry. That is not Moodle authentication and does not grant LMS access.
+## Verify (after deploy)
 
-### “New token on connection” / rate limiting
+```bash
+php admin/cli/upgrade.php --non-interactive
+php admin/cli/purge_caches.php
 
-Token minting is performed by **Sardine/Razorpay**. Implement rate limiting there — not in Moodle.
+# CSP must not mention sardine or Razorpay Checkout hosts.
+curl -sI https://staginglms.eci.gov.in/my/ | grep -i content-security-policy
+```
 
-### “Even after logout able to generate new tokens”
+Retest on the LMS origin:
 
-Moodle logout clears `MoodleSession` on `staginglms.eci.gov.in`. It does **not** tear down Razorpay Checkout iframes or Sardine device fingerprinting on `api.sardine.ai` / `api.razorpay.com`. Device tokens surviving LMS logout is expected for a third-party device SDK and is **not** session fixation on Moodle.
+1. DevTools → Network → WS: no `api.sardine.ai` while browsing the LMS (including Pay Now, which should navigate away).
+2. Console: `new WebSocket('wss://api.sardine.ai/v1/events/stream')` → blocked (CSP and/or `SecurityError`).
+3. Logout, then call `paygw_razorpay_get_checkout_data` → login/session error, not a new order.
+4. Burst `get_checkout_data` while logged in → `ratelimited` after 3 attempts / 10 minutes.
 
-LMS session controls: [session-fixation.md](session-fixation.md), [session-token-in-url.md](session-token-in-url.md), [cookie-httponly.md](cookie-httponly.md).
+## Related
 
-## Related third-party payment findings (same Checkout flow)
-
-| Finding | Doc |
-|---------|-----|
-| Razorpay Key ID / Checkout JSON | [razorpay-key-id-exposure.md](razorpay-key-id-exposure.md) |
-| Prefill encrypt rate limit | [razorpay-prefill-rate-limit.md](razorpay-prefill-rate-limit.md) |
-| Outdated Sentry on Checkout | [outdated-sentry-sdk.md](outdated-sentry-sdk.md) |
-
-## Evidence for auditors
-
-| Check | Result |
-|-------|--------|
-| LMS ships Sardine / opens `api.sardine.ai` | No |
-| Token is Moodle session id | No — Sardine `deviceToken` |
-| LMS can rate-limit Sardine WS | No |
-
-**Reply:** Out of scope for IIIDEM LMS. Escalate to Razorpay/Sardine. No Moodle code change applies.
+| Topic | Doc |
+|-------|-----|
+| Hosted Payment Link (no Checkout.js key id) | [razorpay-key-id-exposure.md](razorpay-key-id-exposure.md) |
+| Prefill encrypt on `api.razorpay.com` | [razorpay-prefill-rate-limit.md](razorpay-prefill-rate-limit.md) |
+| Sentry 7.64.0 on `api.razorpay.com` | [outdated-sentry-sdk.md](outdated-sentry-sdk.md) |
+| Razorpay `window.session_token` | [windows-session-token.md](windows-session-token.md) |
+| Logout Clear-Site-Data | [security-headers.md](security-headers.md) |

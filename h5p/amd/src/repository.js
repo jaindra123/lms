@@ -57,11 +57,11 @@ export const postState = (
     // Please note that we must use a Beacon send here.
     // The XHR is not guaranteed because it will be aborted on page transition.
     // https://developer.mozilla.org/en-US/docs/Web/API/Beacon_API
-    // Note: Moodle does not currently have a sendBeacon API endpoint.
+    // CSRF sesskey must not appear in the URL (Referer / proxy / history).
     const requestUrl = new URL(`${config.wwwroot}/lib/ajax/service.php`);
-    requestUrl.searchParams.set('sesskey', config.sesskey);
-
-    navigator.sendBeacon(requestUrl, JSON.stringify([{
+    const payload = new FormData();
+    payload.append('sesskey', config.sesskey);
+    payload.append('args', JSON.stringify([{
         index: 0,
         methodname: 'core_xapi_post_state',
         args: {
@@ -72,6 +72,7 @@ export const postState = (
             stateData,
         }
     }]));
+    navigator.sendBeacon(requestUrl, payload);
 };
 
 /**

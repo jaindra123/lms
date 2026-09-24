@@ -921,7 +921,7 @@ $string['forcepasswordresetfailurenotice'] = 'Your current password no longer pa
 $string['forcepasswordresetnotice'] = 'Your current password no longer passes the password policy. You must reset your password to log in.
    {$a}';
 $string['forcetheme'] = 'Force theme';
-$string['forgotaccount'] = 'Lost password?';
+$string['forgotaccount'] = 'Forgot password?';
 $string['forgotten'] = 'Forgotten your username or password?';
 $string['forgottenduplicate'] = 'The email address is shared by several accounts, please enter username instead';
 $string['forgotteninvalidurl'] = 'Invalid password reset URL';

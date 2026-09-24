@@ -377,8 +377,16 @@ function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user,
     // Last ip.
     if (has_capability('moodle/user:viewlastip', $usercontext) && !isset($hiddenfields['lastip'])) {
         if ($user->lastip) {
-            $iplookupurl = new moodle_url('/iplookup/index.php', array('ip' => $user->lastip, 'user' => $user->id));
-            $ipstring = html_writer::link($iplookupurl, $user->lastip);
+            $lastiphelper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+            if (is_readable($lastiphelper)) {
+                require_once($lastiphelper);
+            }
+            if (class_exists(\theme_iiidem2\private_ip::class)) {
+                $ipstring = \theme_iiidem2\private_ip::html((string) $user->lastip, (int) $user->id);
+            } else {
+                $iplookupurl = new moodle_url('/iplookup/index.php', array('ip' => $user->lastip, 'user' => $user->id));
+                $ipstring = html_writer::link($iplookupurl, $user->lastip);
+            }
         } else {
             $ipstring = get_string("none");
         }

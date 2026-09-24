@@ -46,6 +46,10 @@
         sess.value = sk;
         form.appendChild(sess);
 
+        if (typeof window.iiidemCloseRiskSockets === 'function') {
+            window.iiidemCloseRiskSockets();
+        }
+
         document.body.appendChild(form);
         form.submit();
         return true;

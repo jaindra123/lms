@@ -11,7 +11,8 @@ namespace theme_iiidem2;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * HTTP security response headers (CSP, nosniff, XSS, Referrer, CORS, HSTS, Clear-Site-Data).
+ * HTTP security response headers (CSP, nosniff, XSS, Referrer, CORS, Clear-Site-Data).
+ * HSTS is set once at the web server (.htaccess), not from this class.
  *
  * @package   theme_iiidem2
  * @copyright 2026 IIIDEM
@@ -25,9 +26,63 @@ final class security_headers {
     /** @var bool */
     private static $clearsitedataqueued = false;
 
-    /** Clear-Site-Data header value required by CDAC #13. */
+    /** @var bool */
+    private static $fullclearsent = false;
+
+    /** @var string|null Per-request CSP nonce (base64). */
+    private static $cspnonce = null;
+
+    /** Clear-Site-Data header value required by CDAC #13 (logout). */
     public const CLEAR_SITE_DATA =
         '"cache", "cookies", "storage", "executionContexts"';
+
+    /** Cache-only Clear-Site-Data for anonymous login GET (must not clear cookies). */
+    public const CLEAR_SITE_DATA_LOGIN = '"cache"';
+
+    /** HSTS value required by CDAC (preload was missing on staging Apache). */
+    public const HSTS = 'max-age=31536000; includeSubDomains; preload';
+
+    /**
+     * requirejs.php / javascript.php abort after config but still run after_config.
+     * HTML rewriters must not touch those JS/CSS bodies (breaks core/first).
+     */
+    private static function skip_html_mutation_buffers(): bool {
+        if (defined('ABORT_AFTER_CONFIG') && ABORT_AFTER_CONFIG) {
+            return true;
+        }
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
+        $haystack = strtolower($script . ' ' . $uri);
+        foreach ([
+            'requirejs.php',
+            'javascript.php',
+            'jslib.php',
+            'jssourcemap.php',
+            'yui_combo.php',
+            'jquery.php',
+            'styles.php',
+            'styles_debug.php',
+            'image.php',
+            'font.php',
+        ] as $asset) {
+            if (str_contains($haystack, $asset)) {
+                return true;
+            }
+            $bare = '/' . substr($asset, 0, -4);
+            if ($script !== '' && (str_ends_with($script, $bare) || str_ends_with($script, $bare . '/'))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when the buffer is not an HTML document (JS combo, JSON, CSS).
+     */
+    private static function buffer_is_non_html(string $buffer): bool {
+        $start = ltrim(substr($buffer, 0, 80));
+        return $start !== '' && $start[0] !== '<' && $start[0] !== "\xEF";
+    }
 
     /**
      * Send baseline security headers once per request (web only).
@@ -38,6 +93,9 @@ final class security_headers {
         if (self::$sent) {
             // Still allow a late Clear-Site-Data after logout in the same request.
             self::emit_clear_site_data_if_pending();
+            self::emit_login_clear_site_data();
+            self::suppress_x_ua_compatible();
+            self::emit_clickjacking_and_xss_headers();
             return;
         }
         if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
@@ -51,15 +109,20 @@ final class security_headers {
 
         // Disable technology/version disclosure in response headers.
         self::suppress_version_headers();
+        self::suppress_x_ua_compatible();
+        if (!defined('MOODLE_ENV') || MOODLE_ENV !== 'dev') {
+            header_remove('X-Moodle-Exception');
+        }
 
         header('X-Content-Type-Options: nosniff');
-        header('X-XSS-Protection: 1; mode=block');
+        self::emit_clickjacking_and_xss_headers();
         // Cross-domain referrer leakage: full URL must not leak to other origins.
         header('Referrer-Policy: strict-origin-when-cross-origin');
-        header('X-Frame-Options: SAMEORIGIN');
         header('Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(self), usb=()');
-        // Allow Razorpay / Webex popups while isolating the opener.
-        header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+        // Isolate this origin: do not keep window.opener for cross-origin popups
+        // (CDAC: Cross-Origin Opener Policy Allows Cross-Origin Popups).
+        // Payments use top-level Payment Link redirects, not Checkout.js popups.
+        header('Cross-Origin-Opener-Policy: same-origin');
 
         // Keep Moodle admin setting aligned (weblib.php also emits this header).
         if (empty($CFG->referrerpolicy) || $CFG->referrerpolicy === 'default') {
@@ -75,14 +138,16 @@ final class security_headers {
             header('Vary: Origin');
         }
 
-        header('Content-Security-Policy: ' . self::csp_policy());
+        header_remove('Content-Security-Policy');
+        header('Content-Security-Policy: ' . self::csp_policy(), true);
 
         self::emit_clear_site_data_if_pending();
+        self::emit_login_clear_site_data();
 
-        // HSTS when the site is HTTPS (preload matches Apache snippet / CDAC).
-        if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
-            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
-        }
+        // HSTS is emitted once by Apache (.htaccess / vhost), not PHP.
+        // PHP header() lands in Apache's onsuccess table; Header always set
+        // lands in the always table — both survive and CDAC flags duplicates.
+        // DDEV / loopback must still never pin HSTS (nginx snippet omits it).
 
         // Authenticated / login pages must not linger in the browser cache after logout.
         self::send_sensitive_cache_control();
@@ -108,9 +173,166 @@ final class security_headers {
 
         header('Clear-Site-Data: ' . self::CLEAR_SITE_DATA);
         self::$clearsitedataqueued = false;
+        self::$fullclearsent = true;
         if (isset($SESSION)) {
             unset($SESSION->theme_iiidem2_clear_site_data);
         }
+    }
+
+    /**
+     * Auditors capture GET /login/index.php. Full Clear-Site-Data (cookies) here
+     * would wipe MoodleSession and break logintoken. Send cache-only so the header
+     * is present without destroying the sign-in session.
+     */
+    private static function emit_login_clear_site_data(): void {
+        if (headers_sent()) {
+            return;
+        }
+        if (self::$fullclearsent || self::$clearsitedataqueued) {
+            return;
+        }
+        if (!self::is_anonymous_login_document()) {
+            return;
+        }
+        header('Clear-Site-Data: ' . self::CLEAR_SITE_DATA_LOGIN);
+    }
+
+    /**
+     * Guest GET of login / MFA HTML (not AJAX, not credential POST).
+     */
+    private static function is_anonymous_login_document(): bool {
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return false;
+        }
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return false;
+        }
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if ($method !== 'GET' && $method !== 'HEAD') {
+            return false;
+        }
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $islogin = (str_contains($script, '/login/') || str_contains($script, '/admin/tool/mfa/'))
+            && !str_contains($script, '/login/logout');
+        if (!$islogin) {
+            return false;
+        }
+        try {
+            if (isloggedin() && !isguestuser()) {
+                return false;
+            }
+        } catch (\Throwable $e) {
+            // Headers still apply on login before session is ready.
+        }
+        return true;
+    }
+
+    /**
+     * HSTS only on real HTTPS at staging/production — not DDEV or loopback.
+     */
+    private static function should_send_hsts(): bool {
+        if (defined('MOODLE_ENV') && MOODLE_ENV === 'dev') {
+            return false;
+        }
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if (str_contains($host, ':')) {
+            [$host] = explode(':', $host, 2);
+        }
+        if ($host === '' || $host === 'localhost' || $host === '127.0.0.1'
+                || str_ends_with($host, '.ddev.site') || str_ends_with($host, '.localhost')) {
+            return false;
+        }
+        $https = (string) ($_SERVER['HTTPS'] ?? '');
+        if ($https !== '' && strtolower($https) !== 'off') {
+            return true;
+        }
+        $fwd = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        return $fwd === 'https';
+    }
+
+    /**
+     * HTTPS via wwwroot, the request, or a TLS-terminating proxy.
+     */
+    public static function is_https(): bool {
+        global $CFG;
+
+        if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
+            return true;
+        }
+        $https = (string) ($_SERVER['HTTPS'] ?? '');
+        if ($https !== '' && strtolower($https) !== 'off') {
+            return true;
+        }
+        $fwd = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        return $fwd === 'https';
+    }
+
+    /**
+     * Per-request CSP nonce. Stable for the header and every script/style tag.
+     */
+    public static function csp_nonce(): string {
+        if (self::$cspnonce === null) {
+            self::$cspnonce = base64_encode(random_bytes(16));
+        }
+        return self::$cspnonce;
+    }
+
+    /**
+     * HTML attribute: nonce="…".
+     */
+    public static function nonce_attribute(): string {
+        return ' nonce="' . htmlspecialchars(self::csp_nonce(), ENT_QUOTES, 'UTF-8') . '"';
+    }
+
+    /**
+     * Stamp nonce on every script/style tag so script-src can drop 'unsafe-inline'.
+     */
+    public static function ensure_csp_nonce_html_buffer(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+        if (self::skip_html_mutation_buffers()) {
+            return;
+        }
+        if (!empty($GLOBALS['theme_iiidem2_csp_nonce_ob'])) {
+            return;
+        }
+        $GLOBALS['theme_iiidem2_csp_nonce_ob'] = true;
+
+        ob_start([self::class, 'apply_csp_nonces']);
+    }
+
+    /**
+     * @param string $html
+     * @return string
+     */
+    public static function apply_csp_nonces(string $html): string {
+        if ($html === '' || self::buffer_is_non_html($html)) {
+            return $html;
+        }
+        if (stripos($html, '<script') === false && stripos($html, '<style') === false) {
+            return $html;
+        }
+        $nonce = htmlspecialchars(self::csp_nonce(), ENT_QUOTES, 'UTF-8');
+        $out = preg_replace_callback(
+            '/<(script|style)\b([^>]*)>/i',
+            static function (array $m) use ($nonce): string {
+                $tag = $m[1];
+                $attrs = $m[2];
+                if (preg_match('/\bnonce\s*=/i', $attrs)) {
+                    return $m[0];
+                }
+                return '<' . $tag . ' nonce="' . $nonce . '"' . $attrs . '>';
+            },
+            $html
+        );
+        return is_string($out) ? $out : $html;
     }
 
     /**
@@ -200,6 +422,9 @@ final class security_headers {
         if (defined('WS_SERVER') && WS_SERVER) {
             return;
         }
+        if (self::skip_html_mutation_buffers()) {
+            return;
+        }
         if (!empty($GLOBALS['theme_iiidem2_noopener_ob'])) {
             return;
         }
@@ -222,13 +447,59 @@ final class security_headers {
         if (defined('WS_SERVER') && WS_SERVER) {
             return;
         }
+        if (self::skip_html_mutation_buffers()) {
+            return;
+        }
         if (!empty($GLOBALS['theme_iiidem2_sesskey_url_ob'])) {
             return;
         }
         $GLOBALS['theme_iiidem2_sesskey_url_ob'] = true;
 
         ob_start(static function (string $buffer): string {
-            return \theme_iiidem2\output\core_renderer::strip_login_sesskey_from_html($buffer);
+            try {
+                if (self::buffer_is_non_html($buffer)) {
+                    return $buffer;
+                }
+                if (!method_exists(\theme_iiidem2\output\core_renderer::class, 'strip_login_sesskey_from_html')) {
+                    return $buffer;
+                }
+                return \theme_iiidem2\output\core_renderer::strip_login_sesskey_from_html($buffer);
+            } catch (\Throwable $e) {
+                error_log('theme_iiidem2 sesskey buffer: ' . $e->getMessage());
+                return $buffer;
+            }
+        });
+    }
+
+    /**
+     * CDAC: Private IP address disclosed — strip RFC1918 from HTML/JSON
+     * (report/log iplookup links, last IP, sessions).
+     */
+    public static function ensure_private_ip_html_buffer(): void {
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            return;
+        }
+        if (defined('WS_SERVER') && WS_SERVER) {
+            return;
+        }
+        if (self::skip_html_mutation_buffers()) {
+            return;
+        }
+        if (!empty($GLOBALS['theme_iiidem2_private_ip_ob'])) {
+            return;
+        }
+        $GLOBALS['theme_iiidem2_private_ip_ob'] = true;
+
+        ob_start(static function (string $buffer): string {
+            try {
+                if (!class_exists(\theme_iiidem2\private_ip::class)) {
+                    return $buffer;
+                }
+                return \theme_iiidem2\private_ip::redact_output($buffer);
+            } catch (\Throwable $e) {
+                error_log('theme_iiidem2 private_ip buffer: ' . $e->getMessage());
+                return $buffer;
+            }
         });
     }
 
@@ -261,7 +532,10 @@ final class security_headers {
      * @return string
      */
     public static function harden_blank_target_html(string $html): string {
-        if ($html === '' || (stripos($html, '<a') === false && stripos($html, '<A') === false)) {
+        if ($html === '' || self::buffer_is_non_html($html)) {
+            return $html;
+        }
+        if (stripos($html, '<a') === false && stripos($html, '<A') === false) {
             return $html;
         }
 
@@ -331,13 +605,39 @@ final class security_headers {
             'X-Generator',
             'X-Drupal-Cache',
             'X-Drupal-Dynamic-Cache',
+            'Server',
+            'X-UA-Compatible',
         ] as $headername) {
             header_remove($headername);
         }
 
-        // Where the SAPI allows it, strip or blank the Server token (full removal
-        // of nginx/Apache Server often requires server_tokens off — see docs).
-        header_remove('Server');
+        // Do not send a replacement Server value — Apache would still fingerprint
+        // as "Apache" if we leave the token. Edge .htaccess unsets it as well.
+    }
+
+    /**
+     * Drop deprecated X-UA-Compatible (IE document mode).
+     *
+     * Moodle send_headers() used to emit IE=edge after after_config; a flush
+     * callback strips it even if a later core path re-adds it.
+     */
+    public static function suppress_x_ua_compatible(): void {
+        static $callbackregistered = false;
+
+        if (headers_sent()) {
+            return;
+        }
+
+        header_remove('X-UA-Compatible');
+
+        if ($callbackregistered) {
+            return;
+        }
+        $callbackregistered = true;
+        header_register_callback(static function (): void {
+            header_remove('X-UA-Compatible');
+            self::emit_clickjacking_and_xss_headers();
+        });
     }
 
     /**
@@ -392,28 +692,97 @@ final class security_headers {
     }
 
     /**
-     * Practical CSP for Moodle + Razorpay checkout + MathJax CDN (Moodle default).
+     * X-XSS-Protection and X-Frame-Options (CDAC improper security headers).
      *
-     * Moodle AMD / YUI / Mustache still require 'unsafe-inline' and 'unsafe-eval'
-     * in supported releases. Removing them breaks the LMS UI. Hosts are allow-listed;
-     * object-src none; frame-ancestors self; upgrade-insecure-requests.
+     * Moodle weblib send_headers() may overwrite X-Frame-Options with sameorigin;
+     * a flush callback (see suppress_x_ua_compatible) re-asserts these.
+     */
+    private static function emit_clickjacking_and_xss_headers(): void {
+        if (headers_sent()) {
+            return;
+        }
+        header_remove('X-XSS-Protection');
+        header('X-XSS-Protection: 1; mode=block', true);
+        header_remove('X-Frame-Options');
+        header('X-Frame-Options: ' . self::x_frame_options(), true);
+    }
+
+    /**
+     * DENY on public/auth pages (incident URL is site root). SAMEORIGIN on
+     * course/H5P/admin so same-origin iframes still work. Cross-origin
+     * clickjacking is blocked either way.
+     */
+    public static function x_frame_options(): string {
+        return self::must_deny_framing() ? 'DENY' : 'SAMEORIGIN';
+    }
+
+    /**
+     * CSP frame-ancestors matching X-Frame-Options.
+     */
+    public static function csp_frame_ancestors(): string {
+        return self::must_deny_framing() ? "'none'" : "'self'";
+    }
+
+    /**
+     * Login, register, MFA, and the site front page must not be framed.
+     */
+    private static function must_deny_framing(): bool {
+        global $CFG;
+
+        if (!empty($CFG->allowframembedding)) {
+            return false;
+        }
+        if (class_exists(\core_useragent::class, false) && \core_useragent::is_moodle_app()) {
+            return false;
+        }
+
+        $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? '/'));
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $path = strtolower((string) (parse_url($uri, PHP_URL_PATH) ?: $script));
+        if ($path === '') {
+            $path = '/';
+        }
+
+        foreach (['/login', '/register', '/admin/tool/mfa/'] as $needle) {
+            if (str_contains($path, $needle) || str_contains(strtolower($script), $needle)) {
+                return true;
+            }
+        }
+
+        $trimmed = rtrim($path, '/') ?: '/';
+        return $trimmed === '/' || $trimmed === '/index.php' || $trimmed === '/index';
+    }
+
+    /**
+     * Practical CSP for Moodle + hosted Payment Links + MathJax CDN.
+     *
+     * Scripts: 'self' + per-request nonce + strict-dynamic (no 'unsafe-inline',
+     * no third-party script hosts). RequireJS still uses eval() so 'unsafe-eval'
+     * remains. Inline event handlers: script-src-attr.
+     * Styles: Moodle uses style= attributes — style-src keeps 'unsafe-inline'.
+     *
+     * Razorpay Checkout.js / Sardine / Sentry Browser SDK are NOT allow-listed
+     * (script-src / connect-src). Payments use a top-level redirect to a hosted
+     * Payment Link (form-action https:). Sentry 7.64.0 in CDAC captures is
+     * Razorpay’s bundle on api.razorpay.com, not this origin.
      */
     public static function csp_policy(): string {
         $origin = self::site_origin();
+        $nonce = self::csp_nonce();
         // Moodle filter_mathjaxloader uses jsDelivr MathJax 3.2.2 (not 2.7.9).
         $mathjax = 'https://cdn.jsdelivr.net';
         $directives = [
             "default-src 'self'",
             "base-uri 'self'",
             "object-src 'none'",
-            "frame-ancestors 'self'",
-            // Moodle AMD / YUI / Mustache need inline + eval in many releases.
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com {$mathjax}",
+            "frame-ancestors " . self::csp_frame_ancestors(),
+            "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic' 'unsafe-eval'",
+            "script-src-attr 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' {$mathjax}",
             "img-src 'self' data: blob: https:",
             "font-src 'self' data: {$mathjax}",
-            "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://checkout-static-next.razorpay.com {$mathjax}",
-            "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://*.webex.com https://webex.com",
+            "connect-src 'self' {$mathjax}",
+            "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://*.webex.com https://webex.com",
             // Bank / payment POSTs leave the site (https: hosts only).
             "form-action 'self' https:",
             "upgrade-insecure-requests",

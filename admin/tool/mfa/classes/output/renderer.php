@@ -182,6 +182,10 @@ class renderer extends \plugin_renderer_base {
         global $USER, $CFG;
 
         require_once($CFG->dirroot . '/iplookup/lib.php');
+        $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+        if (is_readable($helper)) {
+            require_once($helper);
+        }
 
         $html = '';
 
@@ -531,7 +535,12 @@ class renderer extends \plugin_renderer_base {
      * @return string the HTML for the table
      */
     public function factor_locked_users_table(object_factor $factor): string {
-        global $DB;
+        global $DB, $CFG;
+
+        $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+        if (is_readable($helper)) {
+            require_once($helper);
+        }
 
         $table = new \html_table();
         $table->attributes['class'] = 'generaltable table table-bordered w-auto';
@@ -569,10 +578,17 @@ class renderer extends \plugin_renderer_base {
                 ['id' => $record->id]), fullname($record));
 
             // IP link.
-            $creatediplink = \html_writer::link(new \moodle_url('/iplookup/index.php',
-                ['ip' => $record->createdfromip]), $record->createdfromip);
-            $lastiplink = \html_writer::link(new \moodle_url('/iplookup/index.php',
-                ['ip' => $record->lastip]), $record->lastip);
+            $createdip = (string) $record->createdfromip;
+            $lastip = (string) $record->lastip;
+            if (class_exists(\theme_iiidem2\private_ip::class)) {
+                $creatediplink = \theme_iiidem2\private_ip::html($createdip);
+                $lastiplink = \theme_iiidem2\private_ip::html($lastip);
+            } else {
+                $creatediplink = \html_writer::link(new \moodle_url('/iplookup/index.php',
+                    ['ip' => $createdip]), $createdip);
+                $lastiplink = \html_writer::link(new \moodle_url('/iplookup/index.php',
+                    ['ip' => $lastip]), $lastip);
+            }
 
             // Deep link to logs.
             $logicon = $this->pix_icon('i/report', get_string('userlogs', 'tool_mfa'));

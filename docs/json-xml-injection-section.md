@@ -24,7 +24,23 @@
 
 Report host may also show `stagingiims.eci.gov.in` — treat as typo; retest on `staginglms.eci.gov.in`.
 
-## Why this was not JSON/XML injection (parser)
+## Contact form Intruder (retest)
+
+`POST /contact-us/` with `{base}" a="` in Subject/Message returned **200**, **reflected** the payload in the fields, and the thank-you email contained `%7bbase%7d%22%20a%3d%22`.
+
+That is **not** a JSON/XML parser injection (the contact form is HTML POST). It is missing allow-list validation on those fields.
+
+**Fix (theme ≥ `2024101075`):** `input_validation::contains_structured_injection()` rejects `{base}`, `(base}`, `{…}`, `xmlns:`, attribute breakouts (` a="`), CDATA, and percent-encoded twins. Contact, register, and **My Courses** search (`/my/courses.php` `searchvalue`) **reject** those values, **blank** them in the UI, and **do not** echo them into AJAX.
+
+```bash
+# Expect: HTTP 200, field error, empty subject/message, no thank-you banner
+curl -sk -c /tmp/c -b /tmp/c 'https://staginglms.eci.gov.in/contact-us/' -o /tmp/c1.html
+# POST name/email/subject/message with {base}" a=" plus sesskey from the GET
+# Body must not contain {base} or %7bbase%7d in field values
+# Must not send the thank-you email
+```
+
+## Why section.php was not JSON/XML injection (parser)
 
 ### 1. `id` is an integer allow-list (core)
 
@@ -75,7 +91,8 @@ curl -sI 'https://staginglms.eci.gov.in/course/section.php?id=24' | head -n 5
 | Claim | Result |
 |-------|--------|
 | JSON/XML injection via `id` | **Not present** — no structured-data parser on `id` |
-| Inadequate validation | **Hardened** — strict positive-int allow-list before `PARAM_INT` |
-| Recommendation (server-side validation) | **Met** — theme reject + core `PARAM_INT` |
+| Contact `{base}" a="` reflected / emailed | **Fixed** — rejected, blanked, not mailed |
+| Inadequate validation | **Hardened** — structured-injection allow-list on public fields |
+| Recommendation (server-side validation) | **Met** — theme reject on contact, register, and section `id` |
 
 Related: [input-returned-in-response.md](input-returned-in-response.md), [os-command-injection.md](os-command-injection.md), [input-validation.md](input-validation.md).

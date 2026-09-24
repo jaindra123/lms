@@ -57,6 +57,10 @@ if (defined('ALLOW_GET_PARAMETERS')) {
 if (empty($arguments)) {
     $arguments = file_get_contents('php://input');
 }
+// sendBeacon (Tiny autosave / H5P) posts JSON in FormData `args` with sesskey in POST.
+if (empty($arguments) && isset($_POST['args']) && is_string($_POST['args'])) {
+    $arguments = $_POST['args'];
+}
 
 $requests = json_decode($arguments, true);
 
@@ -94,8 +98,14 @@ foreach ($requests as $reqoffset => $request) {
     $methodname = clean_param($request['methodname'], PARAM_ALPHANUMEXT);
     $index = clean_param($request['index'], PARAM_INT);
     $args = $request['args'];
+    if (class_exists(\theme_iiidem2\ajax_request_guard::class) && is_array($args)) {
+        \theme_iiidem2\ajax_request_guard::sanitize_search_args($args);
+    }
 
     $response = external_api::call_external_function($methodname, $args, true);
+    if (class_exists(\theme_iiidem2\ajax_request_guard::class)) {
+        $response = \theme_iiidem2\ajax_request_guard::redact_payment_ajax($methodname, $response);
+    }
     $responses[$index] = $response;
 
     if ($response['error']) {

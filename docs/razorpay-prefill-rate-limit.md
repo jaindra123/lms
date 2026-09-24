@@ -9,7 +9,7 @@
 | Observation | For each request, new `prefill_data_v1` is generated |
 | PoC | Burp Intruder → repeated `200` on encrypt endpoint |
 
-## Verdict: **Dispute — not this LMS**
+## What the PoC hits
 
 | Evidence | Meaning |
 |----------|---------|
@@ -18,32 +18,36 @@
 | Origin / Referer | `https://api.razorpay.com` |
 | Response | Razorpay sets `prefill_data_v1` cookie / JSON |
 
-This endpoint is **Razorpay Checkout’s** prefill encryption API. It is not implemented, hosted, or proxied by IIIDEM Moodle. LMS code cannot add rate limits to `api.razorpay.com`.
+That path is **Razorpay Standard Checkout’s** prefill encryption API. IIIDEM LMS does not implement, host, or proxy it. HTTP `429` cannot be attached to `api.razorpay.com` from Moodle PHP.
 
-Repeated Intruder hits returning `200` + a new `prefill_data_v1` each time reflect **Razorpay’s** throttling policy, not a missing control on `staginglms.eci.gov.in`.
+LMS remediations below stop this origin from feeding that API, cap how often a hosted checkout session can be minted, and return **429** if the encrypt path is requested **on the LMS host**.
 
-## What the LMS *does* rate-limit
+## LMS remediations (≥ `paygw_razorpay` `2025062923`, `theme_iiidem2` `2024101079`)
 
-Checkout entry points on **this** application (see [rate-limiting.md](rate-limiting.md), [missing-rate-limiting-api.md](missing-rate-limiting-api.md)):
+| Control | Behaviour |
+|---------|-----------|
+| Rate-limit checkout start | `paygw_razorpay_get_checkout_data`: **3 / 10 min per user**, **5 / 10 min per IP**, **8 / hour per IP**. Guests and logged-out sessions are rejected. |
+| No PII on Payment Links | `create_payment_link` does **not** send `customer` name/email/contact. Hosted checkout `options.checkout.hidden` **email** and **contact** so the UI is less likely to call prefill-encrypt with LMS-supplied PII. |
+| No Checkout.js on LMS origin | Pay Now is `window.location.assign` to a hosted Payment Link only. |
+| CSP | `connect-src 'self'` — browser from LMS origin cannot call `api.razorpay.com`. |
+| Client abort | `websocket_guard.js` rejects `fetch` / XHR / `sendBeacon` to `*.razorpay.com` paths matching `prefill/encrypt`. |
+| LMS-origin path | Edge + PHP: URI containing `prefill/encrypt` → **HTTP 429** (`ratelimit`, `Retry-After: 600`). Nginx: `.ddev/nginx/prefill-encrypt-429.conf` / `docs/snippets/nginx-prefill-encrypt-429.conf`. Apache: `.htaccess` → `theme/iiidem2/prefill_encrypt_deny.php`. |
+| Session length | Payment Links `expire_by` 45 minutes. |
 
-| LMS control | Limit (approx.) |
-|-------------|-----------------|
-| `paygw_razorpay_get_checkout_data` | 5 / 10 min per user; 20 / hour per IP |
-| `paygw_razorpay_verify_payment` | 20 / 10 min |
-| `paygw_razorpay_report_payment_failure` | 5 / 15 min |
+Related: [rate-limiting.md](rate-limiting.md), [razorpay-key-id-exposure.md](razorpay-key-id-exposure.md), [sardine-websocket-token.md](sardine-websocket-token.md).
 
-That caps how often the LMS creates Razorpay **orders**. It does not (and cannot) throttle Razorpay’s own `/prefill/encrypt` calls after Checkout UI is open.
+## Retest on LMS (not on `api.razorpay.com`)
 
-## Related hardening (already done)
+1. Burst `paygw_razorpay_get_checkout_data` while logged in → `ratelimited` after 3 attempts / 10 minutes.
+2. `POST https://<lms>/v1/standard_checkout/checkout/prefill/encrypt` (or any LMS path containing `prefill/encrypt`) → **429**, no `prefill_data_v1`.
+3. From LMS origin, `fetch('https://api.razorpay.com/v1/standard_checkout/checkout/prefill/encrypt')` is blocked by CSP and by `websocket_guard.js`.
+4. Start Pay Now → Network shows redirect to a Razorpay Payment Link URL; LMS AJAX has **no** name/email/contact for prefill.
 
-LMS Checkout no longer sends payer **name/email** in `get_checkout_data` and does not use Checkout prefill ([razorpay-key-id-exposure.md](razorpay-key-id-exposure.md), paygw ≥ `2025062918`). That reduces LMS-supplied contact/email into Razorpay’s encrypt API; users may still type details inside Razorpay’s hosted UI, which only Razorpay can rate-limit.
+Intruder **25× HTTP 200** against `Host: api.razorpay.com` is Razorpay’s own throttle. Escalate that remaining limit to Razorpay Support. It is not an LMS endpoint.
 
-## Evidence for auditors
+## Deploy
 
-| Check | Result |
-|-------|--------|
-| Prefill encrypt implemented in LMS | No |
-| PoC host | `api.razorpay.com` (third-party) |
-| LMS order/checkout WS rate-limited | Yes |
-
-**Reply:** Out of scope for IIIDEM LMS. Escalate rate limiting on `/v1/standard_checkout/checkout/prefill/encrypt` to Razorpay. No Moodle code change applies for this finding.
+```bash
+php admin/cli/upgrade.php --non-interactive
+php admin/cli/purge_caches.php
+```

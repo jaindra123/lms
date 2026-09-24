@@ -36,9 +36,16 @@ email (with unlock URL) when the threshold is hit.
 
 ### Complementary control
 
-IP-based login POST rate limit (20 / 5 min, 60 / hour) via `theme_iiidem2` —
+IP-based login POST rate limit (10 / 5 min, 30 / hour) via `theme_iiidem2` —
 see `docs/rate-limiting.md` / `docs/missing-rate-limiting-api.md`. Lockout is
-per **username**; IP throttle slows distributed floods.
+per **username**; IP throttle slows distributed floods. Visible login CAPTCHA
+(theme challenge, or Google reCAPTCHA if keys are configured) is documented in
+[brute-force-attack.md](brute-force-attack.md).
+
+### Forced config
+
+`$CFG->lockoutthreshold` / `lockoutwindow` / `lockoutduration` are set in
+`config.php` **before** `setup.php`.
 
 ### Also applied on theme upgrade
 

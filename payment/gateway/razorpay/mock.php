@@ -35,8 +35,8 @@ if ((int) $txn->userid !== (int) $USER->id && !is_siteadmin()) {
     throw new require_login_exception('Invalid transaction user.');
 }
 
-// Only mock-created orders may be completed here.
-if (strpos($orderid, 'order_mock_') !== 0) {
+// Only mock-created orders / payment links may be completed here.
+if (strpos($orderid, 'order_mock_') !== 0 && strpos($orderid, 'plink_mock_') !== 0) {
     throw new moodle_exception('nopermissions', 'error', '', 'mock payment');
 }
 

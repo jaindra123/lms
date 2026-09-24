@@ -8,27 +8,20 @@
  * This file never creates orders and never reads course_fee / amount / user_id
  * as a price. Real payments: payment/gateway/razorpay (paygw_razorpay).
  *
+ * HTTP 410 is sent before require_login so unauthenticated probes do not look
+ * like a live 200 API (CDAC amount-manipulation retest).
+ *
  * @package local_custom_enroll
  */
 
 define('AJAX_SCRIPT', true);
+define('NO_MOODLE_COOKIES', true);
 
 require(__DIR__ . '/../../config.php');
 
-require_login();
-
-if (class_exists('\theme_iiidem2\rate_limit')) {
-    \theme_iiidem2\rate_limit::require_json('local_custom_enroll_ajax', 10, 60);
-}
-
-$action = optional_param('action', '', PARAM_ALPHANUMEXT);
-if ($action === '' && !empty($_SERVER['CONTENT_TYPE'])
-        && stripos($_SERVER['CONTENT_TYPE'], 'json') !== false) {
-    $raw = file_get_contents('php://input');
-    $json = json_decode($raw ?: '[]', true);
-    if (is_array($json) && isset($json['action'])) {
-        $action = clean_param((string) $json['action'], PARAM_ALPHANUMEXT);
-    }
+$action = '';
+if (!empty($_GET['action'])) {
+    $action = preg_replace('/[^a-z0-9_]/i', '', (string) $_GET['action']);
 }
 
 while (ob_get_level() > 0) {
@@ -41,19 +34,21 @@ if (!headers_sent()) {
     http_response_code(410);
 }
 
-$message = get_string('retired', 'local_custom_enroll');
-$payload = [
+$message = 'This enrolment endpoint is retired.';
+if (function_exists('get_string')) {
+    try {
+        $message = get_string('retired', 'local_custom_enroll');
+    } catch (Throwable $ignored) {
+        // Keep the static fallback.
+    }
+}
+
+echo json_encode([
     'status' => 'error',
     'ok' => false,
     'success' => false,
     'error' => 'deprecated',
     'action' => $action,
     'message' => $message,
-];
-
-if (class_exists('\theme_iiidem2\input_validation')) {
-    echo \theme_iiidem2\input_validation::json_encode_safe($payload);
-} else {
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
-}
+], JSON_UNESCAPED_UNICODE);
 exit;

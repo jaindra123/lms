@@ -1,0 +1,5 @@
+# Hide empty cache/forms.php (blank 200). cache/admin.php remains for site admins.
+Options -Indexes
+<Files "forms.php">
+    Require all denied
+</Files>

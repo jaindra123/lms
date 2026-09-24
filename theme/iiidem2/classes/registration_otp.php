@@ -70,6 +70,16 @@ final class registration_otp {
         }
 
         $existing = self::get_store();
+        if ($existing && !empty($existing['verified'])
+                && ($existing['email'] ?? '') === $email
+                && (int) ($existing['expires'] ?? 0) > time()) {
+            return [
+                'ok' => true,
+                'alreadyverified' => true,
+                'message' => get_string('registerotpverified', 'theme_iiidem2'),
+            ];
+        }
+
         if ($existing && (int) ($existing['lastsend'] ?? 0) > (time() - self::RESEND_COOLDOWN)
                 && ($existing['email'] ?? '') === $email) {
             $wait = self::RESEND_COOLDOWN - (time() - (int) $existing['lastsend']);
@@ -226,5 +236,22 @@ final class registration_otp {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Email that already passed OTP in this session, or empty.
+     *
+     * @return string
+     */
+    public static function verified_email(): string {
+        $store = self::get_store();
+        if (!$store || empty($store['verified']) || empty($store['email'])) {
+            return '';
+        }
+        if ((int) ($store['expires'] ?? 0) < time()) {
+            self::clear();
+            return '';
+        }
+        return \core_text::strtolower(trim((string) $store['email']));
     }
 }

@@ -32,7 +32,7 @@ class local_iiidem_support_ticket_form extends moodleform {
         $mform->addElement('text', 'subject', get_string('ticketsubject', 'local_iiidem_support'), [
             'size' => 64,
             'maxlength' => 255,
-            'pattern' => '[^<>\"\'%;{}]+',
+            'pattern' => '[^<>\\x22\\x27%;{}]+',
             'title' => get_string('invalidtickettext', 'local_iiidem_support'),
         ]);
         $mform->setType('subject', PARAM_TEXT);

@@ -4768,15 +4768,23 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
   gap: 0.35rem 0.5rem;
 }
 
+.iiidem-register-form .felement:has(> .iiidem-register-password-wrap) {
+  display: block !important;
+}
+
 .iiidem-register-password-wrap {
-  position: relative;
-  width: 100%;
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 44px;
 }
 
 .iiidem-register-password-wrap input.form-control,
 .iiidem-register-password-wrap input.form-control.is-invalid,
 .iiidem-register-form .fitem.has-danger .iiidem-register-password-wrap input.form-control {
-  width: 100%;
+  display: block !important;
+  width: 100% !important;
   /* Room for the eye toggle only — hide Bootstrap’s invalid icon so it doesn’t overlap. */
   padding-right: 2.75rem !important;
   background-image: none !important;
@@ -4786,7 +4794,8 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 .iiidem-register-form .fitem.has-danger .iiidem-field-error,
 .iiidem-register-form .fitem.has-danger .form-control-feedback:not(.iiidem-feedback-sr),
 .iiidem-register-form .fitem.has-danger .invalid-feedback:not(.iiidem-feedback-sr),
-.iiidem-register-form #id_error_password2:not(.iiidem-feedback-sr) {
+.iiidem-register-form #id_error_password2:not(.iiidem-feedback-sr),
+.iiidem-register-form .iiidem-pwpolicy-error {
   display: block !important;
   visibility: visible !important;
   color: #dc3545 !important;
@@ -4796,23 +4805,27 @@ body.iiidem-enrol-index #region-main > .generalbox.info {
 }
 
 .iiidem-register-password-toggle {
-  position: absolute;
-  top: 50%;
-  right: 0.55rem;
-  z-index: 5;
-  display: inline-flex;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0.35rem !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 6;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 0;
+  width: 2.5rem !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
   border-radius: 0.375rem;
-  background: transparent;
+  background: transparent !important;
   color: #8a94a6;
   cursor: pointer;
   line-height: 1;
-  transform: translateY(-50%);
+  transform: none !important;
+  float: none !important;
 }
 
 .iiidem-register-password-toggle:hover,

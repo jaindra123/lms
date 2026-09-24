@@ -39,6 +39,13 @@ $width = optional_param('width', 0, PARAM_INT);
 $height = optional_param('height', 0, PARAM_INT);
 $ispopup = optional_param('popup', 0, PARAM_INT);
 
+if (cleanremoteaddr($ip) === false) {
+    throw new \moodle_exception('invalidipformat', 'error');
+}
+if (!ip_is_public($ip)) {
+    throw new \moodle_exception('iplookupprivate', 'error');
+}
+
 if (isset($CFG->iplookup)) {
     // Clean up of old settings.
     set_config('iplookup', NULL);
@@ -69,14 +76,6 @@ $PAGE->set_context(context_system::instance());
 
 $info = array($ip);
 $note = array();
-
-if (cleanremoteaddr($ip) === false) {
-    throw new \moodle_exception('invalidipformat', 'error');
-}
-
-if (!ip_is_public($ip)) {
-    throw new \moodle_exception('iplookupprivate', 'error');
-}
 
 $info = iplookup_find_location($ip);
 

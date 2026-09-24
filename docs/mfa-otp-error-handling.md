@@ -46,13 +46,13 @@ Moodle MFA tracks redirect loops (`mfa_redir_count` / `REDIR_LOOP_THRESHOLD = 5`
 throw new \moodle_exception('redirecterrordetected', 'tool_mfa', …);
 ```
 
-That matches the PoC page text exactly. Rapid automated posts to `auth.php` (often with session/redirect races) trip this **fail-closed loop guard**. It is not evidence that OTP input crashed the database or bypassed MFA.
+That matches the PoC page text exactly. Rapid automated posts to `auth.php` trip this **fail-closed loop guard**.
 
-Recommendation “gracefully reject with OTP validation or rate-limit” is already met for normal wrong codes; the 500 only appears after the **redirect-loop safety stop**, which is deliberate.
+**Fix:** `tool_mfa` no longer throws HTTP 500. After the loop threshold it **logs the user out** and sends them to `/login/index.php` (normal error notification). Wrong OTPs still get the form error + lock/sleep; they never get a 500/stack.
 
-### Invalid Host header (separate control)
+### Invalid Host header (same finding title)
 
-Host allowlisting is already documented: mismatched `Host` → **HTTP 400** before bootstrap continues ([host-header-injection.md](host-header-injection.md)). That is the correct response for an invalid Host — not related to OTP field fuzzing on a valid Host.
+`Host: vulnerable.com` on `/login/` must be **HTTP 400**, never 302 to that Host. See [host-header-injection.md](host-header-injection.md) (`config.php` allowlist + OpenResty `default_server` `return 400`).
 
 ### Instance 4: `/user/action_redir.php` (not OTP)
 
@@ -76,7 +76,7 @@ This script is the participants bulk-action wrapper. A bare GET with no POST fie
 | Should use allow-list validation | **Present** — `PARAM_ALPHANUM` + server-side secret check |
 | Invalid Host → 500 | **No** — allowlist returns **400** ([host-header-injection.md](host-header-injection.md)) |
 | `action_redir.php` unauthenticated | **Hardened** — `require_login()`; was error-only, not privilege bypass |
-| MFA OTP Intruder 500 | **No app change** (Moodle core loop guard) |
+| MFA OTP Intruder 500 | **Remediated** — logout + login redirect, not `moodle_exception` 500 |
 
 **Dispute or reclassify** finding #34:
 
@@ -96,7 +96,7 @@ This script is the participants bulk-action wrapper. A bare GET with no POST fie
 
 1. Single wrong OTP → form error “wrong verification”, **not** 500 / redirect loop text.
 2. After lockout threshold → locked factor / cannot login path (still no SQL dump).
-3. `Host: evil.com` → **400** (or nginx 444), not 302 to evil and not OTP-related.
+3. `Host: vulnerable.com` → **400** (or nginx 400), not 302 to awsellm.com / that Host.
 4. Confirm no `verificationcode` SQL fragments in error body when `debugdisplay` is off.
 5. Guest GET `https://…/user/action_redir.php` → **login redirect**, not public “missing formaction”.
 6. Logged-in teacher bulk action from participants still works (with sesskey).

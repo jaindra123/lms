@@ -44,7 +44,21 @@ class factor_email_renderer extends plugin_renderer_base {
         $blockurl = new \moodle_url('/admin/tool/mfa/factor/email/email.php',
             ['instance' => $instance->id, 'secret' => $instance->secret]);
         $blockurlstring = \html_writer::link($blockurl, get_string('email:stoploginlink', 'factor_email'));
-        $geoinfo = iplookup_find_location($instance->createdfromip);
+        $geoinfo = ['city' => '', 'country' => '', 'error' => ''];
+        $ipdisplay = (string) $instance->createdfromip;
+        $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+        if (is_readable($helper)) {
+            require_once($helper);
+        }
+        if (class_exists(\theme_iiidem2\private_ip::class)
+                && \theme_iiidem2\private_ip::is_private($ipdisplay)) {
+            $ipdisplay = \theme_iiidem2\private_ip::display($ipdisplay);
+        } else {
+            $geoinfo = iplookup_find_location($instance->createdfromip);
+            if (class_exists(\theme_iiidem2\private_ip::class)) {
+                $ipdisplay = \theme_iiidem2\private_ip::display((string) $instance->createdfromip);
+            }
+        }
 
         $templateinfo = [
             'logo' => $this->get_compact_logo_url(100, 100),
@@ -55,7 +69,7 @@ class factor_email_renderer extends plugin_renderer_base {
             'validity' => format_time($validity),
             'authlink' => get_string('email:loginlink', 'factor_email', $authurlstring),
             'revokelink' => get_string('email:revokelink', 'factor_email', $blockurlstring),
-            'ip' => $instance->createdfromip,
+            'ip' => $ipdisplay,
             'geocity' => $geoinfo['city'],
             'geocountry' => $geoinfo['country'],
             'ua' => $instance->label,

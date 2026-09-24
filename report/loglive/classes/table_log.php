@@ -271,11 +271,29 @@ class report_loglive_table_log extends table_sql {
      * @return string HTML for the ip column
      */
     public function col_ip($event) {
-        // Get extra event data for origin and realuserid.
-        $logextra = $event->get_logextra();
+        global $CFG;
 
-        $url = new moodle_url("/iplookup/index.php?popup=1&ip={$logextra['ip']}&user=$event->userid");
-        return $this->action_link($url, $logextra['ip'], 'ip');
+        $logextra = $event->get_logextra();
+        $ip = (string) ($logextra['ip'] ?? '');
+
+        $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+        if (is_readable($helper)) {
+            require_once($helper);
+        }
+        if (class_exists(\theme_iiidem2\private_ip::class)
+                && \theme_iiidem2\private_ip::is_private($ip)) {
+            return s(\theme_iiidem2\private_ip::label());
+        }
+        if (class_exists(\theme_iiidem2\private_ip::class)) {
+            $ip = \theme_iiidem2\private_ip::canonical($ip);
+        }
+
+        $url = new moodle_url('/iplookup/index.php', [
+            'popup' => 1,
+            'ip' => $ip,
+            'user' => $event->userid,
+        ]);
+        return $this->action_link($url, $ip, 'ip');
     }
 
     /**

@@ -6,36 +6,49 @@
 |-------|--------|
 | Title | Outdated Sentry JavaScript Browser SDK version (7.64.0) detected |
 | Recommendation | Update to latest stable version |
-| PoC host | `o515678.ingest.sentry.io` |
-| PoC client | `sentry.javascript.browser/7.64.0` |
+| PoC | `POST …/envelope/?sentry_key=…&sentry_client=sentry.javascript.browser/7.64.0` |
 
-## Verdict: **Dispute — not this LMS**
+## Why this was raised again
 
-Burp shows:
+The first LMS reply was a **dispute only**. CDAC retested and still saw Sentry **7.64.0** because Burp is capturing **Razorpay Checkout’s** telemetry, not an LMS package.
+
+This capture (same class as the first):
 
 | Evidence | Meaning |
 |----------|---------|
-| `Origin: https://api.razorpay.com` | Request from **Razorpay Checkout**, not `staginglms.eci.gov.in` |
-| `Referer: https://api.razorpay.com/` | Same |
-| `Host: o515678.ingest.sentry.io` | Sentry ingest for Razorpay’s project |
-| URL `sentry_client=sentry.javascript.browser/7.64.0` | Razorpay’s bundled SDK version |
+| Host | `o416478.ingest.sentry.io` (earlier PoC used `o515678.ingest.sentry.io`) |
+| Path | `/api/4507106608136192/envelope/` |
+| Origin / Referer | `https://api.razorpay.com` |
+| Body | `"name":"sentry.javascript.browser"`, `"version":"7.64.0"` |
+| Response | Sentry ingest `200` + CORS for `ingest.sentry.io` |
 
-This repository (**IIIDEM Moodle / theme_iiidem2 / paygw_razorpay**) does **not** ship, load, or configure the Sentry Browser SDK. A workspace search finds no `@sentry`, `sentry.io`, or `7.64.0` client assets under the LMS.
+This repository **does not ship** `@sentry/browser`, `sentry.io` client config, or version 7.64.0. A workspace search finds no Sentry SDK under Moodle / `theme_iiidem2` / `paygw_razorpay`.
 
-Checkout opens Razorpay’s hosted UI (`api.razorpay.com` / Checkout.js). That third-party page may send its own telemetry to Sentry. LMS operators cannot update Razorpay’s SDK; only Razorpay can.
+LMS **cannot update** Razorpay’s bundled SDK on `api.razorpay.com`. After Pay Now the browser is on Razorpay’s hosted Payment Link; their page still loads Sentry 7.64.0 until **Razorpay** bumps it.
 
-## Related LMS payment notes
+## LMS remediations (`theme_iiidem2` ≥ `2024101080`)
 
-- LMS loads Checkout via `https://checkout.razorpay.com/v1/checkout.js` (Razorpay CDN).
-- Public Key ID in Checkout is expected — see [razorpay-key-id-exposure.md](razorpay-key-id-exposure.md).
-- No action required on Moodle for this Sentry finding.
+| Control | Behaviour |
+|---------|-----------|
+| No Sentry on LMS | Theme / payment AMD do not load Sentry. Pay Now is a top-level redirect to a hosted Payment Link (no Checkout.js on this origin). |
+| CSP | `script-src` / `connect-src` are `'self'` (+ MathJax). `browser.sentry-cdn.com` and `*.ingest.sentry.io` are **not** allow-listed. |
+| Client abort | `websocket_guard.js` stubs `window.Sentry`, strips Sentry/Razorpay/Sardine tags, and rejects `fetch` / XHR / `sendBeacon` / WebSocket to `*.sentry.io` / `*.sentry-cdn.com` / `/api/{id}/envelope`. |
+| LMS-origin envelope | URI `/api/{digits}/envelope` or `sentry_key=` / `sentry_client=` → **HTTP 404**. Nginx: `.ddev/nginx/sentry-envelope-404.conf`. Apache: `.htaccess`. |
 
-## Evidence for auditors
+## Retest on LMS (not on `api.razorpay.com`)
 
-| Check | Result |
-|-------|--------|
-| LMS packages include Sentry | No |
-| Theme / payment AMD loads Sentry | No |
-| PoC Origin/Referer | `api.razorpay.com` (third-party) |
+1. LMS page source / Network: **no** `sentry.javascript.browser`, **no** `ingest.sentry.io`, **no** `7.64.0`.
+2. From LMS origin, a request to `…/envelope/?sentry_key=…` or `/api/{id}/envelope` → **404**.
+3. CSP `connect-src` does not include `sentry.io`.
+4. Pay Now → browser leaves LMS for a Razorpay Payment Link URL (no Checkout.js on LMS).
 
-**Reply:** Finding is out of scope for IIIDEM LMS. Escalate to Razorpay if a current Checkout SDK is required; no LMS code change applies.
+A capture that still shows **7.64.0** with `Origin: https://api.razorpay.com` is Razorpay’s hosted UI. Escalate “update Sentry Browser SDK” to Razorpay Support.
+
+## Deploy
+
+```bash
+php admin/cli/upgrade.php --non-interactive
+php admin/cli/purge_caches.php
+```
+
+DDEV: `ddev restart` so nginx loads `sentry-envelope-404.conf`. Staging Tengine: include `docs/snippets/nginx-sentry-envelope-404.conf`.

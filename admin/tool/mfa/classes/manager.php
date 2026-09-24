@@ -699,12 +699,18 @@ class manager {
                 // Call resolve_status to instantly pass if no redirect is required.
                 self::resolve_mfa_status(true);
             } else if ($redir == self::REDIRECT_EXCEPTION) {
-                if (!empty($SESSION->mfa_redir_referer)) {
-                    throw new \moodle_exception('redirecterrordetected', 'tool_mfa',
-                        $SESSION->mfa_redir_referer, $SESSION->mfa_redir_referer);
-                } else {
-                    throw new \moodle_exception('redirecterrordetected', 'error');
+                // Rapid OTP / redirect-loop: do not throw HTTP 500 on the MFA page (CDAC CWE-703).
+                // AJAX/WS during MFA must NOT log the user out — that cancelled the OTP email
+                // (core returns REDIRECT_EXCEPTION for AJAX_SCRIPT while the session is still pending MFA).
+                if ((defined('AJAX_SCRIPT') && AJAX_SCRIPT) || (defined('WS_SERVER') && WS_SERVER)) {
+                    throw new \moodle_exception('sessionerroruser', 'error');
                 }
+                unset($SESSION->mfa_redir_referer, $SESSION->mfa_redir_count, $SESSION->mfa_pending);
+                require_logout();
+                if (!headers_sent()) {
+                    redirect(new \moodle_url('/login/index.php'), get_string('sessionerroruser', 'error'), 0, \core\output\notification::NOTIFY_ERROR);
+                }
+                return;
             }
         }
     }

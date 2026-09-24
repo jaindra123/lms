@@ -2290,12 +2290,14 @@ function calendar_view_event_allowed(calendar_event $event) {
         }
         return isloggedin() && !isguestuser();
     } else if (!empty($event->courseid)) {
-        // If it is a course event we need to be able to manage events in the course, or be in the course.
+        // Course events: managers, or enrolled in that course (not merely can_access_course /
+        // visible-catalogue). Blocks eventid tampering into another course's calendar.
         if (has_capability('moodle/calendar:manageentries', $event->context)) {
             return true;
         }
 
-        return can_access_course(get_course($event->courseid));
+        $mycourses = enrol_get_my_courses('id');
+        return isset($mycourses[$event->courseid]);
     } else if ($event->userid) {
         // Personal user events: owner or calendar managers only (blocks peer IDOR).
         return calendar_can_manage_user_event($event);

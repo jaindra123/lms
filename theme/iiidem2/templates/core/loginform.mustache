@@ -40,6 +40,7 @@
                 {{! CDAC #27: no paste / drag-drop / autocomplete on credentials }}
                 <input type="text" name="username" id="username" class="form-control iiidem-loginform__input"
                        value="{{username}}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                       data-lpignore="true" data-1p-ignore="true" data-form-type="other"
                        onpaste="return false;" ondrop="return false;" ondragover="return false;"
                        placeholder="{{^canloginbyemail}}{{#cleanstr}}username{{/cleanstr}}{{/canloginbyemail}}{{#canloginbyemail}}{{#cleanstr}}usernameemail{{/cleanstr}}{{/canloginbyemail}}">
             </div>
@@ -51,6 +52,7 @@
                            class="form-control iiidem-loginform__input"
                            placeholder="{{#cleanstr}}password{{/cleanstr}}"
                            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                           data-lpignore="true" data-1p-ignore="true" data-form-type="other"
                            onpaste="return false;" ondrop="return false;" ondragover="return false;">
                     <button type="button"
                             class="iiidem-loginform__password-toggle"
@@ -79,21 +81,6 @@
             </div>
         </form>
     {{/showloginform}}
-
-    {{#hasidentityproviders}}
-        <div class="iiidem-loginform__divider" role="separator"></div>
-        <div class="login-identityproviders iiidem-loginform__idps">
-            <h2 class="iiidem-loginform__section-title">{{#str}} potentialidps, auth {{/str}}</h2>
-            {{#identityproviders}}
-                <a class="btn login-identityprovider-btn iiidem-loginform__idp-btn" href="{{url}}">
-                    {{#iconurl}}
-                        <img src="{{iconurl}}" alt="" width="24" height="24"/>
-                    {{/iconurl}}
-                    {{name}}
-                </a>
-            {{/identityproviders}}
-        </div>
-    {{/hasidentityproviders}}
 
     {{#hasinstructions}}
         <div class="iiidem-loginform__divider" role="separator"></div>

@@ -286,7 +286,7 @@ function install_print_help_page($help) {
     global $CFG, $OUTPUT; //TODO: MUST NOT USE $OUTPUT HERE!!!
 
     @header('Content-Type: text/html; charset=UTF-8');
-    @header('X-UA-Compatible: IE=edge');
+    @header_remove('X-UA-Compatible');
     @header('Cache-Control: no-store, no-cache, must-revalidate');
     @header('Cache-Control: post-check=0, pre-check=0', false);
     @header('Pragma: no-cache');
@@ -331,7 +331,7 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
     global $CFG;
 
     @header('Content-Type: text/html; charset=UTF-8');
-    @header('X-UA-Compatible: IE=edge');
+    @header_remove('X-UA-Compatible');
     @header('Cache-Control: no-store, no-cache, must-revalidate');
     @header('Cache-Control: post-check=0, pre-check=0', false);
     @header('Pragma: no-cache');

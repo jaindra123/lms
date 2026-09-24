@@ -30,11 +30,12 @@ Shared helper: `theme/iiidem2/classes/rate_limit.php`
 | `certificate/download.php` | user | 10 / min |
 | `local/iiidem_support/api.php` | user | 30 / min |
 | `local/iiidem_livequiz/api.php` | user | poll 40 / min; submit 10 / min |
-| Razorpay checkout | user + IP | 5 / 10 min / user; 20 / hour / IP |
+| Razorpay checkout | user + IP | 3 / 10 min / user; 5 / 10 min / IP; 8 / hour / IP |
+| LMS `prefill/encrypt` path | IP / any | **429** (API is not hosted here) |
 | Razorpay verify / failure report | user | 20 / 10 min; 5 / 15 min |
 | PNB / ICICI checkout | user | 5 / 10 min |
 | Private files / user draft uploads | user | 40 / 10 min; 120 / hour |
-| Login POST `/login/index.php` | IP | 20 / 5 min; 60 / hour (+ account lockout) |
+| Login POST `/login/index.php` | IP | 10 / 5 min; 30 / hour (+ account lockout + CAPTCHA) |
 | Support ticket create (`ticket_new` / `create_ticket`) | user + IP | 5 / 10 min + 20 / day / user; 10 / 10 min + 30 / hour / IP; form POST 10 / min |
 | Support ticket list (GET) | user | 60 / min |
 | Support ticket list (POST flood) | user | 10 / min; 40 / hour |

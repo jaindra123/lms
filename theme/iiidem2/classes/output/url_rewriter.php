@@ -66,9 +66,27 @@ class url_rewriter implements \core\output\url_rewriter {
             return $url;
         }
 
+        // Staging Apache: /admin/search (no .php) is Forbidden — admin has many
+        // script+directory pairs and extensionless rewrite often does not run.
+        if (str_starts_with($path, '/admin/')) {
+            return $url;
+        }
+
         // tool_mfa compares $ME / PAGE URL to auth.php — keep .php or redirect loops.
         if ($path === '/admin/tool/mfa/auth.php'
                 || str_ends_with($path, '/admin/tool/mfa/auth.php')) {
+            return $url;
+        }
+
+        // POSTed onboarding form must keep .php + query (type=slmt).
+        if ($path === '/local/iiidem_onboard/onboard.php'
+                || str_ends_with($path, '/local/iiidem_onboard/onboard.php')) {
+            return $url;
+        }
+        if ($path === '/local/ecinet/calendar/edit.php'
+                || str_ends_with($path, '/local/ecinet/calendar/edit.php')
+                || $path === '/local/ecinet/quiz/edit.php'
+                || str_ends_with($path, '/local/ecinet/quiz/edit.php')) {
             return $url;
         }
 
@@ -91,9 +109,10 @@ class url_rewriter implements \core\output\url_rewriter {
             return $url;
         }
 
-        // /login/index.php → /login (before is_dir keep-.php; login/ is a real dir).
+        // Keep /login/index.php. /login is a real directory; Apache DirectorySlash
+        // 301s POST /login → GET /login/ and browsers drop the password (no OTP).
         if ($path === '/login/index.php' || $cleanpath === '/login/index') {
-            $cleanpath = '/login';
+            return $url;
         } else if (preg_match('#^(.*)/index$#', $cleanpath, $m)) {
             $dir = ($m[1] === '') ? '/' : $m[1];
             if (!empty($CFG->dirroot) && is_dir($CFG->dirroot . $dir)) {

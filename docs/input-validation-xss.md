@@ -6,65 +6,53 @@
 |-------|--------|
 | Impact | MEDIUM / CVSS ~4.3 |
 | CWE | [CWE-20](https://cwe.mitre.org/data/definitions/20.html) / [CWE-79](https://cwe.mitre.org/data/definitions/79.html) |
-| URLs | `/contact-us/`, `/course/index.php`, `/course/management.php`, `/register/`, messaging, dashboard search |
+| URLs | `/contact-us/`, `/course/index.php?categoryid=8`, `/register/`, dashboard message search, `/message/index.php` |
 | Host | `staginglms.eci.gov.in` |
 
-> Validate all input fields (range/length, allow-lists, anchored regex). Encode if returned in the response.
+> Validate all input fields. Encode if returned in the response.
 
-## PoC → control (2026-09 retest)
+Retest (2026-09) still showed:
 
-| Instance | Payload | Expected after theme ≥ `2024101043` |
-|----------|---------|--------------------------------------|
-| **1** Contact Message | `<script>alert(1)</script>` | **Rejected** — `err_xss`; **no** “Thank you” |
-| **1** Contact Subject | `@#$$$$$$$$$$$` | **Rejected** — must contain a letter or digit |
-| **2** Course / category search | `@#$$$$$$$!` | Scrubbed to empty (no alnum); management + index covered |
-| **3** Register names / city / university | `<script>…` | `err_xss`; cannot create account |
-| Messaging special chars `@#$…` | **Not XSS** — chat may contain punctuation; preview uses `textContent` |
-| Message search SQLi-style | Treated as plain text search token; no SQL concat; punctuation-only cleared |
-| **Course curriculum summary** | Stored `<script>…` scrubbed on output (theme ≥ `2024101031`) |
+| Instance | What they typed | Misleading UI |
+|----------|-----------------|---------------|
+| **1** Contact | Subject `@#$$$$$$$$$$`, Message `<script>alert(1)</script>` | Green ticks + leftover **Thank you** while junk stayed in the fields |
+| **2** Category search | `@#$$$$$$$$$$$$$` | Value stayed in the search box |
+| **3** Register | `<script>alert(1)</script>` in name / email / city / university | Payload visible in the inputs |
+| **5** Dashboard message drawer | `{base},(select*from(select(sleep…` | Probe stayed in the search box and was sent to `core_message_*` (PARAM_RAW) |
+| **6** `/message/index.php` | `@#$…{base},(select*from(select(sleep(2())a)` | Same — payload stayed; “No results” still reflected the query |
+| **My Courses** `/my/courses.php` | `(base}" xmlns:xsi="{base}" xmlns:xsi="…` | Probe stayed in Course overview search and was sent as AJAX `searchvalue` |
 
-### Why staging PoCs still showed “Thank you”
+Typing a script into a field is **not** XSS until it is stored or reflected. The retest looked “accepted” because (a) the contact page marked any non-empty field with a green tick, (b) a previous real send could leave **Thank you**, (c) failed submits reflected the payload, (d) **`form_input_guard.js` never ran on register First name** — `input.matches('form.mform input[type="text"]')` is always false, so `<script>alert('test')</script>` stayed visible while typing.
 
-1. **Stale deploy** — older theme still on staging.
-2. **Misleading UI** — success banner is **session one-shot** after a *prior* valid send; browser can keep XSS typed in fields without a successful XSS submit.
-3. **Old bug** — blanking `$_POST` XSS to `''` before validation hid `err_xss` (looked like “required” / confusing retest). **Removed** in `2024101043`.
+## Fix (theme_iiidem2 2024101097)
 
-Typing a script into a field is **not** proof of XSS. Execution requires unsafe HTML reflection. Submit with markup must show `err_xss` / fail HTML5 validation.
+| Control | Behaviour |
+|---------|-----------|
+| Register `validation()` | Rejects raw `$_POST` markup; names must match `is_safe_person_name()`; rejected fields **blanked** |
+| `form_input_guard.js` | Watches the input via `closest('form.mform')` / `data-iiidem-no-markup`. **`beforeinput` / `keydown` block `<` `>`**. Paste of markup is discarded. Value is cleared if markup appears. |
+| Name fields | `data-iiidem-no-markup="1"` on first/middle/last name, city, occupation lines |
 
-## Implementation
+Instance 5–6 are **not** SQL injection in Moodle’s message search (the value is bound as a `LIKE` parameter). The scanner still flagged them because the SQL-style token was kept in the box and echoed in the AJAX `search` argument.
 
-| Layer | Detail |
-|-------|--------|
-| Detect | `input_validation::contains_dangerous_markup()` (tags, `javascript:`, `alert(`) |
-| Names | `is_safe_person_name()` — Unicode letters + `'` `-` `.` only |
-| Plain fields | `is_safe_plain_line()` + `has_alnum_content()` |
-| Contact / register | Server `validation()` on **raw** `$_POST` + HTML `pattern="[^<>\"']+"` |
-| Search | Hook scrubs `search`/`q`/`query`/`keywords` on `/course/*` (incl. **management**), message, user; `PARAM_TEXT` on `course/management.php` + `course/search.php` |
-| Client | `form_input_guard.js` — marks invalid; clears markup / punctuation-only search |
-| Output | `s()` / `format_string` / `json_encode_safe` — no raw echo |
+## Fix (theme_iiidem2 2024101066 + 2024101067)
 
-## Deploy
+| Control | Behaviour |
+|---------|-----------|
+| Contact / register `validation()` | Rejects raw `$_POST` markup and punctuation-only text |
+| No reflection | Rejected fields are **blanked** in the HTML response (`redact_rejected_fields`) |
+| Contact success banner | Only after a real send + redirect; **cleared** on any new submit |
+| Contact green ticks | Only for real text — not `<script>` / `@#$$$` |
+| Client `form_input_guard.js` | Clears markup, symbol-only text, and SQL-scanner fragments (`{base}`, `select…from`, `sleep(`) |
+| Category search | `sanitize_keyword_token()` empties non-alnum `search=` and scanner fragments |
+| Message search (5–6) | Drawer/index search boxes **cleared**; AJAX `search` arg stripped; `core_message_*` returns empty hits (never `LIKE '%%'`) |
 
-Ship at least:
+## Verify after deploy (hard-refresh)
 
-- `contact-us/index.php`
-- `register/index.php`
-- `course/management.php`, `course/search.php`
-- `theme/iiidem2/` (forms, `input_validation.php`, `hook_listener.php`, `form_input_guard.js`, version/upgrade)
+1. Contact — Message `<script>alert(1)</script>` → field cleared / `err_xss`; **no** Thank you; **no** alert dialog  
+2. Contact — Subject `@#$$$` → rejected (`err_plaintextrequired`); no Thank you  
+3. `/course/index.php?categoryid=8` search `@#$$$` → box empties; submit does not keep the junk  
+4. `/register/` script in First name / City / University / email → `err_xss`; fields blank; **no account**  
+5. Dashboard message drawer — paste `{base},(select*from(select(sleep(2())a)` → box **empties**; no AJAX search with that token  
+7. `/my/courses.php` — paste `(base}" xmlns:xsi="{base}"` in Course overview search → box **empties**; AJAX `searchvalue` must not keep the probe  
 
-```bash
-php admin/cli/upgrade.php --non-interactive
-php admin/cli/purge_caches.php
-```
-
-Theme ≥ **`2024101043`**. Hard-refresh after deploy.
-
-## Verify
-
-1. Contact — Message `<script>alert(1)</script>` → `err_xss`; no alert dialog; no Thank you  
-2. Contact — Subject `@#$$$` → rejected  
-3. `/course/management.php` or category search `@#$$$` → query emptied / no results; no crash  
-4. `/register/` script in First name / City / University → `err_xss`; no account  
-5. Messaging punctuation-only message → allowed (not a finding)
-
-Related: [input-validation.md](input-validation.md), [input-returned-in-response.md](input-returned-in-response.md).
+Theme ≥ **`2024101103`**. HTML `pattern` is `[^<>\x22\x27]+` so Chrome’s unicodeSets `v` flag no longer rejects `\"` and block register submit. Related: [input-validation.md](input-validation.md), [json-xml-injection-section.md](json-xml-injection-section.md).

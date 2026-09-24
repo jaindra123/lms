@@ -138,7 +138,70 @@ final class input_validation {
         if (preg_match('/<\/?\s*(?:script|iframe|object|embed|svg|math|link|meta|base)\b/i', $value)) {
             return true;
         }
+        if (self::contains_structured_injection($value)) {
+            return true;
+        }
         return false;
+    }
+
+    /**
+     * JSON / XML / attribute-injection scanner fragments (CDAC contact Intruder).
+     * Example: {base}" a="  and xmlns / CDATA / percent-encoded twins.
+     */
+    public static function contains_structured_injection(string $value): bool {
+        if ($value === '') {
+            return false;
+        }
+        $candidates = [$value];
+        $decoded = rawurldecode(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($decoded !== $value) {
+            $candidates[] = $decoded;
+        }
+        foreach ($candidates as $v) {
+            $lower = strtolower($v);
+            if (str_contains($lower, '{base}') || str_contains($lower, '{select}')
+                    || str_contains($lower, '(base}') || str_contains($lower, '(select}')) {
+                return true;
+            }
+            if (str_contains($lower, '%7bbase%7d') || str_contains($lower, '%7bselect%7d')
+                    || str_contains($lower, '%28base%7d') || str_contains($lower, '%28select%7d')) {
+                return true;
+            }
+            if (preg_match('/[{}\[\]]/', $v)) {
+                return true;
+            }
+            if (preg_match('/xmlns\s*:/i', $v) || preg_match('/<!\[CDATA\[|<!--|-->|<\?xml|<!DOCTYPE/i', $v)) {
+                return true;
+            }
+            // Attribute breakout:  a="  or  x="1
+            if (preg_match('/\s+[a-zA-Z_:][\w:.-]*\s*=\s*["\']/', $v)) {
+                return true;
+            }
+            if (preg_match('/["\']\s*,\s*["\'][a-z0-9_]+["\']\s*:/i', $v)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Well-formed JSON object/array with no HTML. Used by report builder table
+     * filters; Intruder fragments like {base} are not valid JSON and stay rejected.
+     */
+    public static function is_plain_json_document(string $value): bool {
+        $value = trim($value);
+        if ($value === '') {
+            return false;
+        }
+        $start = $value[0];
+        if ($start !== '{' && $start !== '[') {
+            return false;
+        }
+        if (str_contains($value, '<') || str_contains($value, '>')) {
+            return false;
+        }
+        $decoded = json_decode($value, true);
+        return is_array($decoded) && json_last_error() === JSON_ERROR_NONE;
     }
 
     /**
@@ -174,7 +237,8 @@ final class input_validation {
         if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value)) {
             return false;
         }
-        return true;
+        // Punctuation-only probes (@#$$$) are not valid text.
+        return self::has_alnum_content($value);
     }
 
     /**
@@ -367,6 +431,34 @@ final class input_validation {
     }
 
     /**
+     * SQLi / scanner fragments used in message and course search boxes (CDAC Instance 5–6).
+     * Does not block a normal word like "select" or "sleep" on its own.
+     */
+    public static function contains_search_probe(string $value): bool {
+        $v = strtolower($value);
+        if ($v === '') {
+            return false;
+        }
+        if (self::contains_structured_injection($value)) {
+            return true;
+        }
+        if (str_contains($v, '{base}') || str_contains($v, '{select}')
+                || str_contains($v, '(base}') || str_contains($v, '(select}')) {
+            return true;
+        }
+        if (preg_match('/sleep\s*\(|pg_sleep\s*\(|benchmark\s*\(|waitfor\s+delay/i', $value)) {
+            return true;
+        }
+        if (preg_match('/\(\s*select\b|\bselect\s*\*?\s*from\b|\bunion\s+select\b/i', $value)) {
+            return true;
+        }
+        if (preg_match('/information_schema|sys\.tables|into\s+outfile|load_file\s*\(/i', $value)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Keyword / filter token for participants and search (allow-list style).
      * Rejects markup and XSS probes entirely (does not strip-then-keep "alert(1)").
      */
@@ -374,6 +466,12 @@ final class input_validation {
         $raw = trim($value);
         if ($raw === '') {
             return '';
+        }
+        // Report builder / dynamic tables persist JSON in string filters.
+        // Brace rejection is for Intruder fragments like {base}" a=" — not
+        // well-formed objects such as {"withcheckboxes":true}.
+        if (self::is_plain_json_document($raw)) {
+            return $raw;
         }
         if (str_contains($raw, '<') || str_contains($raw, '>')
                 || self::contains_dangerous_markup($raw)) {
@@ -385,12 +483,49 @@ final class input_validation {
             return '';
         }
         if (self::contains_dangerous_markup($clean)
-                || preg_match('/(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i', $clean)) {
+                || preg_match('/(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i', $clean)
+                || self::contains_search_probe($raw)
+                || self::contains_search_probe($clean)) {
             return '';
         }
         if (\core_text::strlen($clean) > 200) {
             $clean = \core_text::substr($clean, 0, 200);
         }
         return $clean;
+    }
+
+    /**
+     * Blank rejected fields so XSS / junk is not reflected in the HTML response.
+     *
+     * @param \MoodleQuickForm $mform
+     * @param array $errors
+     */
+    public static function redact_rejected_fields($mform, array $errors): void {
+        foreach (array_keys($errors) as $field) {
+            if (!is_string($field) || $field === '') {
+                continue;
+            }
+            if (isset($_POST[$field]) && is_string($_POST[$field])) {
+                $_POST[$field] = '';
+            }
+            if (isset($_REQUEST[$field]) && is_string($_REQUEST[$field])) {
+                $_REQUEST[$field] = '';
+            }
+            if (isset($mform->_submitValues) && is_array($mform->_submitValues)
+                    && array_key_exists($field, $mform->_submitValues)) {
+                $mform->_submitValues[$field] = '';
+            }
+            try {
+                if (method_exists($mform, 'elementExists') && $mform->elementExists($field)) {
+                    $mform->setConstant($field, '');
+                    $el = $mform->getElement($field);
+                    if (is_object($el) && method_exists($el, 'setValue')) {
+                        $el->setValue('');
+                    }
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
     }
 }

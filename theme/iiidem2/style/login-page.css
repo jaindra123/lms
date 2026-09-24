@@ -247,6 +247,14 @@ body.iiidem-login-page #page-content {
     margin-bottom: 1.1rem;
 }
 
+.iiidem-login-captcha {
+    margin-bottom: 1.1rem;
+}
+
+.iiidem-loginform__recaptcha .iiidem-login-captcha {
+    margin-bottom: 0;
+}
+
 .iiidem-loginform__label {
     display: block;
     margin-bottom: 0.4rem;
@@ -476,4 +484,11 @@ body.iiidem-login-page #page-content {
     .iiidem-login-layout__title {
         font-size: 1.2rem;
     }
+}
+
+/* No SSO / identity-provider buttons on login (ECINET test). */
+.login-identityproviders,
+.iiidem-loginform__idps,
+.potentialidps {
+    display: none !important;
 }

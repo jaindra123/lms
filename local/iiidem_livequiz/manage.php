@@ -343,7 +343,6 @@ if ($status === manager::STATUS_ACTIVE || $status === manager::STATUS_CLOSED) {
             'id' => 'iiidem-livequiz-manage-data',
             'data-sessionid' => $sessionid,
             'data-apiurl' => (new moodle_url('/local/iiidem_livequiz/api.php'))->out(false),
-            'data-sesskey' => sesskey(),
             'data-submittedlabel' => get_string('submittedcount', 'local_iiidem_livequiz', '__COUNT__'),
         ]);
     }

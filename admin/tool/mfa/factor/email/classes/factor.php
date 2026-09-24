@@ -33,6 +33,9 @@ class factor extends object_factor_base {
     /** @var string Factor icon */
     protected $icon = 'fa-envelope';
 
+    /** @var bool True after this PHP request has already mailed the login OTP. */
+    private static bool $otpmailedthisrequest = false;
+
     /**
      * E-Mail Factor implementation.
      *
@@ -173,10 +176,27 @@ class factor extends object_factor_base {
     /**
      * Generates and emails the code for login to the user, stores codes in DB.
      *
+     * Send at most once per login. Moodle builds this form more than once
+     * (definition_after_data + render, testsession redirect, HTTP then HTTPS),
+     * which previously mailed the same 6-digit code twice.
+     *
      * @return void
      */
     private function generate_and_email_code(): void {
-        global $DB, $USER;
+        global $DB, $SESSION, $USER;
+
+        if (self::$otpmailedthisrequest) {
+            return;
+        }
+        if (!empty($SESSION->tool_mfa_email_otp_sent)) {
+            self::$otpmailedthisrequest = true;
+            return;
+        }
+        if (self::otp_recently_mailed((int) $USER->id)) {
+            $SESSION->tool_mfa_email_otp_sent = 1;
+            self::$otpmailedthisrequest = true;
+            return;
+        }
 
         // Get instance that isnt parent email type (label check).
         // This check must exclude the main singleton record, with the label as the email.
@@ -185,41 +205,87 @@ class factor extends object_factor_base {
                   FROM {tool_mfa}
                  WHERE userid = ?
                    AND factor = ?
-               AND NOT label = ?';
+               AND NOT label = ?
+              ORDER BY timecreated DESC';
 
-        $record = $DB->get_record_sql($sql, [$USER->id, 'email', $USER->email]);
+        $records = $DB->get_records_sql($sql, [$USER->id, 'email', $USER->email], 0, 1);
+        $record = $records ? reset($records) : false;
         $duration = get_config('factor_email', 'duration');
         $newcode = random_int(100000, 999999);
 
         if (empty($record)) {
-            // No code active, generate new code.
             $instanceid = $DB->insert_record('tool_mfa', [
                 'userid' => $USER->id,
                 'factor' => 'email',
                 'secret' => $newcode,
-                'label' => $_SERVER['HTTP_USER_AGENT'],
+                'label' => $_SERVER['HTTP_USER_AGENT'] ?? '',
                 'timecreated' => time(),
                 'createdfromip' => $USER->lastip,
                 'timemodified' => time(),
                 'lastverified' => time(),
                 'revoked' => 0,
             ], true);
-            $this->email_verification_code($instanceid);
-        } else if ($record->timecreated + $duration < time()) {
-            // Old code found. Keep id, update fields.
+            self::mark_otp_mailed((int) $USER->id);
+            $this->email_verification_code((int) $instanceid);
+            return;
+        }
+
+        if ($record->timecreated + $duration < time()) {
             $DB->update_record('tool_mfa', [
                 'id' => $record->id,
                 'secret' => $newcode,
-                'label' => $_SERVER['HTTP_USER_AGENT'],
+                'label' => $_SERVER['HTTP_USER_AGENT'] ?? '',
                 'timecreated' => time(),
                 'createdfromip' => $USER->lastip,
                 'timemodified' => time(),
                 'lastverified' => time(),
                 'revoked' => 0,
             ]);
-            $instanceid = $record->id;
-            $this->email_verification_code($instanceid);
+            self::mark_otp_mailed((int) $USER->id);
+            $this->email_verification_code((int) $record->id);
+            return;
         }
+
+        // Unexpired secret from this duration window: do not mint a second code.
+        // A brand-new browser session (second login) still gets one copy.
+        self::mark_otp_mailed((int) $USER->id);
+        $this->email_verification_code((int) $record->id);
+    }
+
+    /**
+     * Application-cache debounce so HTTP + HTTPS (two cookies) cannot send twice.
+     */
+    private static function otp_recently_mailed(int $userid): bool {
+        if ($userid <= 0) {
+            return false;
+        }
+        $cache = \cache::make_from_params(
+            \cache_store::MODE_APPLICATION,
+            'factor_email',
+            'otpsend',
+            ['simplekeys' => true, 'simpledata' => true]
+        );
+        $last = (int) $cache->get('u' . $userid);
+        return $last > 0 && (time() - $last) < 120;
+    }
+
+    /**
+     * Remember that this login already received the email OTP.
+     */
+    private static function mark_otp_mailed(int $userid): void {
+        global $SESSION;
+        self::$otpmailedthisrequest = true;
+        $SESSION->tool_mfa_email_otp_sent = 1;
+        if ($userid <= 0) {
+            return;
+        }
+        $cache = \cache::make_from_params(
+            \cache_store::MODE_APPLICATION,
+            'factor_email',
+            'otpsend',
+            ['simplekeys' => true, 'simpledata' => true]
+        );
+        $cache->set('u' . $userid, time());
     }
 
     /**
@@ -239,8 +305,13 @@ class factor extends object_factor_base {
                   FROM {tool_mfa}
                  WHERE userid = ?
                    AND factor = ?
-               AND NOT label = ?';
-        $record = $DB->get_record_sql($sql, [$USER->id, 'email', $USER->email]);
+               AND NOT label = ?
+              ORDER BY timecreated DESC';
+        $records = $DB->get_records_sql($sql, [$USER->id, 'email', $USER->email], 0, 1);
+        $record = $records ? reset($records) : false;
+        if (empty($record)) {
+            return false;
+        }
 
         if ($enteredcode == $record->secret) {
             if ($record->timecreated + $duration > time()) {
@@ -256,12 +327,14 @@ class factor extends object_factor_base {
      * {@inheritDoc}
      */
     public function post_pass_state(): void {
-        global $DB, $USER;
+        global $DB, $SESSION, $USER;
         // Delete all email records except base record.
         $selectsql = 'userid = ?
                   AND factor = ?
               AND NOT label = ?';
         $DB->delete_records_select('tool_mfa', $selectsql, [$USER->id, 'email', $USER->email]);
+
+        unset($SESSION->tool_mfa_email_otp_sent);
 
         // Update factor timeverified.
         parent::post_pass_state();

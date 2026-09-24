@@ -80,15 +80,15 @@ if ($isfrontpage) {
     if (is_siteadmin()) {
         redirect(new moodle_url('/admin/user.php'));
     }
-    throw new \moodle_exception('nopermissions', 'error', new moodle_url('/'), get_string('participants'));
+    redirect(new moodle_url('/'));
 }
 
 $PAGE->set_pagelayout('incourse');
 course_require_view_participants($context);
 
 // CDAC #18 / #31: students must not open the peer roster (names/emails).
-// Deny here — before any HTML — so Moodle does not fall into early_error (HTTP 500)
-// when the same check runs from before_http_headers mid-header.
+// Redirect — never throw. A throw here (or from before_http_headers) becomes
+// early_error HTTP 500 when debugdisplay is on (CWE-209 scanner finding).
 if (!is_siteadmin() && !has_any_capability([
     'moodle/course:update',
     'moodle/course:viewhiddenuserfields',
@@ -97,12 +97,7 @@ if (!is_siteadmin() && !has_any_capability([
     'moodle/role:assign',
     'enrol/manual:enrol',
 ], $context)) {
-    throw new \moodle_exception(
-        'nopermissions',
-        'error',
-        new moodle_url('/course/view.php', ['id' => $course->id]),
-        get_string('participants')
-    );
+    redirect(new moodle_url('/course/view.php', ['id' => $course->id]));
 }
 
 // Trigger events.

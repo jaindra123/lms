@@ -123,6 +123,8 @@ $string['loginbrandpanel'] = 'About IIIDEM';
 $string['logintagline'] = 'Learn. Certify. Lead with confidence.';
 $string['loginwelcome'] = 'Welcome back';
 $string['loginsubtitle'] = 'Sign in to access your courses and certifications';
+$string['logincaptchalabel'] = 'Security check: what is {$a->a} + {$a->b}?';
+$string['logincaptchafailed'] = 'Security check failed. Please solve the challenge and try again.';
 $string['frontpagectaguest'] = 'Sign in to access your courses, live classes, and certificates.';
 $string['frontpagectaloggedin'] = 'Continue to your courses, live classes, and certificates.';
 $string['loginfeature1'] = 'Structured certification programs for election professionals';
@@ -552,7 +554,7 @@ $string['contactus_sendmessage'] = 'Send us a message';
 $string['contactussubmit'] = 'Send message';
 $string['contactusformsent'] = 'Thank you. Your message has been sent.';
 $string['contactusformerror'] = 'Your message could not be sent. Please try again or email us directly.';
-$string['err_xss'] = 'HTML, scripts, and similar markup are not allowed in this field.';
+$string['err_xss'] = 'HTML, scripts, JSON/XML fragments, and similar markup are not allowed in this field.';
 $string['err_plaintextrequired'] = 'Please enter meaningful text (not only symbols or script).';
 $string['contactusemailsubject'] = '[{$a->site}] Contact form: {$a->subject}';
 $string['contactusemailbody'] = 'Contact form submission from {$a->name} ({$a->email}).
@@ -731,6 +733,7 @@ $string['registerotpverified'] = 'Email verified successfully.';
 $string['registerotprequired'] = 'Please verify your email with the code we sent before creating your account.';
 $string['registerotploadingtitle'] = 'Verifying your email';
 $string['registerotploadingtext'] = 'Please wait while we verify your code and create your account…';
+$string['registerotptimeout'] = 'This is taking longer than expected. Please try again.';
 
 $string['registercreateaccount'] = 'Create account';
 $string['registerhaveaccount'] = 'Already have an account?';
@@ -888,6 +891,8 @@ $string['registerinstructorprofile'] = 'Instructor details';
 $string['registerpasswordheader'] = 'Password';
 $string['registerpasswordshouldbe'] = 'Password requirements';
 $string['registerpasswordsmustmatch'] = 'both should be Same';
+$string['registerpasswordnotuserid'] = 'The password must not be the same as your username or email address.';
+$string['registerpasswordpolicyfailed'] = 'The password does not meet the site password policy.';
 $string['registeremb'] = 'I am from an EMB';
 $string['registerembrequired'] = 'Please confirm that you are from an EMB.';
 $string['registerpolicymaker'] = 'Policymaker';
@@ -960,6 +965,7 @@ Course page: {$a->courseurl}
 Regards,
 {$a->sitename}';
 $string['tasksendliveclassreminders'] = 'Send live class reminder emails (1 hour before)';
+$string['tasksendregistrationemails'] = 'Send registration welcome emails';
 $string['assignnotify_opennow'] = 'Already open';
 $string['assignnotify_createdsubject'] = 'New assignment: {$a->assignmentname} (due {$a->duedate})';
 $string['assignnotify_updatedsubject'] = 'Assignment updated: {$a->assignmentname} (due {$a->duedate})';
@@ -1052,3 +1058,4 @@ $string['liveclassnotify_label_time'] = 'Date / time';
 $string['liveclassnotify_label_join'] = 'Join link';
 $string['liveclassnotify_label_meeting'] = 'Meeting number';
 $string['liveclassnotify_label_password'] = 'Password';
+$string['privateipmasked'] = 'Private address';

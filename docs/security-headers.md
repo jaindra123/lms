@@ -10,101 +10,85 @@
 | CWE | [CWE-693](https://cwe.mitre.org/data/definitions/693.html) — Protection Mechanism Failure |
 | OWASP | A05:2021 – Security Misconfiguration |
 
-> Implement CSP, nosniff, XSS filter, Referrer-Policy, ACAO, Clear-Site-Data. Also cited: misconfigured CSP / HSTS / missing Clear-Site-Data.
+> Implement CSP, nosniff, XSS filter, Referrer-Policy, ACAO, Clear-Site-Data. Also cited: misconfigured CSP / HSTS / missing Clear-Site-Data. Follow-up: **Cross-Origin Opener Policy Allows Cross-Origin Popups** (`COOP: same-origin-allow-popups`).
 
-### PoC note
+Auditor capture (login `/login/index.php`): `script-src` had `'unsafe-inline' 'unsafe-eval'`; HSTS was `max-age=31536000; includeSubDomains` **without** `preload`; no `Clear-Site-Data`. Retest still showed `Cross-Origin-Opener-Policy: same-origin-allow-popups` (that value keeps `window.opener` for cross-origin popups).
 
-Older captures showed **no** CSP/nosniff and exposed `X-Powered-By`. Current login responses already send CSP, HSTS, nosniff, XSS-Protection, Referrer-Policy, ACAO.
+## Fix (theme_iiidem2 2024101064)
 
-### Retest (2026-09) — `/login/index.php` DevTools
+| Claim | Fix |
+|-------|-----|
+| Misconfigured CSP (`'unsafe-inline'` on **script-src**) | Per-request **nonce** stamped on every `<script>` / `<style>`. `script-src` uses `'nonce-…' 'strict-dynamic'` — **no `'unsafe-inline'`** on script-src. |
+| `'unsafe-eval'` | **Kept** — Moodle RequireJS (`lib/requirejs/require.js`) still `eval()`s AMD modules. Removing it breaks login + the LMS UI. |
+| Inline `onclick=` handlers | `script-src-attr 'unsafe-inline'` (separate from script-src) |
+| Inline `style=` | `style-src` still allows `'unsafe-inline'` (Moodle templates) |
+| HSTS missing `preload` | `.htaccess` sends **one** `max-age=31536000; includeSubDomains; preload` (PHP does **not** emit HSTS — that duplicated Apache). |
+| Missing `Clear-Site-Data` on login GET | Login GET sends `Clear-Site-Data: "cache"` (header present; **does not** clear cookies). Logout still sends the full `"cache", "cookies", "storage", "executionContexts"`. |
 
-| Auditor claim | What staging showed | Verdict |
-|---------------|---------------------|---------|
-| Misconfigured CSP (`'unsafe-inline'` / `'unsafe-eval'`) | Present in `script-src` / `style-src` | **Dispute as “misconfigured”** — required for Moodle AMD/YUI/Mustache; policy still has `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`, host allow-lists, `upgrade-insecure-requests` |
-| Misconfigured HSTS (no `preload`) | `max-age=31536000; includeSubDomains` only | **Redeploy / fix edge** — app code already sends `; preload`. Align Apache snippet; remove older HSTS without preload |
-| Missing `Clear-Site-Data` on login GET | Absent on `/login/index.php` | **Expected** — header is on **logout** response only. Sending it on login would clear cookies and break sign-in |
-| `Server: Apache` | Present | Separate — [version-disclosure.md](version-disclosure.md) |
-| `service.php?sesskey=` | Still in Network list | Separate — [session-token-in-url.md](session-token-in-url.md) |
+### Why login Clear-Site-Data is cache-only
+
+`Clear-Site-Data: "cookies"` on `GET /login/index.php` would delete `MoodleSession` and break `logintoken`. Spec intent for cookies/storage is **sign-out**, which is `login/logout.php`.
+
+### Cross-Origin-Opener-Policy (theme_iiidem2 2024101085)
+
+`same-origin-allow-popups` was sent so Razorpay Checkout / Webex could keep `window.opener`. Payments now use a **top-level Payment Link** (`location.replace`), not a checkout popup, so COOP is **`same-origin`**. Cross-origin popups get a null opener (tabnabbing / opener access blocked).
+
+PHP: `theme/iiidem2/classes/security_headers.php`  
+Apache: `.htaccess` unsets then sets COOP (overrides a weaker vhost). Snippets: [apache-security-headers.conf](snippets/apache-security-headers.conf), [nginx-coop-same-origin.conf](snippets/nginx-coop-same-origin.conf).
 
 ## Implementation
 
 Helper: `theme/iiidem2/classes/security_headers.php`  
-Sent via `after_config` / `before_http_headers`. Logout Clear-Site-Data via `\core\event\user_loggedout` **and** explicit headers in `login/logout.php`.
+Sent via `after_config` / `before_http_headers`. Script nonces via HTML output buffer. Logout Clear-Site-Data via `\core\event\user_loggedout` **and** `login/logout.php`.
 
 ### Headers set
 
 | Header | Value |
 |--------|--------|
-| `Content-Security-Policy` | `default-src 'self'`; `object-src 'none'`; `frame-ancestors 'self'`; script/style allow Moodle + Razorpay + MathJax CDN; `form-action 'self' https:`; `upgrade-insecure-requests` |
+| `Content-Security-Policy` | `default-src 'self'`; `object-src 'none'`; `frame-ancestors 'self'`; **script-src nonce + strict-dynamic + unsafe-eval** (no script unsafe-inline); host allow-lists; `form-action 'self' https:`; `upgrade-insecure-requests` |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Access-Control-Allow-Origin` | Site origin from `$CFG->wwwroot` (not `*`) |
-| `X-Frame-Options` | `SAMEORIGIN` |
+| `X-Frame-Options` | `DENY` on `/`, login, register, MFA; `SAMEORIGIN` on course/H5P |
 | `Permissions-Policy` | Restrictive (payment=self) |
-| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` (HTTPS wwwroot) |
-| `Clear-Site-Data` | `"cache", "cookies", "storage", "executionContexts"` **on logout only** |
-
-### Why Clear-Site-Data is logout-only
-
-Sending it on `/login/index.php` (or every response) would wipe cookies/storage and break login. Spec intent = clear browser data when the user **signs out**.
-
-```http
-Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
-```
-
-**Retest:** Log in → Log out → capture **`/login/logout.php`** response headers — not the login page that follows.
-
-### Why CSP still has unsafe-inline / unsafe-eval
-
-Moodle core (AMD, Mustache, YUI) does not run without them in this version. The policy still blocks unexpected hosts (`object-src 'none'`, allow-listed CDNs). Nonce/`strict-dynamic` CSP is a Moodle-core migration, not a one-line fix.
-
-### HSTS `preload`
-
-App sends `preload`. If staging still omits it:
-
-1. Redeploy `theme/iiidem2/classes/security_headers.php` + purge caches  
-2. Apply [snippets/apache-security-headers.conf](snippets/apache-security-headers.conf) (includes `preload`)  
-3. Remove any older edge HSTS line **without** `preload`  
-
-`preload` in the header ≠ enrollment in the Chrome preload list — only keep the directive if ops accepts that commitment.
-
-### Optional Apache mirror
-
-[`docs/snippets/apache-security-headers.conf`](snippets/apache-security-headers.conf). Do **not** duplicate a conflicting CSP at the edge — PHP CSP is source of truth.
+| `Cross-Origin-Opener-Policy` | `same-origin` (not `same-origin-allow-popups`) |
+| `X-UA-Compatible` | **Not sent** (deprecated IE=edge removed) |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` (**once**, Apache `.htaccess` only) |
+| `Clear-Site-Data` | `"cache"` on anonymous login GET; full list **on logout** |
 
 ## Deploy
 
 ```bash
 php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
-# Ops: apache-security-headers.conf so HSTS includes preload
 ```
 
-Ship `login/logout.php` for Clear-Site-Data on logout. Theme **`iiidem2`** must be active.
+Theme **iiidem2** must be active. Staging Apache: `.htaccess` unsets both HSTS tables then sets **one** HSTS with `preload`, and COOP `same-origin` (needs `mod_headers`). If a vhost still sends `Cross-Origin-Opener-Policy: same-origin-allow-popups`, replace it with [snippets/apache-security-headers.conf](snippets/apache-security-headers.conf). Do **not** add a second CSP or a second HSTS at the edge. Duplicate HSTS: [duplicate-security-headers.md](duplicate-security-headers.md).
 
-### Verify
+## Verify (after deploy)
 
 ```bash
 curl -sI https://staginglms.eci.gov.in/login/index.php | grep -iE \
-  'content-security-policy|strict-transport|clear-site-data|x-powered-by'
+  'content-security-policy|strict-transport|clear-site-data|cross-origin-opener|x-ua-compatible'
 
-# Expect: CSP present; HSTS with preload; NO Clear-Site-Data on login GET
+# Expect:
+# Content-Security-Policy: … script-src 'self' 'nonce-…' 'strict-dynamic' 'unsafe-eval' …
+#   (no 'unsafe-inline' on script-src)
+# Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+#   (exactly one line — see duplicate-security-headers.md)
+# Cross-Origin-Opener-Policy: same-origin
+# Clear-Site-Data: "cache"
+# (no X-UA-Compatible line)
+
+curl -sI https://staginglms.eci.gov.in/ | grep -ci '^strict-transport-security:'
+# Expect: 1
 
 curl -sI -X POST 'https://staginglms.eci.gov.in/login/logout.php' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -b 'MoodleSession=YOUR_SESSION' \
   --data 'sesskey=YOUR_SESSKEY&loginpage=1'
 # Expect: Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
-# Expect: Strict-Transport-Security: ... preload
 ```
 
-## Evidence for auditors
-
-| Requirement | Implementation |
-|-------------|----------------|
-| CSP present | Yes — allow-list; Moodle needs limited unsafe-inline/eval |
-| nosniff / XSS / Referrer / ACAO | Set |
-| HSTS | `max-age=31536000; includeSubDomains; preload` |
-| Clear-Site-Data | Logout response only — not login GET |
+Retest login in DevTools: form still submits; password field crypto still runs; no CSP errors for theme scripts.

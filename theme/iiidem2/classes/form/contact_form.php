@@ -29,10 +29,10 @@ class contact_form extends \moodleform {
 
         $mform = $this->_form;
 
-        // pattern rejects < > " ' so XSS probes fail HTML5 validation (no green tick).
+        // Rejects < > " '. Hex escapes stay valid under Chrome's pattern `v` flag.
         $plainattrs = [
             'maxlength' => 100,
-            'pattern' => '[^<>\"\']+',
+            'pattern' => register_form::NOXSS_PATTERN,
             'title' => get_string('err_xss', 'theme_iiidem2'),
             'autocomplete' => 'name',
         ];
@@ -51,7 +51,7 @@ class contact_form extends \moodleform {
 
         $mform->addElement('text', 'subject', get_string('subject'), [
             'maxlength' => 255,
-            'pattern' => '[^<>\"\']+',
+            'pattern' => register_form::NOXSS_PATTERN,
             'title' => get_string('err_xss', 'theme_iiidem2'),
         ]);
         $mform->setType('subject', PARAM_TEXT);
@@ -101,11 +101,16 @@ class contact_form extends \moodleform {
                 continue;
             }
 
-            if ($raw !== '' && \theme_iiidem2\input_validation::contains_dangerous_markup($raw)) {
+            if ($raw !== '' && (\theme_iiidem2\input_validation::contains_dangerous_markup($raw)
+                    || \theme_iiidem2\input_validation::contains_structured_injection($raw))) {
                 $errors[$field] = get_string('err_xss', 'theme_iiidem2');
                 continue;
             }
             if (str_contains($raw, '<') || str_contains($raw, '>')) {
+                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                continue;
+            }
+            if ($field !== 'message' && (str_contains($raw, '"') || str_contains($raw, "'"))) {
                 $errors[$field] = get_string('err_xss', 'theme_iiidem2');
                 continue;
             }
@@ -125,10 +130,11 @@ class contact_form extends \moodleform {
 
             if (!\theme_iiidem2\input_validation::is_safe_plain_line($value, $max)
                     || !\theme_iiidem2\input_validation::has_alnum_content($value)) {
-                // Reject punctuation-only subjects (@#$$$) and markup.
-                $errors[$field] = get_string('err_xss', 'theme_iiidem2');
+                $errors[$field] = get_string('err_plaintextrequired', 'theme_iiidem2');
             }
         }
+
+        \theme_iiidem2\input_validation::redact_rejected_fields($this->_form, $errors);
 
         return $errors;
     }

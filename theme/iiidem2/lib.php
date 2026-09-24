@@ -54,10 +54,12 @@ function theme_iiidem2_post_set_password_requests($data, $user): void {
 }
 
 /**
- * Restrict /user/profile.php?id=N peer access (IDOR hardening).
+ * Restrict /user/profile.php?id=N and /user/view.php (IDOR / broken access control).
  *
- * Students may only view their own profile. Teachers/managers/admins may view
- * others. Course contacts remain visible via core after this returns DO_NOT_PREVENT.
+ * Deny by default. Object ownership: own profile only. RBAC: course teaching
+ * role assignment (not capability — site admins have every cap). Site admins
+ * must manage accounts via /admin/user.php and /user/editadvanced.php, not by
+ * tampering with profile?id=.
  *
  * @param stdClass $user Profile being viewed
  * @param stdClass|null $course
@@ -65,62 +67,187 @@ function theme_iiidem2_post_set_password_requests($data, $user): void {
  * @return int core_user::VIEWPROFILE_* constant
  */
 function theme_iiidem2_control_view_profile($user, $course = null, $usercontext = null): int {
-    global $USER, $CFG;
+    global $CFG;
 
-    unset($course, $usercontext);
+    unset($usercontext);
 
     if (($CFG->theme ?? '') !== 'iiidem2') {
         return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
     }
 
-    if (!isloggedin() || isguestuser()) {
-        return \core_user::VIEWPROFILE_PREVENT;
-    }
-
     $targetid = (int) ($user->id ?? 0);
-    if ($targetid <= 0) {
-        return \core_user::VIEWPROFILE_PREVENT;
+    $courseid = isset($course->id) ? (int) $course->id : 0;
+
+    if (theme_iiidem2_user_may_view_profile($targetid, $courseid)) {
+        return \core_user::VIEWPROFILE_FORCE_ALLOW;
     }
 
-    // Own profile — let core allow.
-    if ((int) $USER->id === $targetid) {
-        return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    return \core_user::VIEWPROFILE_PREVENT;
+}
+
+/**
+ * Whether the current user may open the given profile (deny by default).
+ *
+ * @param int $targetid User id of the profile
+ * @param int $courseid Optional course id from /user/view.php?course=
+ * @return bool
+ */
+function theme_iiidem2_user_may_view_profile(int $targetid, int $courseid = 0): bool {
+    global $USER, $CFG;
+
+    if (!isloggedin() || isguestuser()) {
+        return false;
+    }
+    if ($targetid < 1) {
+        return false;
     }
 
-    // Staff / admins may view other profiles.
-    $role = theme_iiidem2_get_user_dashboard_role((int) $USER->id);
-    if ($role === 'admin' || $role === 'teacher') {
-        return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    // Object ownership: always allow own profile.
+    if ($targetid === (int) $USER->id) {
+        return true;
     }
 
-    // Site-wide capability (managers without matching shortname).
-    $sys = \context_system::instance();
-    if (has_capability('moodle/user:viewalldetails', $sys) ||
-            has_capability('moodle/site:configview', $sys)) {
-        return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    // Site admins have every capability; using caps here re-opens IDOR on
+    // /user/profile.php?id=. Account edits stay on /user/editadvanced.php.
+    if (is_siteadmin()) {
+        return false;
     }
 
     require_once($CFG->libdir . '/enrollib.php');
 
-    // Teachers of a shared course (capability-based, not only role shortname).
-    $shared = enrol_get_all_users_courses($targetid, true);
-    foreach ($shared as $c) {
-        $ctx = \context_course::instance((int) $c->id);
-        if (has_capability('moodle/course:manageactivities', $ctx) ||
-                has_capability('moodle/course:update', $ctx) ||
-                has_capability('moodle/user:viewalldetails', $ctx)) {
-            return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    if ($courseid > 0 && $courseid !== (int) SITEID) {
+        $cctx = \context_course::instance($courseid, IGNORE_MISSING);
+        if ($cctx && is_enrolled($cctx, $targetid, '', true)
+                && theme_iiidem2_has_course_teaching_role((int) $USER->id, $courseid)) {
+            return true;
         }
     }
 
-    // Course contacts (teachers listed on course) — defer to core allow-list.
-    // Peer students are still blocked below; only the contact themselves is opened.
-    if (function_exists('has_coursecontact_role') && has_coursecontact_role($targetid)) {
-        return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    $shared = enrol_get_all_users_courses($targetid, true);
+    foreach ($shared as $c) {
+        if ((int) $c->id === (int) SITEID) {
+            continue;
+        }
+        if (theme_iiidem2_has_course_teaching_role((int) $USER->id, (int) $c->id)) {
+            return true;
+        }
     }
 
-    // Students / peers: block viewing another user's profile by id (CDAC #5 IDOR).
-    return \core_user::VIEWPROFILE_PREVENT;
+    // Listed course contacts (faculty) remain visible to non-admin learners.
+    if (function_exists('has_coursecontact_role') && has_coursecontact_role($targetid)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Course teacher/manager via role assignment only (not has_capability).
+ *
+ * @param int $userid
+ * @param int $courseid
+ * @return bool
+ */
+function theme_iiidem2_has_course_teaching_role(int $userid, int $courseid): bool {
+    if ($userid < 1 || $courseid < 1 || $courseid === (int) SITEID) {
+        return false;
+    }
+
+    $context = \context_course::instance($courseid, IGNORE_MISSING);
+    if (!$context) {
+        return false;
+    }
+
+    $roles = get_user_roles($context, $userid, false);
+    foreach ($roles as $role) {
+        if (in_array($role->shortname, ['editingteacher', 'teacher', 'manager'], true)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Strip contact PII from another user's profile tree (defense in depth).
+ *
+ * Core shows email to anyone with moodle/user:viewhiddendetails (site admins).
+ * Remove those nodes unless this is the owner's profile or a course teacher.
+ *
+ * @param \core_user\output\myprofile\tree $tree
+ * @param stdClass $user
+ * @param bool $iscurrentuser
+ * @param stdClass|null $course
+ */
+function theme_iiidem2_myprofile_navigation($tree, $user, $iscurrentuser, $course): void {
+    global $USER;
+
+    if ($iscurrentuser) {
+        return;
+    }
+
+    $courseid = isset($course->id) ? (int) $course->id : 0;
+    $targetid = (int) ($user->id ?? 0);
+
+    // Course teachers may still see identity for students they teach.
+    if (!is_siteadmin() && $targetid > 0 && (
+            ($courseid > 0 && theme_iiidem2_has_course_teaching_role((int) $USER->id, $courseid))
+            || theme_iiidem2_user_teaches_target($targetid)
+    )) {
+        return;
+    }
+
+    $strip = [
+        'email', 'phone1', 'phone2', 'city', 'country', 'address',
+        'moodlenetprofile', 'idnumber', 'institution', 'department',
+        'firstaccess', 'lastaccess', 'lastip', 'interests',
+    ];
+
+    try {
+        $ref = new \ReflectionClass($tree);
+        $prop = $ref->getProperty('nodes');
+        $prop->setAccessible(true);
+        $nodes = $prop->getValue($tree);
+        if (!is_array($nodes)) {
+            return;
+        }
+        foreach (array_keys($nodes) as $name) {
+            $name = (string) $name;
+            if (in_array($name, $strip, true) || str_starts_with($name, 'custom_field_')) {
+                unset($nodes[$name]);
+            }
+        }
+        $prop->setValue($tree, $nodes);
+    } catch (\Throwable $e) {
+        debugging('theme_iiidem2_myprofile_navigation: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
+}
+
+/**
+ * Whether the current user has a teaching role in any course the target is in.
+ *
+ * @param int $targetid
+ * @return bool
+ */
+function theme_iiidem2_user_teaches_target(int $targetid): bool {
+    global $USER, $CFG;
+
+    if ($targetid < 1 || !isloggedin() || isguestuser()) {
+        return false;
+    }
+
+    require_once($CFG->libdir . '/enrollib.php');
+    $shared = enrol_get_all_users_courses($targetid, true);
+    foreach ($shared as $c) {
+        if ((int) $c->id === (int) SITEID) {
+            continue;
+        }
+        if (theme_iiidem2_has_course_teaching_role((int) $USER->id, (int) $c->id)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -1888,6 +2015,12 @@ function theme_iiidem2_send_contact_message(\stdClass $data): bool {
     if ($name === null || $subject === null || $message === null || !validate_email($email)) {
         return false;
     }
+    foreach ([$rawname, $rawsubject, $rawmessage, $name, $subject, $message] as $probe) {
+        if (\theme_iiidem2\input_validation::contains_structured_injection((string) $probe)
+                || \theme_iiidem2\input_validation::contains_dangerous_markup((string) $probe)) {
+            return false;
+        }
+    }
     if (!\theme_iiidem2\input_validation::is_safe_person_name($name)
             || !\theme_iiidem2\input_validation::has_alnum_content($subject)
             || !\theme_iiidem2\input_validation::has_alnum_content($message)) {
@@ -2043,7 +2176,6 @@ function theme_iiidem2_chatbot_widget_context(bool $adminmode = false): array {
     }
 
     return array_merge(theme_iiidem2_homepage_chatbot_strings(), [
-        'sesskey' => sesskey(),
         'chatbotapiurl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_query.php'))->out(false),
         'chatbotadminapiurl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_admin_action.php'))->out(false),
         'chatbotname' => $name,
@@ -3485,6 +3617,7 @@ function theme_iiidem2_create_registered_user(stdClass $data): int {
     }
 
     $userid = user_create_user($user, true, true);
+    \theme_iiidem2\password_policy::stamp((int) $userid);
 
     if ($occupation !== '') {
         $profileupdate = (object) ['id' => $userid];
@@ -3891,9 +4024,9 @@ return href.indexOf('http')===0?href:(location.origin+(href.charAt(0)==='/'?'':'
 var hash=href.indexOf('#link')===0?href:null;
 if(!hash&&href.indexOf('#')!==-1){var c=href.substring(href.indexOf('#'));
 if(c.indexOf('#link')===0){hash=c;}}
-return hash?(location.origin+'/admin/search'+hash):null;}
+return hash?(location.origin+'/admin/search.php'+hash):null;}
 function redirectHash(){var h=location.hash||'';if(/^#link/.test(h)){
-location.replace(location.origin+'/admin/search'+h);}}
+location.replace(location.origin+'/admin/search.php'+h);}}
 redirectHash();window.addEventListener('hashchange',redirectHash);
 document.addEventListener('click',function(e){var link=e.target.closest('.secondary-navigation a[href]');
 if(!link){return;}var target=toSearch(link.getAttribute('href')||'');if(!target){return;}
@@ -4026,6 +4159,9 @@ function theme_iiidem2_echo_page_template(string $templatename, $context): void 
 function theme_iiidem2_render_public_course_view(stdClass $course): void {
     global $OUTPUT, $PAGE, $SITE, $CFG;
 
+    // CDAC: payment-success must not render on the anonymous marketing page.
+    theme_iiidem2_require_login_for_payment_result();
+
     $coursecontext = context_course::instance($course->id);
     $PAGE->set_context($coursecontext);
     $PAGE->set_course($course);
@@ -4076,7 +4212,10 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
         theme_iiidem2_get_course_testimonials_context(),
         theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
-        theme_iiidem2_get_course_payment_success_context(),
+        [
+            'coursepaymentsuccess' => false,
+            'pnbpaymentsuccess' => false,
+        ],
         theme_iiidem2_get_register_success_context(),
         [
             'sitename' => format_string($SITE->shortname, true, [
@@ -5031,7 +5170,7 @@ function theme_iiidem2_get_login_modal_context(?string $wantsurl = null): array 
 
     return [
         'hasloginmodal' => true,
-        'loginurl' => (new moodle_url('/login'))->out(false),
+        'loginurl' => (new moodle_url('/login/index.php'))->out(false),
         'logintoken' => \core\session\manager::get_login_token(),
         'forgotpasswordurl' => (new moodle_url('/login/forgot_password.php'))->out(false),
         'registerurl' => theme_iiidem2_get_register_url(),
@@ -5544,19 +5683,88 @@ function theme_iiidem2_user_has_active_fee_enrolment(int $userid, int $feeinstan
 }
 
 /**
- * Success modal context after PNB or ICICI course fee payment.
+ * True when the request is a payment-gateway success return.
+ */
+function theme_iiidem2_is_payment_result_request(): bool {
+    foreach (['razorpaypayment', 'pnbpayment', 'icicipayment'] as $key) {
+        if (optional_param($key, '', PARAM_ALPHA) === 'success') {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * CDAC: "Page is accessible without login" — ?razorpaypayment=success must not
+ * be served to guests on the public course marketing page.
+ */
+function theme_iiidem2_require_login_for_payment_result(): void {
+    if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+        return;
+    }
+    if (defined('AJAX_SCRIPT') && AJAX_SCRIPT) {
+        return;
+    }
+    if (defined('WS_SERVER') && WS_SERVER) {
+        return;
+    }
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if (str_contains($script, '/login/')) {
+        return;
+    }
+    if (!theme_iiidem2_is_payment_result_request()) {
+        return;
+    }
+    if (isloggedin() && !isguestuser()) {
+        return;
+    }
+    require_login(null, false);
+}
+
+/**
+ * Success modal after a real course-fee payment — never from a query flag alone.
  *
- * @return array{coursepaymentsuccess: bool}
+ * CDAC: appending ?razorpaypayment=success (or paying a tampered amount) must not
+ * show "You are now enrolled" unless the user has an active fee enrolment.
+ * Guests never reach this with the flag set (require_login above).
+ *
+ * @return array{coursepaymentsuccess: bool, pnbpaymentsuccess: bool}
  */
 function theme_iiidem2_get_course_payment_success_context(): array {
-    $success = optional_param('pnbpayment', '', PARAM_ALPHA) === 'success'
+    global $USER, $PAGE;
+
+    $empty = [
+        'coursepaymentsuccess' => false,
+        'pnbpaymentsuccess' => false,
+    ];
+
+    $flag = optional_param('pnbpayment', '', PARAM_ALPHA) === 'success'
         || optional_param('icicipayment', '', PARAM_ALPHA) === 'success'
         || optional_param('razorpaypayment', '', PARAM_ALPHA) === 'success';
 
+    if (!$flag || !isloggedin() || isguestuser()) {
+        return $empty;
+    }
+
+    $courseid = 0;
+    if (!empty($PAGE->course->id) && (int) $PAGE->course->id !== (int) SITEID) {
+        $courseid = (int) $PAGE->course->id;
+    } else {
+        $courseid = optional_param('id', 0, PARAM_INT);
+    }
+    if ($courseid < 1) {
+        return $empty;
+    }
+
+    $feeinstance = theme_iiidem2_get_course_fee_enrol_instance($courseid);
+    if (!$feeinstance) {
+        return $empty;
+    }
+
+    $paid = theme_iiidem2_user_has_active_fee_enrolment((int) $USER->id, (int) $feeinstance->id);
     return [
-        'coursepaymentsuccess' => $success,
-        // Legacy flag used by older template conditionals.
-        'pnbpaymentsuccess' => $success,
+        'coursepaymentsuccess' => $paid,
+        'pnbpaymentsuccess' => $paid,
     ];
 }
 
@@ -5880,8 +6088,7 @@ function theme_iiidem2_page_init($page) {
         $page->requires->js(new moodle_url('/theme/iiidem2/javascript/homepage_chatbot.js'));
         $cfg = [
             'apiUrl' => (new moodle_url('/theme/iiidem2/ajax/chatbot_admin_poll.php'))->out(false),
-            'sesskey' => sesskey(),
-            // Only toast queries that arrive after this page load.
+            // CSRF from M.cfg.sesskey — do not embed the token in this inline JSON.
             'sinceId' => $sinceid,
             'pollMs' => 30000,
         ];

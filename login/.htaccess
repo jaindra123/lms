@@ -1,0 +1,7 @@
+# /login is a real directory. Apache DirectorySlash (On by default) 301s
+# POST /login → GET /login/ and browsers drop username/password (no MFA OTP).
+<IfModule mod_dir.c>
+    DirectorySlash Off
+</IfModule>
+DirectoryIndex index.php
+Options -Indexes

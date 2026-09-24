@@ -1,0 +1,3 @@
+# Deny all HTTP access to ops database dumps / archives.
+Options -Indexes
+Require all denied

@@ -80,10 +80,18 @@ class verify_payment extends external_api {
             throw new \moodle_exception('invalidsignature', 'paygw_razorpay');
         }
 
-        // Server-side amount validation (never trust client / signature alone).
-        razorpay_helper::assert_txn_matches_payable($txn);
-        if (!$ismock) {
-            razorpay_helper::assert_remote_payment_matches_txn($config, $txn, $paymentid);
+        // Catalog fee + live Razorpay order/payment amounts (never trust Checkout.js / Burp).
+        try {
+            razorpay_helper::assert_txn_matches_payable($txn);
+            if (!$ismock) {
+                razorpay_helper::assert_remote_order_matches_txn($config, $txn);
+                razorpay_helper::assert_remote_payment_matches_txn($config, $txn, $paymentid);
+            }
+        } catch (\moodle_exception $e) {
+            if ($e->errorcode === 'amountmismatch') {
+                razorpay_helper::mark_transaction_failed($txn, get_string('amountmismatch', 'paygw_razorpay'));
+            }
+            throw $e;
         }
 
         razorpay_helper::complete_transaction($txn, $paymentid);

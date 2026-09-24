@@ -36,7 +36,12 @@ Same report page (debug mode / CWE-489): [debug-mode-staging.md](debug-mode-stag
 | AJAX `service.php?sesskey=…&info=core_session_time_remaining` | Same | Same |
 | AJAX `service.php?sesskey=…&info=core_message_get_conversation_messages` | Same | Same |
 | HTML Log out `logout.php?sesskey=…` (e.g. About us) | Mustache usermenu | `user/lib.php` logout without sesskey; marketing pages use `theme_iiidem2_export_primary_menu`; HTML buffer strip |
-| `/mod/quiz/edit.php?cmid=59` | Only `cmid` | **Dispute** — not a session token |
+| AJAX `service.php?sesskey=…` `tiny_autosave_reset_session` | Tiny **sendBeacon** (no custom headers) | `sesskey` in POST FormData; URL has no `sesskey` |
+| Homepage chatbot `data-sesskey=` | HTML source | Removed; JS uses `M.cfg.sesskey` for POST body only |
+| Login `M.cfg.sesskey` | View-source on `/login/index.php` | Blanked on login / signup / forgot-password |
+| `draftfiles_manager.php?…&sesskey=` in `<object data>` | Course edit noscript picker | Browse URL has no sesskey; mutations still POST+sesskey |
+| `GET /course/edit.php?id=4` / `/course-detail/?id=4` | Course id only | **Dispute** — not a session token |
+| Razorpay `checkout/order` | Third-party host | **Dispute** — not Moodle `sesskey` |
 
 ## Controls
 
@@ -56,7 +61,8 @@ Query params named like session cookies (`MoodleSession`, `sid`, `PHPSESSID`, �
 | Piece | Role |
 |-------|------|
 | **`lib/amd/src/ajax.js` + `ajax.min.js`** | Builds `/lib/ajax/service*.php?info=…` **without** `sesskey=`; sets `X-Moodle-Sesskey` |
-| `javascript/ajax_sesskey_header.js` (`v=2024101042`) | Belt-and-braces: strip any leftover query `sesskey`, XHR + jQuery + fetch; header once |
+| `javascript/ajax_sesskey_header.js` (`v=2024101068`) | Strip leftover query `sesskey` on XHR + jQuery + fetch **and sendBeacon**; header once |
+| Tiny autosave / H5P xAPI | `sendBeacon` + FormData (`sesskey` + `args` in POST); `service.php` reads `$_POST['args']` |
 | `import_sesskey_from_header` | Maps header → request **only if** query/body sesskey is missing |
 | CORS | `Access-Control-Allow-Headers` includes `X-Moodle-Sesskey` |
 
@@ -83,7 +89,7 @@ Calendar delete, cancel live class, FAQ delete, etc. — not GET + sesskey links
 
 | Request | Expect |
 |---------|--------|
-| `POST /lib/ajax/service.php?info=…` | **No** `sesskey=` in URL; `X-Moodle-Sesskey` present (single value) |
+| `POST /lib/ajax/service.php` (Tiny autosave reset) | **No** `sesskey=` in URL; `sesskey` in POST body |
 | `GET /lib/ajax/service-nologin.php?info=…` | **No** `sesskey=` in URL |
 | View-source Log out href | `/login/logout.php` **without** `?sesskey=` |
 | Click Log out | `POST /login/logout.php` with body `sesskey=…` |
@@ -102,7 +108,13 @@ Ship at least:
 - `user/lib.php`
 - `lib/classes/output/core_renderer.php` (login_info logout href)
 
-Hard-refresh browsers (Ctrl+F5). Confirm Network tab: service.php URL has **no** `sesskey=`.
+Theme ≥ **2024101089** also covers CDAC “Moodle Session Key Exposure”:
+
+- No `data-sesskey` on chatbot / live quiz widgets
+- HTML buffer strips `sesskey=` from href/src/data/action and `data-sesskey`
+- Login page does not print `M.cfg.sesskey`
+- File-picker `<object>` browse URL has no `sesskey`
+- XHR/fetch/sendBeacon strip `sesskey` from the request URL
 
 ## Verify
 

@@ -98,10 +98,18 @@
         }
 
         var hasValue = field.value.trim() !== '';
-        requiredIcon.classList.toggle('text-danger', !hasValue);
-        requiredIcon.classList.toggle('text-success', hasValue);
+        var hasBad = /[<>]|javascript\s*:|(?:^|[^a-z0-9_])(?:alert|prompt|confirm)\s*\(/i.test(field.value);
+        if (!hasBad && hasValue) {
+            try {
+                hasBad = !/[\p{L}\p{N}]/u.test(field.value);
+            } catch (e) {
+                hasBad = !/[A-Za-z0-9]/.test(field.value);
+            }
+        }
+        requiredIcon.classList.toggle('text-danger', !hasValue || hasBad);
+        requiredIcon.classList.toggle('text-success', hasValue && !hasBad);
 
-        if (hasValue) {
+        if (hasValue && !hasBad) {
             field.classList.remove('is-invalid');
             field.removeAttribute('aria-invalid');
             var feedback = item.querySelector('.form-control-feedback');

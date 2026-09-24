@@ -76,7 +76,15 @@ class event_vault implements event_vault_interface {
     public function get_event_by_id($id) {
         global $DB;
 
+        $id = (int) $id;
+        if ($id < 1) {
+            return false;
+        }
+
         if ($record = $DB->get_record('event', ['id' => $id])) {
+            if ((int) $record->id !== $id) {
+                return false;
+            }
             return $this->transform_from_database_record($record);
         } else {
             return false;

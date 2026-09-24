@@ -51,7 +51,7 @@
 - Download / delete / report-download actions redirect guests to login
 - PDF generation refuses empty / guest `userid`
 
-**Instance 9 Razorpay URL:** `api.razorpay.com/.../payment/status?key_id=rzp_test_…` is a **third-party** public checkout status endpoint, not this LMS. The screenshot SQL stack is still Moodle `customcert` under debug — remediate as above; dispute Razorpay host as out of scope.
+**Instance 9 Razorpay URL:** `api.razorpay.com/.../payment/status?key_id=rzp_test_…` is a **third-party** public checkout status endpoint, not this LMS. LMS remediations: Pay Now does not embed Checkout; LMS `/v1/checkout/qr_code` → 404; payment-success query on `/course/view.php` **requires login** ([page-accessible-without-login.md](page-accessible-without-login.md)).
 
 ## Already OK (no change)
 

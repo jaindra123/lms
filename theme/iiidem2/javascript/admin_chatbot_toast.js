@@ -16,7 +16,11 @@
     }
 
     function initAdminChatbotToast(config) {
-        if (started || !config || !config.apiUrl || !config.sesskey) {
+        if (started || !config || !config.apiUrl) {
+            return;
+        }
+        var sesskey = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
+        if (!sesskey) {
             return;
         }
         started = true;
@@ -67,7 +71,7 @@
 
         function poll() {
             var body = new URLSearchParams();
-            body.set('sesskey', config.sesskey);
+            body.set('sesskey', sesskey);
             body.set('sinceid', String(sinceId));
 
             fetch(config.apiUrl, {

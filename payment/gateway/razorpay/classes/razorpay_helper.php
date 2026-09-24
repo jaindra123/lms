@@ -168,6 +168,7 @@ class razorpay_helper {
             'receipt' => $receipt,
             'notes' => [
                 'source' => 'moodle',
+                'expected_paise' => (string) $paise,
             ],
         ]);
 
@@ -176,11 +177,167 @@ class razorpay_helper {
             throw new \moodle_exception('ordercreatefailed', 'paygw_razorpay');
         }
 
+        $remoteamount = (int) ($response['amount'] ?? 0);
+        $remotecurrency = strtoupper((string) ($response['currency'] ?? ''));
+        if ($remoteamount !== $paise || $remotecurrency !== strtoupper($currency)) {
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
+
         return [
             'id' => (string) $response['id'],
-            'amount' => (int) ($response['amount'] ?? $paise),
-            'currency' => (string) ($response['currency'] ?? $currency),
+            'amount' => $paise,
+            'currency' => $currency,
         ];
+    }
+
+    /**
+     * Create a Razorpay Payment Link (hosted checkout).
+     *
+     * CDAC Key ID exposure: Checkout.js required the public Key ID, order id,
+     * and payer prefill in LMS AJAX + lumberjack. A hosted Payment Link is
+     * created server-side; the browser only receives the short URL.
+     *
+     * @param \stdClass $config
+     * @param string $receipt
+     * @param float $amount
+     * @param string $currency
+     * @param \moodle_url $callbackurl
+     * @return array{id:string,short_url:string,amount:int,currency:string,mock?:bool}
+     */
+    public static function create_payment_link(
+        \stdClass $config,
+        string $receipt,
+        float $amount,
+        string $currency,
+        \moodle_url $callbackurl
+    ): array {
+        $paise = self::amount_to_paise($amount);
+
+        if (self::should_use_mock($config)) {
+            return [
+                'id' => 'plink_mock_' . $receipt,
+                'short_url' => '',
+                'amount' => $paise,
+                'currency' => $currency,
+                'mock' => true,
+            ];
+        }
+
+        $keyid = trim($config->keyid ?? '');
+        $secret = trim($config->keysecret ?? '');
+
+        $payload = json_encode([
+            'amount' => $paise,
+            'currency' => $currency,
+            'accept_partial' => false,
+            'reference_id' => $receipt,
+            'description' => get_string('pluginname', 'paygw_razorpay'),
+            'callback_url' => $callbackurl->out(false),
+            'callback_method' => 'get',
+            'reminder_enable' => false,
+            'notify' => [
+                'sms' => false,
+                'email' => false,
+            ],
+            // Do not send customer name/email/contact — hosted Checkout would
+            // prefill-encrypt that PII (CDAC prefill/encrypt Intruder).
+            'options' => [
+                'checkout' => [
+                    'hidden' => [
+                        'email' => true,
+                        'contact' => true,
+                    ],
+                ],
+            ],
+            'notes' => [
+                'source' => 'moodle',
+                'expected_paise' => (string) $paise,
+            ],
+            'expire_by' => time() + 2700,
+        ]);
+
+        $response = self::api_request(
+            'POST',
+            self::get_api_base($config) . '/payment_links',
+            $keyid,
+            $secret,
+            $payload
+        );
+
+        $linkid = (string) ($response['id'] ?? '');
+        $shorturl = trim((string) ($response['short_url'] ?? ''));
+        $remoteamount = (int) ($response['amount'] ?? 0);
+        $remotecurrency = strtoupper((string) ($response['currency'] ?? ''));
+
+        if ($linkid === '' || $shorturl === '' || strpos($shorturl, 'https://') !== 0
+                || $remoteamount !== $paise
+                || $remotecurrency !== strtoupper($currency)) {
+            throw new \moodle_exception('linkcreatefailed', 'paygw_razorpay');
+        }
+
+        return [
+            'id' => $linkid,
+            'short_url' => $shorturl,
+            'amount' => $paise,
+            'currency' => $currency,
+        ];
+    }
+
+    /**
+     * Payment Link callback signature.
+     *
+     * payload = payment_link_id|reference_id|status|payment_id
+     */
+    public static function verify_payment_link_signature(
+        string $linkid,
+        string $reference,
+        string $status,
+        string $paymentid,
+        string $signature,
+        string $secret
+    ): bool {
+        if ($linkid === '' || $reference === '' || $status === '' || $paymentid === ''
+                || $signature === '' || $secret === '') {
+            return false;
+        }
+        $expected = hash_hmac('sha256', $linkid . '|' . $reference . '|' . $status . '|' . $paymentid, $secret);
+        return hash_equals($expected, $signature);
+    }
+
+    /**
+     * Re-read the Payment Link and require amount === catalog fee.
+     */
+    public static function assert_remote_payment_link_matches_txn(
+        \stdClass $config,
+        \stdClass $txn,
+        string $linkid
+    ): void {
+        $keyid = trim($config->keyid ?? '');
+        $secret = trim($config->keysecret ?? '');
+        if ($keyid === '' || $secret === '') {
+            throw new \moodle_exception('paymentfailed', 'paygw_razorpay');
+        }
+
+        $link = self::api_request(
+            'GET',
+            self::get_api_base($config) . '/payment_links/' . rawurlencode($linkid),
+            $keyid,
+            $secret,
+            null
+        );
+
+        $expectedpaise = self::expected_paise_for_txn($txn);
+        $remoteamount = (int) ($link['amount'] ?? -1);
+        $remotecurrency = strtoupper((string) ($link['currency'] ?? ''));
+        $remoteref = (string) ($link['reference_id'] ?? '');
+        $remotestatus = strtolower((string) ($link['status'] ?? ''));
+
+        if ($remoteref !== (string) $txn->txnref
+                || $remoteamount !== $expectedpaise
+                || $remotecurrency !== strtoupper((string) $txn->currency)
+                || $remotestatus !== 'paid') {
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
     }
 
     public static function verify_signature(string $orderid, string $paymentid, string $signature, string $secret): bool {
@@ -241,7 +398,58 @@ class razorpay_helper {
     }
 
     /**
-     * Fetch a payment from Razorpay and assert amount/order/status vs local txn.
+     * Expected charge in paise from the live enrol_fee payable (not the client).
+     */
+    public static function expected_paise_for_txn(\stdClass $txn): int {
+        return self::amount_to_paise(self::expected_amount_for_txn($txn));
+    }
+
+    /**
+     * Fetch the Razorpay order and require its amount still equals the catalog fee.
+     *
+     * CDAC: intercept POST /v1/standard_checkout/checkout/order and change amount
+     * 1000→20. That can mutate the live order; we re-read it before enrolment.
+     *
+     * @param \stdClass $config
+     * @param \stdClass $txn
+     * @return void
+     * @throws \moodle_exception
+     */
+    public static function assert_remote_order_matches_txn(\stdClass $config, \stdClass $txn): void {
+        $keyid = trim($config->keyid ?? '');
+        $secret = trim($config->keysecret ?? '');
+        if ($keyid === '' || $secret === '') {
+            throw new \moodle_exception('paymentfailed', 'paygw_razorpay');
+        }
+
+        $order = self::api_request(
+            'GET',
+            self::get_api_base($config) . '/orders/' . rawurlencode((string) $txn->orderid),
+            $keyid,
+            $secret,
+            null
+        );
+
+        $expectedpaise = self::expected_paise_for_txn($txn);
+        $remoteamount = (int) ($order['amount'] ?? -1);
+        $remotecurrency = strtoupper((string) ($order['currency'] ?? ''));
+        $remoteid = (string) ($order['id'] ?? '');
+
+        if ($remoteid !== (string) $txn->orderid
+                || $remoteamount !== $expectedpaise
+                || $remotecurrency !== strtoupper((string) $txn->currency)) {
+            debugging(
+                'Razorpay order amount mismatch order=' . $remoteid
+                . ' amount=' . $remoteamount
+                . ' expected=' . $expectedpaise,
+                DEBUG_DEVELOPER
+            );
+            throw new \moodle_exception('amountmismatch', 'paygw_razorpay');
+        }
+    }
+
+    /**
+     * Fetch a payment from Razorpay and assert amount/order/status vs catalog fee.
      *
      * @param \stdClass $config
      * @param \stdClass $txn
@@ -268,12 +476,15 @@ class razorpay_helper {
         $remoteamount = (int) ($payment['amount'] ?? -1);
         $remotecurrency = strtoupper((string) ($payment['currency'] ?? ''));
         $remotestatus = strtolower((string) ($payment['status'] ?? ''));
+        $captured = !empty($payment['captured']);
 
-        $expectedpaise = self::amount_to_paise((float) $txn->amount);
-        // Enrol only after funds are captured — not merely authorized.
-        $okstatus = ($remotestatus === 'captured');
+        $expectedpaise = self::expected_paise_for_txn($txn);
+        $okstatus = ($remotestatus === 'captured') || $captured;
+        $orderok = str_starts_with((string) $txn->orderid, 'plink_')
+            ? ($remoteorder !== '')
+            : ($remoteorder === (string) $txn->orderid);
 
-        if ($remoteorder !== (string) $txn->orderid
+        if (!$orderok
                 || $remoteamount !== $expectedpaise
                 || $remotecurrency !== strtoupper((string) $txn->currency)
                 || !$okstatus) {
@@ -320,6 +531,9 @@ class razorpay_helper {
                 || str_contains($lowerraw, 'service unavailable')
                 || str_contains($lowerraw, 'bad gateway')
                 || str_contains($lowerraw, 'gateway timeout')
+                || str_contains($lowerraw, 'grpc')
+                || str_contains($lowerdesc, 'grpc')
+                || str_contains($lowerdesc, 'internal server')
                 || str_contains($lowerdesc, 'unexpected error occurred')) {
             throw new \moodle_exception('apiservererror', 'paygw_razorpay');
         }
@@ -413,6 +627,7 @@ class razorpay_helper {
 
         // Never enrol from a client-tampered or stale underpaid transaction.
         self::assert_txn_matches_payable($txn);
+        $charge = self::expected_amount_for_txn($txn);
 
         $alreadycompleted = (($txn->status ?? '') === 'completed');
 
@@ -422,7 +637,7 @@ class razorpay_helper {
             $txn->paymentarea,
             (int) $txn->itemid,
             (int) $txn->userid,
-            (float) $txn->amount,
+            $charge,
             $txn->currency,
             'razorpay'
         );

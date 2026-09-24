@@ -52,6 +52,11 @@ class get_language extends external_api {
             'lang' => $lang,
         ]);
 
+        // Allowlist: only a Video.js lang-pack filename (no extra params, no path).
+        if (!preg_match('/^[a-z]{2}(?:[-_][A-Za-z0-9]{2,8})?$/', $lang)) {
+            return '';
+        }
+
         return \media_videojs_plugin::get_language_content($lang);
     }
 

@@ -818,28 +818,32 @@ class core_calendar_external extends external_api {
         self::validate_context($context);
         $warnings = array();
 
-        $eventvault = event_container::get_event_vault();
-        if ($event = $eventvault->get_event_by_id($params['eventid'])) {
-            $mapper = event_container::get_event_mapper();
-            $legacy = $mapper->from_event_to_legacy_event($event);
-            // Server-side authZ for every eventid (CDAC Web Parameter Tampering Instance 4).
-            // Do not trust client-supplied eventid alone — must pass calendar_view_event_allowed().
-            if (!calendar_view_event_allowed($legacy)) {
-                throw new moodle_exception('nopermissiontoviewcalendar', 'error');
-            }
-            // Extra guard: personal calendar rows of another user are never returned unless
-            // calendar_can_manage_user_event already allowed (capability / ownership).
-            $ispersonal = empty($legacy->courseid) && empty($legacy->groupid)
-                && empty($legacy->categoryid) && empty($legacy->modulename)
-                && !empty($legacy->userid);
-            if ($ispersonal && (int) $legacy->userid !== (int) $USER->id
-                    && !calendar_can_manage_user_event($legacy)) {
-                throw new moodle_exception('nopermissiontoviewcalendar', 'error');
-            }
+        // PARAM_INT coerces "0" / junk to 0. Never look up a fallback row.
+        if ($params['eventid'] < 1) {
+            throw new moodle_exception('nopermissiontoviewcalendar', 'error');
         }
 
-        if (!$event) {
-            // Missing / unauthorized event ids must not distinguish existence (same deny).
+        $eventvault = event_container::get_event_vault();
+        $event = $eventvault->get_event_by_id($params['eventid']);
+        if (!$event || (int) $event->get_id() !== (int) $params['eventid']) {
+            // Missing / tampered event ids must not distinguish existence (same deny).
+            throw new moodle_exception('nopermissiontoviewcalendar', 'error');
+        }
+
+        $mapper = event_container::get_event_mapper();
+        $legacy = $mapper->from_event_to_legacy_event($event);
+        // Server-side authZ for every eventid (CDAC Web Parameter Tampering Instance 4).
+        // Do not trust client-supplied eventid alone — must pass calendar_view_event_allowed().
+        if (!calendar_view_event_allowed($legacy)) {
+            throw new moodle_exception('nopermissiontoviewcalendar', 'error');
+        }
+        // Extra guard: personal calendar rows of another user are never returned unless
+        // calendar_can_manage_user_event already allowed (capability / ownership).
+        $ispersonal = empty($legacy->courseid) && empty($legacy->groupid)
+            && empty($legacy->categoryid) && empty($legacy->modulename)
+            && !empty($legacy->userid);
+        if ($ispersonal && (int) $legacy->userid !== (int) $USER->id
+                && !calendar_can_manage_user_event($legacy)) {
             throw new moodle_exception('nopermissiontoviewcalendar', 'error');
         }
 

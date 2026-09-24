@@ -141,7 +141,8 @@ JSON from **`upiassembly.com`** (`code: bad_request_error`, “invalid character
 |----------|-------------|---------|
 | **Instance 1:** `/user/index.php?id=4` → HTTP **500** + `<title>Error</title>` | Caused by throwing from `before_http_headers` → Moodle `early_error` (always 500). | **Fixed** — deny before output; early_error → **403** + generic body |
 | **Instance 3:** `service.php?…&info=core_courseformat_get_state` | `"error": false` + course UI state JSON | **Dispute** — not an error; authorized course data (see below) |
-| **Instance 4:** `service-nologin.php?…load_template…` | `"error": false` + Mustache UI templates | **Dispute** — not an error; public theme templates (see below) |
+| **Instance 4:** `service-nologin.php` template load | `"error": false` + Mustache | **Not an error dump.** Client now **POSTs** the JSON (no `args=` / `sesskey=` on the URL). Response is public UI chrome. |
+| **Instance 5:** remove `checkout_id` → `api.razorpay.com` grpc 500 | Host is **Razorpay**, not LMS | LMS no longer loads Checkout.js (hosted Payment Link). LMS UI never shows grpc text. Dispute the `api.razorpay.com` 500. |
 | `GET /theme/yui_combo.php` | “Unsupported server… disable YUI…” | **Fix** — deploy patched `theme/yui_combo.php` |
 | Instance 5: remove checkout id → `api.razorpay.com` grpc JSON | Third-party Razorpay host, not LMS | **Dispute** LMS; LMS UI uses generic disruption copy |
 | Instance 9: `api.razorpay.com/.../payment/status?key_id=` | Third-party Razorpay host | **Dispute** LMS |
@@ -209,6 +210,18 @@ Burp: logged-in student (`MoodleSession`) → `GET /user/index.php?id=4` → **5
 | Teacher / manager | **200** participants table |
 
 Deploy: `user/index.php`, `theme/iiidem2` (≥ `2024101041`), `lib/classes/output/bootstrap_renderer.php`.
+
+### Retest round (2026-09-21)
+
+Staging still showed the same three instances because **`config.php` treated staging like dev** (`debugdisplay=1`), so `early_error()` sent **HTTP 500**, and **`theme/yui_combo.php` was not on the server** (`ABORT_AFTER_CONFIG` skips theme hooks).
+
+| Instance | After this fix |
+|----------|----------------|
+| **1** `/user/index.php?id=4` | Student → **303** to the course (never 500). Staging debug **off**. If an early error still fires: **403** + generic body |
+| **2** `GET /theme/yui_combo.php` | Generic `Combo resource not found, sorry.` (404) from `config.php` **before** setup — works even if an old `yui_combo.php` is deployed |
+| **3** `core_courseformat_get_state` | **Dispute** — `"error": false` is authorized course UI state, not an error dump. No `debuginfo`/`backtrace` |
+
+Deploy **`config.php`**, `user/index.php`, `theme/yui_combo.php`, `lib/classes/output/bootstrap_renderer.php`, `lib/setuplib.php`, theme ≥ `2024101070`.
 
 ## Controls
 

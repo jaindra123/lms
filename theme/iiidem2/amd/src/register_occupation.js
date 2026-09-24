@@ -25,7 +25,7 @@ define([], function() {
             return field.checked;
         }
 
-        return String(field.value || '').trim() !== '';
+        return String(field.value || '').trim() !== '' && !/[<>]/.test(String(field.value || ''));
     }
 
     /**

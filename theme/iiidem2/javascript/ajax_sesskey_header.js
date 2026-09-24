@@ -1,10 +1,10 @@
 /**
  * Moodle AJAX CSRF for /lib/ajax/service.php and service-nologin.php.
  *
- * - Remove sesskey from the query string (not in URLs / Referer / proxy logs).
- * - Send X-Moodle-Sesskey instead; server maps it when query/body sesskey is absent.
+ * - Remove sesskey from request URLs (not in history / Referer / proxy logs).
+ * - For /lib/ajax/service*.php send X-Moodle-Sesskey; server maps it when query/body sesskey is absent.
  *
- * Do NOT touch other endpoints (e.g. repository/draftfiles_ajax.php).
+ * Do NOT set the header on other endpoints (e.g. repository/draftfiles_ajax.php).
  * Do NOT set the header twice (core/ajax already sets it) — duplicates become
  * "key, key" in PHP and cause invalidsesskey on Edit mode / AJAX writes.
  */
@@ -18,8 +18,23 @@
 
     var HEADER = 'X-Moodle-Sesskey';
 
+    function urlToString(url) {
+        if (typeof url === 'string') {
+            return url;
+        }
+        if (url && typeof url === 'object') {
+            if (typeof url.href === 'string' && url.href !== '') {
+                return url.href;
+            }
+            if (typeof url.toString === 'function') {
+                return url.toString();
+            }
+        }
+        return url == null ? '' : String(url);
+    }
+
     function isServiceAjax(url) {
-        return typeof url === 'string' && url.indexOf('/lib/ajax/service') !== -1;
+        return urlToString(url).indexOf('/lib/ajax/service') !== -1;
     }
 
     function getCfgSesskey() {
@@ -34,11 +49,11 @@
     }
 
     function sesskeyFromUrl(url) {
-        if (!url || !isServiceAjax(url)) {
+        if (!url) {
             return null;
         }
         try {
-            var abs = new URL(url, window.location.origin);
+            var abs = new URL(urlToString(url), window.location.origin);
             return abs.searchParams.get('sesskey');
         } catch (e) {
             var m = String(url).match(/[?&]sesskey=([^&]*)/);
@@ -46,20 +61,21 @@
         }
     }
 
-    /** Strip sesskey from service.php / service-nologin.php URLs. */
+    /** Strip sesskey from any request URL (Referer / history / proxy logs). */
     function stripSesskeyFromUrl(url) {
-        if (!isServiceAjax(url)) {
+        var raw = urlToString(url);
+        if (raw.indexOf('sesskey=') === -1) {
             return url;
         }
         try {
-            var abs = new URL(url, window.location.origin);
+            var abs = new URL(raw, window.location.origin);
             abs.searchParams.delete('sesskey');
-            if (/^https?:\/\//i.test(url)) {
+            if (/^https?:\/\//i.test(raw)) {
                 return abs.toString();
             }
             return abs.pathname + abs.search + abs.hash;
         } catch (e) {
-            return String(url).replace(/([?&])sesskey=[^&]*&?/g, function(m, sep) {
+            return raw.replace(/([?&])sesskey=[^&]*&?/g, function(m, sep) {
                 if (sep === '?' && m.indexOf('&') === -1) {
                     return '';
                 }
@@ -115,9 +131,9 @@
             this._iiidemSesskey = null;
             this._iiidemSesskeyHeaderSet = false;
             this._iiidemIsServiceAjax = false;
-            if (typeof url === 'string' && isServiceAjax(url)) {
-                this._iiidemIsServiceAjax = true;
-                this._iiidemSesskey = sesskeyFromUrl(url) || getCfgSesskey();
+            if (typeof url === 'string' || (url && typeof url === 'object' && url.href)) {
+                this._iiidemIsServiceAjax = isServiceAjax(url);
+                this._iiidemSesskey = sesskeyFromUrl(url) || (this._iiidemIsServiceAjax ? getCfgSesskey() : null);
                 args[1] = stripSesskeyFromUrl(url);
             }
             return origOpen.apply(this, args);
@@ -138,11 +154,16 @@
         }
         $.__iiidemSesskeyPrefilter = true;
         $.ajaxPrefilter(function(options) {
-            if (!options || !isServiceAjax(options.url || '')) {
+            if (!options || !options.url) {
                 return;
             }
-            var sk = sesskeyFromUrl(options.url) || getCfgSesskey();
-            options.url = stripSesskeyFromUrl(options.url);
+            var url = options.url;
+            var sk = sesskeyFromUrl(url);
+            options.url = stripSesskeyFromUrl(url);
+            if (!isServiceAjax(url)) {
+                return;
+            }
+            sk = sk || getCfgSesskey();
             if (!sk || headerAlreadySet(options.headers)) {
                 return;
             }
@@ -170,7 +191,11 @@
         window.fetch = function(input, init) {
             init = init || {};
             var url = typeof input === 'string' ? input : (input && input.url);
+            var nextUrl = stripSesskeyFromUrl(url || '');
             if (!isServiceAjax(url || '')) {
+                if (nextUrl !== url && typeof input === 'string') {
+                    input = nextUrl;
+                }
                 return origFetch.call(this, input, init);
             }
             var sk = sesskeyFromUrl(url || '') || getCfgSesskey();
@@ -178,7 +203,6 @@
             if (sk && !headers.has(HEADER)) {
                 headers.set(HEADER, sk);
             }
-            var nextUrl = stripSesskeyFromUrl(url);
             init = Object.assign({}, init, {headers: headers});
             if (typeof input === 'string') {
                 input = nextUrl;
@@ -186,6 +210,51 @@
                 input = new Request(nextUrl, input);
             }
             return origFetch.call(this, input, init);
+        };
+    }
+
+    /**
+     * Tiny autosave / H5P xAPI use sendBeacon — no custom headers, so sesskey
+     * used to sit on the query string. Move it into POST FormData instead.
+     */
+    if (navigator.sendBeacon) {
+        var origBeacon = navigator.sendBeacon.bind(navigator);
+        navigator.sendBeacon = function(url, data) {
+            var urlStr = urlToString(url);
+            var clean = stripSesskeyFromUrl(urlStr);
+            if (!isServiceAjax(urlStr)) {
+                return origBeacon(clean, data);
+            }
+            var sk = sesskeyFromUrl(urlStr) || getCfgSesskey();
+            var payload = data;
+            try {
+                if (typeof FormData !== 'undefined') {
+                    if (data && typeof FormData !== 'undefined' && data instanceof FormData) {
+                        if (sk && typeof data.has === 'function' && !data.has('sesskey')) {
+                            data.append('sesskey', sk);
+                        } else if (sk && typeof data.has !== 'function') {
+                            data.append('sesskey', sk);
+                        }
+                        payload = data;
+                    } else {
+                        var fd = new FormData();
+                        if (sk) {
+                            fd.append('sesskey', sk);
+                        }
+                        if (typeof data === 'string') {
+                            fd.append('args', data);
+                        } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+                            fd.append('args', data);
+                        } else if (data != null) {
+                            fd.append('args', String(data));
+                        }
+                        payload = fd;
+                    }
+                }
+            } catch (e) {
+                payload = data;
+            }
+            return origBeacon(clean, payload);
         };
     }
 })();

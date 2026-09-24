@@ -382,9 +382,23 @@ class media_videojs_plugin extends core_media_player_native {
      */
     public static function get_language_content(string $lang) {
         global $CFG;
-        $langfile = "{$CFG->dirroot}/media/player/videojs/videojs/lang/{$lang}.json";
 
-        return file_exists($langfile) ? file_get_contents($langfile) : '';
+        if (!preg_match('/^[a-z]{2}(?:[-_][A-Za-z0-9]{2,8})?$/', $lang)) {
+            return '';
+        }
+
+        $dir = realpath($CFG->dirroot . '/media/player/videojs/videojs/lang');
+        if ($dir === false) {
+            return '';
+        }
+        $file = realpath($dir . DIRECTORY_SEPARATOR . $lang . '.json');
+        $prefix = $dir . DIRECTORY_SEPARATOR;
+        if ($file === false || !str_starts_with($file, $prefix) || !is_file($file)) {
+            return '';
+        }
+
+        $data = file_get_contents($file);
+        return is_string($data) ? $data : '';
     }
 
     public function supports($usedextensions = []) {

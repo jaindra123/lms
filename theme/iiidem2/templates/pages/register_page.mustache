@@ -82,7 +82,7 @@
             }
             return false;
         }
-        return String(field.value || '').trim() !== '';
+        return String(field.value || '').trim() !== '' && !/[<>]/.test(String(field.value || ''));
     };
 
     var syncRequiredMarker = function(field) {

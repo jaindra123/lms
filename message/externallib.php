@@ -1161,6 +1161,14 @@ class core_message_external extends external_api {
             throw new moodle_exception('You do not have permission to perform this action.');
         }
 
+        if (class_exists(\theme_iiidem2\input_validation::class)) {
+            $cleansearch = \theme_iiidem2\input_validation::sanitize_keyword_token((string) $params['search']);
+            if ($cleansearch === '') {
+                return ['contacts' => [], 'noncontacts' => []];
+            }
+            $params['search'] = $cleansearch;
+        }
+
         list($contacts, $noncontacts) = \core_message\api::message_search_users(
             $params['userid'],
             $params['search'],
@@ -1239,6 +1247,16 @@ class core_message_external extends external_api {
 
         if (($USER->id != $params['userid']) && !has_capability('moodle/site:readallmessages', $systemcontext)) {
             throw new moodle_exception('You do not have permission to perform this action.');
+        }
+
+        if (class_exists(\theme_iiidem2\input_validation::class)) {
+            $cleansearch = \theme_iiidem2\input_validation::sanitize_keyword_token((string) $params['search']);
+            if ($cleansearch === '') {
+                $empty = new \stdClass();
+                $empty->contacts = [];
+                return $empty;
+            }
+            $params['search'] = $cleansearch;
         }
 
         $messages = \core_message\api::search_messages(

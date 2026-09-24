@@ -329,12 +329,29 @@ class report_log_table_log extends table_sql {
      * @return string HTML for the ip column
      */
     public function col_ip($event) {
-        // Get extra event data for origin and realuserid.
+        global $CFG;
+
         $logextra = $event->get_logextra();
-        $ip = $logextra['ip'];
+        $ip = (string) ($logextra['ip'] ?? '');
+
+        $helper = $CFG->dirroot . '/theme/iiidem2/classes/private_ip.php';
+        if (is_readable($helper)) {
+            require_once($helper);
+        }
+        if (class_exists(\theme_iiidem2\private_ip::class)) {
+            if (\theme_iiidem2\private_ip::is_private($ip)) {
+                $text = \theme_iiidem2\private_ip::label();
+                return empty($this->download) ? s($text) : $text;
+            }
+            $ip = \theme_iiidem2\private_ip::canonical($ip);
+        }
 
         if (empty($this->download)) {
-            $url = new moodle_url("/iplookup/index.php?popup=1&ip={$ip}&user={$event->userid}");
+            $url = new moodle_url('/iplookup/index.php', [
+                'popup' => 1,
+                'ip' => $ip,
+                'user' => $event->userid,
+            ]);
             $ip = $this->action_link($url, $ip, 'ip');
         }
         return $ip;

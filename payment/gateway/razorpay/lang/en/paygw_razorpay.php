@@ -24,6 +24,7 @@ $string['invalidsignature'] = 'Payment verification failed (invalid signature).'
 $string['amountmismatch'] = 'The payment amount does not match the course fee. Please start the payment again from the course page.';
 $string['txnnotfound'] = 'Transaction reference not found.';
 $string['ordercreatefailed'] = 'Could not create Razorpay order. Check your API keys and try again.';
+$string['linkcreatefailed'] = 'Could not start Razorpay hosted payment. Check your API keys and try again.';
 $string['apiconnectionfailed'] = 'Could not reach Razorpay. Check your internet connection and try again.';
 $string['apiinvalidresponse'] = 'Razorpay returned an unexpected response. Please try again in a few minutes.';
 $string['apiunavailable'] = 'Razorpay payment gateway is currently experiencing a temporary service disruption. This issue is on Razorpay side and is not related to our side or payment configuration. Please try again in a few minutes.';

@@ -49,4 +49,12 @@ $observers = [
         'eventname' => '\core\event\user_loggedout',
         'callback' => '\theme_iiidem2\security_headers::user_loggedout',
     ],
+    [
+        'eventname' => '\core\event\user_loggedin',
+        'callback' => '\theme_iiidem2\session_security::user_loggedin',
+    ],
+    [
+        'eventname' => '\core\event\user_password_updated',
+        'callback' => '\theme_iiidem2\password_policy::user_password_updated',
+    ],
 ];

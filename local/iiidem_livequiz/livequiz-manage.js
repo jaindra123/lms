@@ -11,7 +11,7 @@
 
     var sessionid = dataEl.getAttribute('data-sessionid');
     var apiurl = dataEl.getAttribute('data-apiurl');
-    var sesskey = dataEl.getAttribute('data-sesskey');
+    var sesskey = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
     var submittedLabel = dataEl.getAttribute('data-submittedlabel') || '__COUNT__ students submitted';
     var countEl = document.getElementById('iiidem-livequiz-submitted-count');
     var table = document.getElementById('iiidem-livequiz-results-table');

@@ -21,7 +21,7 @@ class get_checkout_data extends external_api {
             'component' => new external_value(PARAM_COMPONENT, 'Component'),
             'paymentarea' => new external_value(PARAM_AREA, 'Payment area'),
             'itemid' => new external_value(PARAM_INT, 'Item id'),
-            'description' => new external_value(PARAM_TEXT, 'Payment description'),
+            'description' => new external_value(PARAM_TEXT, 'Payment description (ignored; not sent to Razorpay)'),
         ]);
     }
 
@@ -36,11 +36,22 @@ class get_checkout_data extends external_api {
         ]);
 
         require_login();
+        if (!isloggedin() || isguestuser()) {
+            throw new \require_login_exception(get_string('sessionerroruser', 'error'));
+        }
 
-        \theme_iiidem2\rate_limit::require_allowed('paygw_razorpay_checkout', 5, 600);
+        // CDAC prefill/encrypt + Sardine: LMS does not host those APIs. Cap how
+        // often this origin can mint a Razorpay hosted session.
+        \theme_iiidem2\rate_limit::require_allowed('paygw_razorpay_checkout', 3, 600);
+        \theme_iiidem2\rate_limit::require_allowed(
+            'paygw_razorpay_checkout_ip_burst',
+            5,
+            600,
+            'ip:' . \theme_iiidem2\rate_limit::client_ip()
+        );
         \theme_iiidem2\rate_limit::require_allowed(
             'paygw_razorpay_checkout_ip',
-            20,
+            8,
             3600,
             'ip:' . \theme_iiidem2\rate_limit::client_ip()
         );
@@ -61,12 +72,13 @@ class get_checkout_data extends external_api {
         }
 
         $txnref = razorpay_helper::generate_txnref();
-        $order = razorpay_helper::create_order($config, $txnref, $amount, $currency);
+        $callbackurl = new \moodle_url('/payment/gateway/razorpay/return.php');
+        $link = razorpay_helper::create_payment_link($config, $txnref, $amount, $currency, $callbackurl);
 
         $now = time();
         $record = (object) [
             'txnref' => $txnref,
-            'orderid' => $order['id'],
+            'orderid' => $link['id'],
             'paymentid' => null,
             'userid' => (int) $USER->id,
             'component' => $component,
@@ -81,41 +93,36 @@ class get_checkout_data extends external_api {
         ];
         $DB->insert_record('paygw_razorpay_txn', $record);
 
-        $successurl = helper::get_success_url($component, $paymentarea, $itemid);
-        $successurl->param('razorpaypayment', 'success');
-
-        $usemock = !empty($order['mock']);
+        $usemock = !empty($link['mock']);
         $mockurl = '';
+        $redirecturl = (string) ($link['short_url'] ?? '');
         if ($usemock) {
             $mockurl = (new \moodle_url('/payment/gateway/razorpay/mock.php', [
-                'orderid' => $order['id'],
+                'orderid' => $link['id'],
             ]))->out(false);
+            $redirecturl = $mockurl;
         }
 
+        // CDAC Key ID exposure: only the hosted Payment Link URL leaves the server.
+        return self::client_payload($redirecturl, $usemock, $mockurl);
+    }
+
+    /**
+     * Browser payload — never Key ID, order id, amount, name, or email.
+     *
+     * @return array{redirecturl:string,mock:bool,mockurl:string}
+     */
+    private static function client_payload(string $redirecturl, bool $mock, string $mockurl): array {
         return [
-            // keyid = Razorpay *public* Key ID (required by Checkout.js). Key Secret never returned.
-            'keyid' => trim($config->keyid ?? 'rzp_test_mock'),
-            'orderid' => $order['id'],
-            'amount' => $order['amount'],
-            'currency' => $currency,
-            'brandname' => !empty($config->brandname) ? $config->brandname : format_string($GLOBALS['SITE']->shortname),
-            'description' => $description,
-            // CDAC: do not return payer name/email in checkout JSON (no Checkout prefill).
-            'successurl' => $successurl->out(false),
-            'mock' => $usemock,
+            'redirecturl' => $redirecturl,
+            'mock' => $mock,
             'mockurl' => $mockurl,
         ];
     }
 
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'keyid' => new external_value(PARAM_TEXT, 'Razorpay public Key ID for Checkout.js'),
-            'orderid' => new external_value(PARAM_TEXT, 'Razorpay order id'),
-            'amount' => new external_value(PARAM_INT, 'Amount in paise'),
-            'currency' => new external_value(PARAM_ALPHA, 'Currency code'),
-            'brandname' => new external_value(PARAM_TEXT, 'Brand name'),
-            'description' => new external_value(PARAM_TEXT, 'Description'),
-            'successurl' => new external_value(PARAM_URL, 'Redirect URL after success'),
+            'redirecturl' => new external_value(PARAM_RAW_TRIMMED, 'Hosted Razorpay payment URL'),
             'mock' => new external_value(PARAM_BOOL, 'Use mock checkout'),
             'mockurl' => new external_value(PARAM_TEXT, 'Mock checkout URL'),
         ]);

@@ -91,4 +91,4 @@ Browser DevTools → Application → Cookies → `HttpOnly` column = ✓
 | MoodleID* | Yes (forced) | Yes on staging/prod | via Moodle cookie API |
 | PHP `session.cookie_httponly` | `1` | — | Lax |
 
-Related: [https-sensitive-data.md](https-sensitive-data.md), [session-token-in-url.md](session-token-in-url.md), [input-validation-xss.md](input-validation-xss.md).
+Related: [https-sensitive-data.md](https-sensitive-data.md), [session-token-in-url.md](session-token-in-url.md), [input-validation-xss.md](input-validation-xss.md), [insecure-cookie-attributes.md](insecure-cookie-attributes.md).

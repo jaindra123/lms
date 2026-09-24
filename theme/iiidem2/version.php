@@ -24,6 +24,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024101046;
+if (!isset($plugin) || !is_object($plugin)) {
+    $plugin = new stdClass();
+}
+
+$plugin->version   = 2024101104;
 $plugin->requires  = 2024100100;
 $plugin->component = 'theme_iiidem2';

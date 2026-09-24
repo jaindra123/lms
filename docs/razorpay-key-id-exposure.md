@@ -1,4 +1,4 @@
-# Razorpay Key ID / sensitive payment details
+# Razorpay Key ID Exposure
 
 ## Finding
 
@@ -6,57 +6,39 @@
 |-------|--------|
 | Title | Razorpay Key ID Exposure |
 | Recommendation | Hide sensitive details |
-| Instances | (1) Student receipt IDs (2) `paygw_razorpay_get_checkout_data` JSON + Razorpay hosts |
+| Instances | (1) LMS AJAX `paygw_razorpay_get_checkout_data` (2) `lumberjack.razorpay.com/v1/track?key_id=` |
 
-## Distinction (important)
+## Why it was raised again
 
-| Item | Sensitivity | Action |
-|------|-------------|--------|
-| **Key Secret** | Critical API credential | **Never** in browser / email — already server-only |
-| **Key ID** (`rzp_test_…` / `rzp_live_…`) | **Publishable** client key (Razorpay docs). Checkout.js **requires** `key` | Keep for Checkout; **dispute** as secret leak |
-| **Order ID** in checkout AJAX | Required as `order_id` for Checkout.js | Keep for Checkout; omit from **student receipts** |
-| **Name / email** in checkout AJAX | PII prefill | **Removed** from LMS response (≥ `2025062918`) |
-| `lumberjack.razorpay.com?key_id=` | Razorpay analytics | **Out of LMS scope** — third-party |
-| `api.razorpay.com` `window.session_token` | Razorpay Checkout session (not Windows / Moodle session) | **Out of LMS scope** — third-party |
+Staging still ran **Checkout.js** (`get_checkout_data` returned `keyid` / `orderid`, CSP allowed `checkout.razorpay.com` + `lumberjack.razorpay.com`). That is the capture:
 
-Compromise of payments requires the **Key Secret**. Key ID alone cannot capture funds or call privileged Razorpay APIs.
+| Request | What Burp showed |
+|---------|------------------|
+| `POST /lib/ajax/service.php` `paygw_razorpay_get_checkout_data` | `"keyid":"rzp_test_…"`, `"orderid":"order_…"`, amount, brandname |
+| `POST lumberjack.razorpay.com/v1/track?key_id=rzp_test_…` | Origin/Referer LMS — Checkout.js analytics |
 
-## Instance 2 — LMS `get_checkout_data`
+**Key Secret was never in the browser.** Key ID is Razorpay’s publishable key; with Checkout.js it had to be in the page. LMS no longer uses Checkout.js, so the Key ID must not appear in LMS JSON.
 
-PoC: `POST …/lib/ajax/service.php` → `paygw_razorpay_get_checkout_data` returned `keyid`, `orderid`, `username`, `useremail`.
+## LMS remediations (`paygw_razorpay` ≥ `2025062925`, `theme_iiidem2` ≥ `2024101082`)
 
-| Field after fix (`2025062918`) | Still returned? | Why |
-|--------------------------------|-----------------|-----|
-| `keyid` | Yes | Public Key ID for `new Razorpay({ key })` |
-| `orderid` | Yes | Required `order_id` for Checkout |
-| `amount` / `currency` / `brandname` | Yes | Checkout display |
-| `username` / `useremail` | **No** | PII removed; no Checkout prefill |
-| Key Secret | **Never** | — |
+| Control | Behaviour |
+|---------|-----------|
+| Checkout AJAX | `paygw_razorpay_get_checkout_data` returns **only** `redirecturl`, `mock`, `mockurl`. No `keyid`, `orderid`, amount, name, or email. |
+| AJAX strip | `ajax_request_guard::redact_payment_ajax` drops those fields even if an older paygw still emits them. |
+| Pay Now | Top-level `location.replace` to a hosted Payment Link. No `new Razorpay({ key })`. |
+| CSP | `script-src` / `connect-src` / `frame-src` do **not** include `checkout.razorpay.com`, `cdn.razorpay.com`, `api.razorpay.com`, or `lumberjack.razorpay.com`. |
+| Client abort | `websocket_guard.js` blocks LMS-origin `fetch`/iframe to `*.razorpay.com` (including lumberjack). |
 
-`sesskey` on the AJAX URL is finding #17 ([session-token-in-url.md](session-token-in-url.md)), not a Razorpay secret.
+Key ID stays **server-only** (Payment Link create + webhook verify). It is not sent to the browser.
 
-## Instance — Razorpay-hosted (dispute)
+Lumberjack `key_id=` with Origin LMS cannot happen once Checkout.js is gone and CSP/connect is `'self'`. A lumberjack hit **after** the address bar is Razorpay’s hosted page is vendor telemetry.
 
-| Host | What auditors saw | Verdict |
-|------|-------------------|---------|
-| `lumberjack.razorpay.com` | `key_id=rzp_test_…` in query / body | Razorpay tracking; uses public Key ID |
-| `api.razorpay.com/v1/checkout/public` | `window.session_token=…` in HTML/JS | Razorpay Checkout session token — **not** Moodle `MoodleSession`, not a Windows OS token |
+## Retest on LMS
 
-LMS cannot strip fields from Razorpay’s own responses.
-
-## Controls (paygw_razorpay ≥ `2025062918`)
-
-### 1. Student receipt — no Razorpay IDs
-
-Success email / PDF: name, email, course, amount, invoice, site payment reference only. No `order_…` / `pay_…` for students. Admins still get gateway IDs.
-
-### 2. Checkout AJAX — no payer PII
-
-`get_checkout_data` no longer returns `username` / `useremail`. Checkout opens without name/email prefill.
-
-### 3. Key Secret never client-side
-
-Orders API + signature verification use secret only on the server.
+1. `POST /lib/ajax/service.php` → `paygw_razorpay_get_checkout_data` JSON has **no** `keyid`, **no** `orderid`, **no** `username` / `useremail`, **no** Key Secret. Only `redirecturl` (and mock flags).
+2. Response `Content-Security-Policy` `connect-src` does **not** list lumberjack / checkout.razorpay.com.
+3. Network from the LMS origin: **no** `lumberjack.razorpay.com/v1/track?key_id=`.
+4. Pay Now changes the address bar to a Razorpay Payment Link.
 
 ## Deploy
 
@@ -65,31 +47,6 @@ php admin/cli/upgrade.php --non-interactive
 php admin/cli/purge_caches.php
 ```
 
-Hard-refresh browsers after deploy (AMD `gateways_modal` changed).
+Hard-refresh (AMD `gateways_modal`). Staging must run **this** paygw + theme — the Sep 18 capture is the old Checkout.js plugin.
 
-## Verify
-
-1. Start checkout → Network `paygw_razorpay_get_checkout_data` → **no** `username` / `useremail`; **no** Key Secret  
-2. `keyid` / `orderid` may still appear (required public Checkout fields)  
-3. Student success email has no Razorpay order/payment IDs  
-4. Traffic to `api.razorpay.com` / `lumberjack.razorpay.com` is third-party — dispute for LMS findings  
-
-**Staging recheck (2026-09):**
-
-| Finding | Host / evidence | Verdict |
-|---------|-----------------|---------|
-| Instance 1–2 Key ID in LMS AJAX | `paygw_razorpay_get_checkout_data` → `keyid` | **Dispute** — public Key ID required by Checkout.js; Key Secret never returned |
-| `orderid` in LMS AJAX | Same response | **Dispute** — required for Checkout `order_id` |
-| `username` / `useremail` in LMS AJAX | PoC still showed `Ammu` / `maya@cdac.in` | **Fixed in repo** (`≥ 2025062918`); redeploy paygw + purge if staging still returns them |
-| lumberjack `key_id` / analytics body | `lumberjack.razorpay.com` | **Dispute** — third-party; public Key ID |
-| “Windows Session token” `window.session_token` | `api.razorpay.com/v1/checkout/public` | **Dispute** — Razorpay Checkout session JS; **not** Moodle / Windows OS session |
-| Sentry `7.64.0` | `o515678.ingest.sentry.io`, Origin `api.razorpay.com` | **Dispute** — Razorpay’s SDK; not shipped by LMS ([outdated-sentry-sdk.md](outdated-sentry-sdk.md)) |
-
-## Evidence for auditors
-
-| Control | Implementation |
-|--------|----------------|
-| No Key Secret to browser | `get_checkout_data` |
-| No name/email in checkout JSON | `get_checkout_data` + `gateways_modal` |
-| Student receipts without gateway IDs | `notify_payment_result`, `invoice` |
-| Key ID / Razorpay `session_token` on Razorpay hosts | Dispute — product / third-party behaviour |
+Related: [windows-session-token.md](windows-session-token.md), [sardine-websocket-token.md](sardine-websocket-token.md).

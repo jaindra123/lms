@@ -22,6 +22,16 @@ require_once($GLOBALS['CFG']->libdir . '/formslib.php');
 class register_form extends \moodleform {
 
     /**
+     * HTML pattern that rejects &lt; &gt; " '.
+     * Use hex escapes: Chrome compiles pattern with the unicodeSets `v` flag, which
+     * treats \" as an invalid escape and then blocks requestSubmit().
+     */
+    public const NOXSS_PATTERN = '[^<>\\x22\\x27]+';
+
+    /** @var string Same as {@see NOXSS_PATTERN} but allows empty optional fields. */
+    public const NOXSS_PATTERN_OPTIONAL = '[^<>\\x22\\x27]*';
+
+    /**
      * Form definition.
      */
     protected function definition() {
@@ -31,34 +41,36 @@ class register_form extends \moodleform {
         // Labels above fields — avoids huge empty label column on wide screens.
         $this->set_display_vertical();
 
-        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'), [
-            'maxlength' => 100,
-            'pattern' => '[^<>\"\']+',
+        $noxss = [
+            'data-iiidem-no-markup' => '1',
+            'pattern' => self::NOXSS_PATTERN,
             'title' => get_string('err_xss', 'theme_iiidem2'),
+            'spellcheck' => 'false',
+        ];
+
+        $mform->addElement('text', 'firstname', get_string('registerfirstname', 'theme_iiidem2'), array_merge($noxss, [
+            'maxlength' => 100,
             'autocomplete' => 'given-name',
-        ]);
+        ]));
         $mform->setType('firstname', PARAM_TEXT);
         $mform->addRule('firstname', get_string('required'), 'required', null, 'client');
         $mform->addRule('firstname', get_string('required'), 'required', null, 'server');
         $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('firstname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'), [
+        $mform->addElement('text', 'middlename', get_string('registermiddlename', 'theme_iiidem2'), array_merge($noxss, [
             'maxlength' => 100,
-            'pattern' => '[^<>\"\']*',
-            'title' => get_string('err_xss', 'theme_iiidem2'),
             'autocomplete' => 'additional-name',
-        ]);
+            'pattern' => self::NOXSS_PATTERN_OPTIONAL,
+        ]));
         $mform->setType('middlename', PARAM_TEXT);
         $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('middlename', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
 
-        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'), [
+        $mform->addElement('text', 'lastname', get_string('registerlastname', 'theme_iiidem2'), array_merge($noxss, [
             'maxlength' => 100,
-            'pattern' => '[^<>\"\']+',
-            'title' => get_string('err_xss', 'theme_iiidem2'),
             'autocomplete' => 'family-name',
-        ]);
+        ]));
         $mform->setType('lastname', PARAM_TEXT);
         $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->addRule('lastname', get_string('maximumchars', '', 100), 'maxlength', 100, 'server');
@@ -102,12 +114,10 @@ class register_form extends \moodleform {
             $mform->setDefault('country', 'IN');
         }
 
-        $mform->addElement('text', 'city', get_string('city'), [
+        $mform->addElement('text', 'city', get_string('city'), array_merge($noxss, [
             'maxlength' => 120,
             'autocomplete' => 'address-level2',
-            'pattern' => '[^<>\"\']+',
-            'title' => get_string('err_xss', 'theme_iiidem2'),
-        ]);
+        ]));
         $mform->setType('city', \core_user::get_property_type('city'));
         $mform->addRule('city', get_string('required'), 'required', null, 'client');
         $mform->addRule('city', get_string('required'), 'required', null, 'server');
@@ -132,8 +142,9 @@ class register_form extends \moodleform {
 
         $plainattrs = [
             'maxlength' => 255,
-            'pattern' => '[^<>\"\']+',
+            'pattern' => self::NOXSS_PATTERN,
             'title' => get_string('err_xss', 'theme_iiidem2'),
+            'data-iiidem-no-markup' => '1',
         ];
 
         $mform->addElement('text', 'organization', get_string('registerorganization', 'theme_iiidem2'), $plainattrs);
@@ -218,21 +229,21 @@ class register_form extends \moodleform {
         $mform->addElement('header', 'passwordheader', get_string('registerpasswordheader', 'theme_iiidem2'));
         $mform->setExpanded('passwordheader', true);
 
-        if (!empty($CFG->passwordpolicy)) {
-            $mform->addElement(
-                'static',
-                'passwordpolicyinfo',
-                get_string('registerpasswordshouldbe', 'theme_iiidem2'),
-                print_password_policy()
-            );
-        }
+        $mform->addElement(
+            'static',
+            'passwordpolicyinfo',
+            get_string('registerpasswordshouldbe', 'theme_iiidem2'),
+            print_password_policy()
+        );
 
         $mform->addElement('password', 'password', get_string('password'), [
             'maxlength' => MAX_PASSWORD_CHARACTERS,
+            'minlength' => 8,
             'autocomplete' => 'new-password',
         ]);
         $mform->setType('password', \core_user::get_property_type('password'));
         $mform->addRule('password', get_string('required'), 'required', null, 'client');
+        $mform->addRule('password', get_string('errorminpasswordlength', 'auth', 8), 'minlength', 8, 'client');
 
         $mform->addElement('password', 'password2', get_string('password') . ' (' . get_string('again') . ')', [
             'maxlength' => MAX_PASSWORD_CHARACTERS,
@@ -243,6 +254,13 @@ class register_form extends \moodleform {
         $mform->addRule('password2', get_string('required'), 'required', null, 'client');
 
         $this->add_action_buttons(true, get_string('registercreateaccount', 'theme_iiidem2'));
+
+        // Path-only action: posting from http:// to https wwwroot shows "Leave site?"
+        // and starts a new session that does not have the OTP.
+        $mform->updateAttributes(['action' => '/register/']);
+        // Filling names/email marks the form dirty; OTP then submit looks like
+        // abandoning unsaved changes. Do not warn on this public signup form.
+        $mform->disable_form_change_checker();
     }
 
     /**
@@ -436,6 +454,7 @@ class register_form extends \moodleform {
                 continue;
             }
             if (\theme_iiidem2\input_validation::contains_dangerous_markup($raw)
+                    || \theme_iiidem2\input_validation::contains_structured_injection($raw)
                     || str_contains($raw, '<') || str_contains($raw, '>')) {
                 $errors[$field] = get_string('err_xss', 'theme_iiidem2');
                 continue;
@@ -482,7 +501,9 @@ class register_form extends \moodleform {
         }
 
         if (!validate_email($data['email'])) {
-            $errors['email'] = get_string('invalidemail');
+            if (empty($errors['email'])) {
+                $errors['email'] = get_string('invalidemail');
+            }
         } else if (empty($CFG->allowaccountssameemail)
                 && $DB->record_exists('user', [
                     'email' => \core_text::strtolower(trim((string) $data['email'])),
@@ -526,8 +547,17 @@ class register_form extends \moodleform {
 
         if ((string) ($data['password'] ?? '') !== (string) ($data['password2'] ?? '')) {
             $errors['password2'] = get_string('registerpasswordsmustmatch', 'theme_iiidem2');
-        } else if (!check_password_policy($data['password'], $errmsg)) {
-            $errors['password'] = $errmsg;
+        } else {
+            $email = \core_text::strtolower(trim((string) ($data['email'] ?? '')));
+            require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+            $stub = (object) [
+                'username' => theme_iiidem2_generate_username_from_email($email),
+                'email' => $email,
+            ];
+            $pwerr = \theme_iiidem2\password_policy::error_html((string) ($data['password'] ?? ''), $stub);
+            if ($pwerr !== '') {
+                $errors['password'] = $pwerr;
+            }
         }
 
         $formdata = (object) $data;
@@ -574,6 +604,8 @@ class register_form extends \moodleform {
                 }
             }
         }
+
+        \theme_iiidem2\input_validation::redact_rejected_fields($this->_form, $errors);
 
         return $errors;
     }

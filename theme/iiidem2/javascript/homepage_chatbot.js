@@ -13,6 +13,17 @@
         return div.innerHTML;
     }
 
+    function getMoodleSesskey() {
+        try {
+            if (window.M && M.cfg && typeof M.cfg.sesskey === 'string' && M.cfg.sesskey !== '') {
+                return M.cfg.sesskey;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return '';
+    }
+
     function initChatbot(root) {
         if (!root || root.dataset.initialized === '1') {
             return;
@@ -54,7 +65,7 @@
 
     function initVisitorMode(root) {
         var apiUrl = root.dataset.apiUrl;
-        var sesskey = root.dataset.sesskey;
+        var sesskey = getMoodleSesskey();
         var panel = root.querySelector('.iiidem-home-chatbot__panel');
         var toggle = root.querySelector('[data-action="toggle"]');
         var closeBtn = root.querySelector('[data-action="close"]');
@@ -280,7 +291,7 @@
 
     function initAdminMode(root) {
         var adminApi = root.dataset.adminApiUrl;
-        var sesskey = root.dataset.sesskey;
+        var sesskey = getMoodleSesskey();
         var panel = root.querySelector('.iiidem-home-chatbot__panel');
         var toggle = root.querySelector('[data-action="toggle"]');
         var closeBtn = root.querySelector('[data-action="close"]');
