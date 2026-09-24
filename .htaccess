@@ -78,16 +78,27 @@ DirectoryIndex index.php
     RewriteRule (^|/)behat\.yml(\.dist)?$ - [F,L]
 </IfModule>
 
-# CDAC Header Issues: HSTS must include preload (staging Apache previously omitted it).
-# unset first so a weaker vhost "max-age=…; includeSubDomains" does not win.
+# CDAC Header Issues: HSTS once, with preload.
+# PHP used to set this too — Apache "always set" then duplicated it (onsuccess + always).
+# Unset BOTH tables so a vhost copy and any leftover PHP copy cannot survive.
 # CDAC version disclosure: drop Server / X-Powered-By (PHP cannot strip Apache's Server).
+<IfModule mod_setenvif.c>
+    SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on
+</IfModule>
 <IfModule mod_headers.c>
+    Header unset Strict-Transport-Security
     Header always unset Strict-Transport-Security
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
 
     # CDAC: COOP must be same-origin (not same-origin-allow-popups).
     Header always unset Cross-Origin-Opener-Policy
     Header always set Cross-Origin-Opener-Policy "same-origin"
+
+    # X-Frame-Options / X-XSS-Protection: PHP sets one copy (DENY vs SAMEORIGIN).
+    Header unset X-Frame-Options
+    Header always unset X-Frame-Options
+    Header unset X-XSS-Protection
+    Header always unset X-XSS-Protection
 
     Header unset Server
     Header always unset Server

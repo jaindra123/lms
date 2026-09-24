@@ -1,5 +1,15 @@
 <?php
 
+// Direct HTTP to /config or /config.php must not boot the LMS (blank 200 / leak).
+// Includes from index.php and CLI still work — SCRIPT_FILENAME is the entry script.
+if (PHP_SAPI !== 'cli'
+        && !empty($_SERVER['SCRIPT_FILENAME'])
+        && @realpath($_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=UTF-8');
+    exit;
+}
+
 unset($CFG);
 
 global $CFG;
@@ -17,8 +27,46 @@ $CFG = new stdClass();
  * Environment is chosen in this order:
  *   1. The MOODLE_ENV server variable  (recommended on staging/production)
  *   2. Hostname matching               (fallback)
- *   3. Default = 'dev'
+ *   3. Default = 'dev' (local / DDEV only)
  * ========================================================================= */
+
+$productionhosts = ['lms.iiidem.in', 'lms.eci.gov.in'];
+$staginghosts    = ['staging.iiidem.in', 'staginglms.eci.gov.in'];
+$devhosts        = [
+    'iiidem-certification.ddev.site',
+    '127.0.0.1',
+    'localhost',
+    'iiidem.local',
+    '164.100.26.245',
+];
+
+/**
+ * CWE-644: reject Host: vulnerable.com (and any name not on the allowlist)
+ * before env detection or Moodle bootstrap — never 302 to that Host.
+ */
+if (PHP_SAPI !== 'cli') {
+    $rawhost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    if (str_contains($rawhost, ':')) {
+        [$rawhost] = explode(':', $rawhost, 2);
+    }
+    $allowedhosts = array_merge($productionhosts, $staginghosts, $devhosts);
+    $hostok = $rawhost !== '' && in_array($rawhost, $allowedhosts, true);
+    if (!$hostok && filter_var($rawhost, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        $hostok = !filter_var(
+            $rawhost,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
+    }
+    if (!$hostok) {
+        http_response_code(400);
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Cache-Control: no-store');
+        header('Connection: close');
+        echo 'Bad Request';
+        exit;
+    }
+}
 
 $env = getenv('MOODLE_ENV');
 
@@ -29,16 +77,19 @@ if (!$env) {
         [$host] = explode(':', $host, 2);
     }
 
-    // TODO: replace these with your real staging/production hostnames.
-    $productionhosts = ['lms.iiidem.in'];
-    $staginghosts    = ['staging.iiidem.in'];
-
     if (in_array($host, $productionhosts, true) || str_contains($host, 'prod')) {
         $env = 'production';
     } else if (in_array($host, $staginghosts, true) || str_contains($host, 'staging') || str_contains($host, 'stage')) {
         $env = 'staging';
     } else {
-        $env = 'dev';
+        $isddev = (getenv('DDEV_PROJECT') || getenv('IS_DDEV_PROJECT'));
+        if (!$isddev && is_readable(__DIR__ . '/config.staging.php')) {
+            $env = 'staging';
+        } else if (!$isddev && is_readable(__DIR__ . '/config.production.php')) {
+            $env = 'production';
+        } else {
+            $env = 'dev';
+        }
     }
 }
 
@@ -184,15 +235,10 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &&
 }
 
 /* -------------------------------------------------------------------------
- * Debugging — verbose on dev/staging, silent on production.
+ * Debugging — verbose on local dev only. Staging/production must not
+ * put SQL, stacks, or HTTP 500 crash shells in the browser (CWE-209).
  * ------------------------------------------------------------------------- */
-if ($env === 'production') {
-    $CFG->debug = 0;
-    $CFG->debugdisplay = 0;
-    @ini_set('display_errors', '0');
-    $CFG->cachejs = true;
-    $CFG->themedesignermode = false;
-} else {
+if ($env === 'dev') {
     @error_reporting(E_ALL | E_STRICT);
     @ini_set('display_errors', '1');
     $CFG->debug = (E_ALL | E_STRICT);
@@ -207,9 +253,119 @@ if ($env === 'production') {
     // settings HEAD-check). Default private-IP blocklist breaks that and
     // floods admin pages with "URL is blocked" debugging.
     $CFG->curlsecurityblockedhosts = '';
+} else {
+    $CFG->debug = 0;
+    $CFG->debugdisplay = 0;
+    $CFG->debugdeveloper = false;
+    @ini_set('display_errors', '0');
+    $CFG->cachejs = true;
+    $CFG->themedesignermode = false;
+    $CFG->yuicomboloading = false;
+}
+
+/* -------------------------------------------------------------------------
+ * Bare /theme/yui_combo.php probe (CWE-209). ABORT_AFTER_CONFIG skips theme
+ * hooks, so this must run from config.php. Valid ?rollup/… URLs are untouched.
+ * ------------------------------------------------------------------------- */
+if (PHP_SAPI !== 'cli') {
+    $yuiscript = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if (str_ends_with($yuiscript, '/yui_combo.php')) {
+        $qs = (string) ($_SERVER['QUERY_STRING'] ?? '');
+        $pathinfo = (string) ($_SERVER['PATH_INFO'] ?? '');
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        $hasparts = ($qs !== '' && $qs !== '/')
+            || ($pathinfo !== '' && $pathinfo !== '/')
+            || str_contains($uri, '/yui_combo.php/');
+        if (!$hasparts) {
+            if (!headers_sent()) {
+                header('HTTP/1.0 404 Not Found');
+                header('Content-Type: text/plain; charset=utf-8');
+                header('Cache-Control: no-store');
+            }
+            echo 'Combo resource not found, sorry.';
+            exit;
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * Account lockout (CDAC brute force / missing lockout on /login/index.php).
+ * Forced here so Site administration cannot set threshold back to 0.
+ * 5 failed passwords in 30 minutes → temporary lock for 30 minutes.
+ * ------------------------------------------------------------------------- */
+$CFG->lockoutthreshold = 5;
+$CFG->lockoutwindow = 30 * 60;
+$CFG->lockoutduration = 30 * 60;
+$CFG->displayloginfailures = 1;
+
+/* -------------------------------------------------------------------------
+ * Password policy (CDAC weak password on /register/). Forced so admins cannot
+ * disable complexity. Matches the on-screen requirements.
+ * ------------------------------------------------------------------------- */
+$CFG->passwordpolicy = 1;
+$CFG->minpasswordlength = 8;
+$CFG->minpassworddigits = 1;
+$CFG->minpasswordlower = 1;
+$CFG->minpasswordupper = 1;
+$CFG->minpasswordnonalphanum = 1;
+$CFG->maxconsecutiveidentchars = 3;
+$CFG->passwordpolicycheckonlogin = 1;
+$CFG->passwordreuselimit = 5;
+
+/* -------------------------------------------------------------------------
+ * Cookie attributes (CDAC insecure cookie / Path+Domain+Secure+HttpOnly).
+ * MoodleSession must be site-wide: Path is the wwwroot path ("/" at site root).
+ * Domain is the wwwroot host (explicit Domain=; not a parent like .eci.gov.in).
+ * SameSite=Lax (not Strict) so SSO / payment returns still send the session.
+ * ------------------------------------------------------------------------- */
+$CFG->cookiehttponly = true;
+@ini_set('session.cookie_httponly', '1');
+@ini_set('session.cookie_samesite', 'Lax');
+
+$wwwscheme = '';
+$wwwhost = '';
+$wwwpath = '/';
+if (!empty($CFG->wwwroot)) {
+    $wwwparts = parse_url($CFG->wwwroot);
+    $wwwscheme = strtolower((string) ($wwwparts['scheme'] ?? ''));
+    $wwwhost = strtolower((string) ($wwwparts['host'] ?? ''));
+    $rawpath = (string) ($wwwparts['path'] ?? '');
+    if ($rawpath !== '' && $rawpath !== '/') {
+        $wwwpath = rtrim($rawpath, '/') . '/';
+    }
+}
+
+if ($wwwscheme === 'https') {
+    $CFG->cookiesecure = true;
+    @ini_set('session.cookie_secure', '1');
+}
+
+$CFG->sessioncookiepath = $wwwpath;
+$CFG->cookiesamesite = 'Lax';
+
+// Explicit Domain=host on staging/production so Set-Cookie includes Domain.
+// Never set Domain on DDEV / localhost / IPs — ddev.site is a public suffix,
+// browsers reject Domain=*.ddev.site, the session cookie is dropped, and
+// login 302s until ERR_TOO_MANY_REDIRECTS (MFA OTP never loads).
+$skipcookiedomain = ($wwwhost === '' || $wwwhost === 'localhost'
+    || str_ends_with($wwwhost, '.ddev.site')
+    || str_ends_with($wwwhost, '.localhost')
+    || str_ends_with($wwwhost, '.local')
+    || filter_var($wwwhost, FILTER_VALIDATE_IP) !== false);
+if (!$skipcookiedomain) {
+    $CFG->sessioncookiedomain = $wwwhost;
+    @ini_set('session.cookie_domain', $wwwhost);
+} else {
+    $CFG->sessioncookiedomain = '';
+    @ini_set('session.cookie_domain', '');
 }
 
 /* -------------------------------------------------------------------------
  * Moodle Bootstrap.
  * ------------------------------------------------------------------------- */
+@ini_set('expose_php', '0');
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header_remove('X-Powered-By');
+    header_remove('Server');
+}
 require_once(__DIR__ . '/lib/setup.php');
