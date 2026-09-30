@@ -420,22 +420,40 @@ final class session_security {
     }
 
     /**
-     * Secure flag when the site is served over HTTPS.
+     * Whether this HTTP request was received over TLS.
+     */
+    public static function request_is_https(): bool {
+        $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+        if ($https !== '' && $https !== 'off') {
+            return true;
+        }
+        $fwd = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        if ($fwd === 'https') {
+            return true;
+        }
+        return strtolower((string) ($_SERVER['HTTP_FRONT_END_HTTPS'] ?? '')) === 'on';
+    }
+
+    /**
+     * Secure flag when this response is actually HTTPS.
+     *
+     * wwwroot may be https while a local DDEV visit is http. Marking that
+     * cookie Secure makes the browser drop it, so the first login POST has
+     * no session (invalid login / captcha) and the second attempt works.
      */
     public static function cookies_must_be_secure(): bool {
         global $CFG;
 
+        if (!self::request_is_https()) {
+            return false;
+        }
         if (!empty($CFG->cookiesecure)) {
             return true;
         }
         if (!empty($CFG->wwwroot) && str_starts_with($CFG->wwwroot, 'https://')) {
             return true;
         }
-        $https = (string) ($_SERVER['HTTPS'] ?? '');
-        if ($https !== '' && strtolower($https) !== 'off') {
-            return true;
-        }
-        return strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+        return true;
     }
 
     /**

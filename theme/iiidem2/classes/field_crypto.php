@@ -52,6 +52,9 @@ final class field_crypto {
                 continue;
             }
             $plain = self::decrypt_payload(substr($value, strlen(self::PREFIX)));
+            if ($plain === '') {
+                continue;
+            }
             $_POST[$field] = $plain;
             $_REQUEST[$field] = $plain;
         }

@@ -1,0 +1,6 @@
+# DDEV writes mkcert certificates and generated router YAML here on start.
+# Do not ignore the whole tree, and do not commit a top-level `tls:` YAML.
+# A `tls:` fragment replaces mkcert in the merged Traefik config and HTTPS
+# fails with unrecognized_name (ERR_SSL_UNRECOGNIZED_NAME_ALERT).
+certs/
+*_merged.yaml

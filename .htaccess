@@ -74,6 +74,9 @@ DirectoryIndex index.php
     RewriteRule (^|/)\.env - [F,L]
     RewriteRule (^|/)composer\.(json|lock)$ - [F,L]
     RewriteRule (^|/)package(-lock)?\.json$ - [F,L]
+    RewriteRule (^|/)npm-shrinkwrap\.json$ - [F,L]
+    RewriteRule (^|/)yarn\.lock$ - [F,L]
+    RewriteRule (^|/)pnpm-lock\.yaml$ - [F,L]
     RewriteRule (^|/)phpunit\.xml(\.dist)?$ - [F,L]
     RewriteRule (^|/)behat\.yml(\.dist)?$ - [F,L]
 </IfModule>
@@ -125,6 +128,6 @@ DirectoryIndex index.php
 <FilesMatch "(?i)\.(bak|old|orig|save|swp|swo|tmp|temp|sql|sql\.gz|env)$">
     Require all denied
 </FilesMatch>
-<FilesMatch "(?i)^(\.env.*|composer\.(json|lock)|package(-lock)?\.json)$">
+<FilesMatch "(?i)^(\.env.*|composer\.(json|lock)|package(-lock)?\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml)$">
     Require all denied
 </FilesMatch>

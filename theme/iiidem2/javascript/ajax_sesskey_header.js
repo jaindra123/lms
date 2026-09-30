@@ -61,8 +61,11 @@
         }
     }
 
-    /** Strip sesskey from any request URL (Referer / history / proxy logs). */
+    /** Strip sesskey only from service.php URLs (header carries CSRF there). */
     function stripSesskeyFromUrl(url) {
+        if (!isServiceAjax(url)) {
+            return url;
+        }
         var raw = urlToString(url);
         if (raw.indexOf('sesskey=') === -1) {
             return url;
@@ -157,13 +160,12 @@
             if (!options || !options.url) {
                 return;
             }
-            var url = options.url;
-            var sk = sesskeyFromUrl(url);
-            options.url = stripSesskeyFromUrl(url);
-            if (!isServiceAjax(url)) {
+            if (!isServiceAjax(options.url)) {
                 return;
             }
-            sk = sk || getCfgSesskey();
+            var url = options.url;
+            var sk = sesskeyFromUrl(url) || getCfgSesskey();
+            options.url = stripSesskeyFromUrl(url);
             if (!sk || headerAlreadySet(options.headers)) {
                 return;
             }
@@ -191,13 +193,10 @@
         window.fetch = function(input, init) {
             init = init || {};
             var url = typeof input === 'string' ? input : (input && input.url);
-            var nextUrl = stripSesskeyFromUrl(url || '');
             if (!isServiceAjax(url || '')) {
-                if (nextUrl !== url && typeof input === 'string') {
-                    input = nextUrl;
-                }
                 return origFetch.call(this, input, init);
             }
+            var nextUrl = stripSesskeyFromUrl(url || '');
             var sk = sesskeyFromUrl(url || '') || getCfgSesskey();
             var headers = new Headers(init.headers || (input && input.headers) || {});
             if (sk && !headers.has(HEADER)) {
@@ -221,10 +220,10 @@
         var origBeacon = navigator.sendBeacon.bind(navigator);
         navigator.sendBeacon = function(url, data) {
             var urlStr = urlToString(url);
-            var clean = stripSesskeyFromUrl(urlStr);
             if (!isServiceAjax(urlStr)) {
-                return origBeacon(clean, data);
+                return origBeacon(url, data);
             }
+            var clean = stripSesskeyFromUrl(urlStr);
             var sk = sesskeyFromUrl(urlStr) || getCfgSesskey();
             var payload = data;
             try {

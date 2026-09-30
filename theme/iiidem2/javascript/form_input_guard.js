@@ -197,31 +197,66 @@
         );
     }
 
+    function isPrivilegedPage() {
+        var path = (location.pathname || '').toLowerCase();
+        if (path.indexOf('/admin/') !== -1
+                || path.indexOf('/course/edit') !== -1
+                || path.indexOf('/user/edit') !== -1
+                || path.indexOf('/question/') !== -1
+                || path.indexOf('/mod/') !== -1
+                || path.indexOf('/blocks/') !== -1
+                || path.indexOf('/report/') !== -1) {
+            return true;
+        }
+        var body = document.body;
+        if (!body) {
+            return false;
+        }
+        var id = body.id || '';
+        if (id.indexOf('page-admin') === 0) {
+            return true;
+        }
+        return !!(body.classList && (body.classList.contains('pagelayout-admin')
+            || body.classList.contains('path-admin')));
+    }
+
+    function isPublicGuardForm(el) {
+        if (!el || !el.closest) {
+            return false;
+        }
+        return !!(
+            el.closest('.iiidem-register-form')
+            || el.closest('#page-register')
+            || el.closest('#page-contact-us')
+            || el.closest('#page-contact-us-index')
+        );
+    }
+
     function isGuardedField(el) {
         var name = el.name || '';
-        return el.getAttribute('data-iiidem-no-markup') === '1'
-            || el.matches('textarea')
-            || PLAIN_FIELD_NAMES[name]
-            || el.type === 'email';
+        if (el.getAttribute('data-iiidem-no-markup') === '1'
+                || PLAIN_FIELD_NAMES[name]
+                || el.type === 'email') {
+            return true;
+        }
+        // Never treat every textarea as guarded — admin settings / editors use mform textareas.
+        return el.matches('textarea') && isPublicGuardForm(el);
     }
 
     function isWatched(el) {
         if (!el || el.nodeType !== 1 || !el.matches || !isTextish(el)) {
             return false;
         }
-        if (el.matches(DIRECT_SELECTORS) || isGuardedField(el) || isSearchLike(el)) {
-            return true;
-        }
-        if (!el.closest) {
+        if (isPrivilegedPage()) {
             return false;
         }
-        return !!(
-            el.closest('form.mform')
-            || el.closest('.iiidem-register-form')
-            || el.closest('#page-register')
-            || el.closest('#page-contact-us')
-            || el.closest('#page-contact-us-index')
-        );
+        if (el.matches(DIRECT_SELECTORS) || isSearchLike(el)) {
+            return true;
+        }
+        if (isGuardedField(el) || isPublicGuardForm(el)) {
+            return true;
+        }
+        return false;
     }
 
     function needsAlnum(name) {
@@ -265,7 +300,7 @@
             }
             return false;
         }
-        if (!isGuardedField(el) && !(el.closest && el.closest('form.mform'))) {
+        if (!isGuardedField(el) && !isPublicGuardForm(el)) {
             return false;
         }
         var name = el.name || '';
@@ -331,6 +366,9 @@
     document.addEventListener('submit', function(e) {
         var form = e.target;
         if (!form || !form.querySelectorAll) {
+            return;
+        }
+        if (isPrivilegedPage()) {
             return;
         }
         if (form.id === 'login' || (form.classList && (form.classList.contains('loginform')

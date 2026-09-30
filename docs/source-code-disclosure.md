@@ -6,7 +6,7 @@
 
 Scanners flag patterns such as:
 
-- Exposed `/.git/`, IDE folders, `composer.json` / `composer.lock`
+- Exposed `/.git/`, IDE folders, `composer.json` / `composer.lock`, `npm-shrinkwrap.json`
 - Backup / editor leftovers: `*.php.bak`, `*~`, `*.swp`, `*.old`, `*.sql`
 - Env files: `.env`, `config.staging.php` served as static downloads
 - Directory indexes that reveal PHP/plugin trees
@@ -25,7 +25,7 @@ Moodle’s **application** PHP under `/lib`, `/theme`, etc. must remain on the s
 | Ops / data / docs | `/backups/`, `/moodledata/`, `/docs/`, `/scripts/`, `/local_dev_logs/` |
 | Secrets | `config.staging.php`, `config.production.php`, `.env*` |
 | Leftovers | `*.bak`, `*.old`, `*.swp`, `*~`, `*.sql`, `*.sql.gz` |
-| Deps / tests | `composer.json/lock`, `vendor/`, `phpunit.xml`, Behat (MDL-69333) |
+| Deps / tests | `composer.json/lock`, `npm-shrinkwrap.json`, `package.json`, `vendor/`, `phpunit.xml`, Behat (MDL-69333) |
 | Listing | `autoindex off` |
 
 Copy the same `location` rules into the **staging/production** nginx vhost (DDEV conf is not used on bare metal).
@@ -63,6 +63,8 @@ sudo nginx -t && sudo systemctl reload nginx
 ```bash
 curl -sI https://YOUR-HOST/.git/config
 curl -sI https://YOUR-HOST/composer.json
+curl -sI https://YOUR-HOST/npm-shrinkwrap.json
+curl -sI https://YOUR-HOST/package.json
 curl -sI https://YOUR-HOST/config.staging.php
 curl -sI https://YOUR-HOST/config.php.bak
 curl -sI https://YOUR-HOST/.env
@@ -79,7 +81,7 @@ Normal LMS URLs (`/`, `/login/`, `/course/view.php`) must still return **200**.
 | No VCS over HTTP | Deny `/.git/` |
 | No secret configs | Deny `config.staging.php`, `.env*` |
 | No backup / editor files | Deny `*.bak`, `*~`, `*.swp`, `*.sql` |
-| No dependency manifests | Deny `composer.json` / `vendor/` (public) |
+| No dependency manifests | Deny `composer.json` / `vendor/` / `npm-shrinkwrap.json` (public) |
 | Runtime PHP retained | Moodle app code remains; only non-runtime artefacts blocked |
 
 Related: [directory-listing.md](directory-listing.md), [version-disclosure.md](version-disclosure.md), [restrict-admin-access.md](restrict-admin-access.md).

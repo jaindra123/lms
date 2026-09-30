@@ -1,0 +1,17 @@
+services:
+  dex:
+    container_name: ddev-${DDEV_SITENAME}-dex
+    image: ghcr.io/dexidp/dex:v2.41.1
+    restart: "no"
+    labels:
+      com.ddev.site-name: ${DDEV_SITENAME}
+      com.ddev.approot: ${DDEV_APPROOT}
+    expose:
+      - "5556"
+    environment:
+      - VIRTUAL_HOST=$DDEV_HOSTNAME
+      - HTTP_EXPOSE=5556:5556
+      - HTTPS_EXPOSE=5556:5556
+    volumes:
+      - ".:/mnt/ddev_config"
+    command: ["dex", "serve", "/mnt/ddev_config/dex/config.yaml"]

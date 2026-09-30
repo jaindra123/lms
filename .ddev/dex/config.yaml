@@ -1,0 +1,47 @@
+issuer: https://iiidem-certification.ddev.site:5556
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+logger:
+  level: debug
+  format: text
+oauth2:
+  skipApprovalScreen: true
+  alwaysShowLoginScreen: true
+  passwordConnector: local
+staticClients:
+  - id: moodle
+    redirectURIs:
+      - https://iiidem-certification.ddev.site/admin/oauth2callback.php
+      - https://iiidem-certification.ddev.site/admin/oauth2callback
+      - http://iiidem-certification.ddev.site/admin/oauth2callback.php
+      - http://iiidem-certification.ddev.site/admin/oauth2callback
+      - http://127.0.0.1:8080/admin/oauth2callback.php
+      - http://127.0.0.1:8080/admin/oauth2callback
+      - https://127.0.0.1:8443/admin/oauth2callback.php
+      - https://127.0.0.1:8443/admin/oauth2callback
+    name: IIIDEM LMS
+    secret: iiidem-local-sso-secret
+enablePasswordDB: true
+staticPasswords:
+  - email: "embsso@iiidem.local"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: "embsso"
+    userID: "1001"
+  - email: "trainersso@iiidem.local"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: "trainersso"
+    userID: "1002"
+  - email: "ero@iiidem.local"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: "ero"
+    userID: "1004"
+  - email: "deo@iiidem.local"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: "deo"
+    userID: "1005"
+  - email: "aclmt1@iiidem.local"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: "aclmt1"
+    userID: "1006"

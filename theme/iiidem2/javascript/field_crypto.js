@@ -93,21 +93,20 @@
             return;
         }
         var raw = form.getAttribute('action') || form.action || '';
-        if (!raw) {
-            form.setAttribute('action', '/login/index.php');
-            return;
-        }
+        var search = '';
         try {
-            var resolved = new URL(raw, window.location.href);
-            var path = resolved.pathname.replace(/\/+$/, '');
-            if (path === '/login') {
-                resolved.pathname = '/login/index.php';
-                form.setAttribute('action', resolved.pathname + resolved.search);
+            var resolved = new URL(raw || '/login/index.php', window.location.href);
+            var path = resolved.pathname.replace(/\/+$/, '') || '';
+            if (path === '/login' || path === '/login/index.php' || path === '') {
+                search = resolved.search || '';
+                form.setAttribute('action', '/login/index.php' + search);
+                return;
             }
         } catch (err) {
-            if (raw === '/login' || raw === '/login/' || /\/login\/?$/.test(raw)) {
-                form.setAttribute('action', '/login/index.php');
-            }
+            // Fall through.
+        }
+        if (!raw || raw === '/login' || raw === '/login/' || /\/login\/?$/.test(raw)) {
+            form.setAttribute('action', '/login/index.php');
         }
     }
 

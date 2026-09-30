@@ -1,0 +1,68 @@
+{{!
+    @template theme_iiidem2/course/shared_readings
+
+    Shared student reading uploads for a course.
+}}
+<div class="iiidem-shared-readings" id="shared-readings">
+    {{#sharedreadingscanmanage}}
+    <div class="iiidem-shared-readings__admin">
+        {{#sharedreadingsenabled}}
+        <a class="btn btn-sm btn-outline-secondary" href="{{{sharedreadingsdisableurl}}}">{{#str}}sharedreadingsdisable, theme_iiidem2{{/str}}</a>
+        {{/sharedreadingsenabled}}
+        {{^sharedreadingsenabled}}
+        <p class="iiidem-shared-readings__hint">{{#str}}sharedreadingsenablehint, theme_iiidem2{{/str}}</p>
+        <a class="btn btn-sm btn-primary" href="{{{sharedreadingsenableurl}}}">{{#str}}sharedreadingsenable, theme_iiidem2{{/str}}</a>
+        {{/sharedreadingsenabled}}
+    </div>
+    {{/sharedreadingscanmanage}}
+
+    {{#sharedreadingsenabled}}
+    <div class="iiidem-shared-readings__panel">
+        <h3 class="iiidem-shared-readings__title">{{#str}}sharedreadingsheading, theme_iiidem2{{/str}}</h3>
+        <p class="iiidem-shared-readings__lead">{{#str}}sharedreadingsintro, theme_iiidem2{{/str}}</p>
+
+        {{#sharedreadingscanupload}}
+        <div class="iiidem-shared-readings__form">
+            {{{sharedreadingsformhtml}}}
+        </div>
+        {{/sharedreadingscanupload}}
+        {{^sharedreadingscanupload}}
+        {{#sharedreadingsloggedin}}
+        <p class="iiidem-shared-readings__enrol">{{#str}}sharedreadingsenrol, theme_iiidem2{{/str}}</p>
+        {{/sharedreadingsloggedin}}
+        {{^sharedreadingsloggedin}}
+        <p class="iiidem-shared-readings__enrol">
+            <a href="{{{sharedreadingsloginurl}}}">{{#str}}sharedreadingslogin, theme_iiidem2{{/str}}</a>
+        </p>
+        {{/sharedreadingsloggedin}}
+        {{/sharedreadingscanupload}}
+
+        {{#hassharedreadings}}
+        <ul class="iiidem-shared-readings__list">
+            {{#sharedreadings}}
+            <li class="iiidem-shared-readings__item">
+                <div class="iiidem-shared-readings__meta">
+                    <span class="iiidem-shared-readings__item-title">{{title}}</span>
+                    <span class="iiidem-shared-readings__item-file">{{filename}} · {{filesize}}</span>
+                    <span class="iiidem-shared-readings__item-by">{{#str}}sharedreadingsby, theme_iiidem2, {{uploader}}{{/str}} · {{uploadedon}}</span>
+                </div>
+                <div class="iiidem-shared-readings__actions">
+                    <a class="btn btn-sm btn-primary" href="{{{url}}}">{{#str}}download{{/str}}</a>
+                    {{#candelete}}
+                    <a class="btn btn-sm btn-outline-danger" href="{{{deleteurl}}}"
+                       data-confirm="{{#str}}sharedreadingsdeleteconfirm, theme_iiidem2{{/str}}"
+                       onclick="return window.confirm(this.getAttribute('data-confirm'));">{{#str}}delete{{/str}}</a>
+                    {{/candelete}}
+                </div>
+            </li>
+            {{/sharedreadings}}
+        </ul>
+        {{/hassharedreadings}}
+        {{^hassharedreadings}}
+        {{#sharedreadingscanupload}}
+        <p class="iiidem-shared-readings__empty">{{#str}}sharedreadingsempty, theme_iiidem2{{/str}}</p>
+        {{/sharedreadingscanupload}}
+        {{/hassharedreadings}}
+    </div>
+    {{/sharedreadingsenabled}}
+</div>

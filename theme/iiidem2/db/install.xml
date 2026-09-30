@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="theme/iiidem2/db" VERSION="20241009" COMMENT="XMLDB file for Moodle theme/iiidem2"
+<XMLDB PATH="theme/iiidem2/db" VERSION="20241011" COMMENT="XMLDB file for Moodle theme/iiidem2"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -25,6 +25,22 @@
       <INDEXES>
         <INDEX NAME="status_timecreated" UNIQUE="false" FIELDS="status, timecreated"/>
         <INDEX NAME="email_idx" UNIQUE="false" FIELDS="email"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="theme_iiidem2_shared_reading" COMMENT="Student reading files shared with classmates in a course">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="courseid_timecreated" UNIQUE="false" FIELDS="courseid, timecreated"/>
+        <INDEX NAME="userid_idx" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="theme_iiidem2_cert_issues" COMMENT="Certificates issued after assignment completion">

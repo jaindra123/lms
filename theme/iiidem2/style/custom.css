@@ -1722,8 +1722,17 @@ body.iiidem-assign-grading .gradingtable tr:has(.submissionstatussubmitted) {
   outline-offset: 3px;
 }
 
+.iiidem-course-instructors .career-image {
+  min-height: 180px;
+  background: #eef2f8;
+}
+
 .iiidem-instructor-photo-btn .instructor-photo {
   width: 100%;
+  height: 220px;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
 }
 
 /* Lock scroll without scrollbar jump / blink */
@@ -6606,5 +6615,95 @@ body.iiidem-assign-grader .tox .tox-mbtn {
   body.iiidem-assign-grader #region-main div[role="main"] {
     overflow: visible !important;
   }
+}
+
+/* Shared student reading materials on the course curriculum. */
+.iiidem-shared-readings {
+  margin: 0 0 1.75rem;
+}
+
+.iiidem-shared-readings__admin {
+  margin-bottom: 1rem;
+}
+
+.iiidem-shared-readings__hint {
+  margin: 0 0 0.75rem;
+  color: #4b5568;
+}
+
+.iiidem-shared-readings__panel {
+  padding: 1.35rem 1.5rem 1.5rem;
+  border: 1px solid #e6ebf5;
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 40, 80, 0.04);
+}
+
+.iiidem-shared-readings__title {
+  margin: 0 0 0.4rem;
+  color: var(--iiidem-heading-color, #0b3d91);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.iiidem-shared-readings__lead,
+.iiidem-shared-readings__enrol,
+.iiidem-shared-readings__empty {
+  margin: 0 0 1rem;
+  color: #4b5568;
+  line-height: 1.5;
+}
+
+.iiidem-shared-readings__form {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem 0.35rem;
+  border: 1px solid #eef2f8;
+  border-radius: 0.9rem;
+  background: #f8faff;
+}
+
+.iiidem-shared-readings__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.iiidem-shared-readings__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e6ebf5;
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
+.iiidem-shared-readings__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.iiidem-shared-readings__item-title {
+  font-weight: 700;
+  color: var(--iiidem-heading-color, #0b3d91);
+}
+
+.iiidem-shared-readings__item-file,
+.iiidem-shared-readings__item-by {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.iiidem-shared-readings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 

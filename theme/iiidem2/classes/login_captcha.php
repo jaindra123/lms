@@ -30,14 +30,26 @@ final class login_captcha {
     public static function html(): string {
         global $SESSION;
 
-        $a = random_int(2, 9);
-        $b = random_int(1, 9);
-        $token = bin2hex(random_bytes(8));
-        $SESSION->{self::SESSION_KEY} = [
-            'hash' => hash_hmac('sha256', (string) ($a + $b), self::secret()),
-            'token' => $token,
-            'time' => time(),
-        ];
+        $stored = $SESSION->{self::SESSION_KEY} ?? null;
+        $reuse = is_array($stored)
+            && isset($stored['a'], $stored['b'], $stored['token'], $stored['hash'], $stored['time'])
+            && (time() - (int) $stored['time']) < 600;
+        if ($reuse) {
+            $a = (int) $stored['a'];
+            $b = (int) $stored['b'];
+            $token = (string) $stored['token'];
+        } else {
+            $a = random_int(2, 9);
+            $b = random_int(1, 9);
+            $token = bin2hex(random_bytes(8));
+            $SESSION->{self::SESSION_KEY} = [
+                'a' => $a,
+                'b' => $b,
+                'hash' => hash_hmac('sha256', (string) ($a + $b), self::secret()),
+                'token' => $token,
+                'time' => time(),
+            ];
+        }
 
         $label = get_string('logincaptchalabel', 'theme_iiidem2', (object) [
             'a' => $a,

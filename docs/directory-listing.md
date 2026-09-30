@@ -95,7 +95,7 @@ Sensitive paths that must not be public:
 - `autoindex off;` — never emit directory indexes
 - `location ^~ /…/` deny for the sensitive directories above
 - Block direct fetch of `config.(staging|production|dev).php` and `config-dist.php`
-- Moodle-recommended deny pattern for `/vendor/`, `/node_modules/`, `composer.json`, `readme`, `db/install.xml`, Behat/PHPUnit artefacts (MDL-69333)
+- Moodle-recommended deny pattern for `/vendor/`, `/node_modules/`, `composer.json`, `npm-shrinkwrap.json`, `readme`, `db/install.xml`, Behat/PHPUnit artefacts (MDL-69333). See [npm-shrinkwrap-lockfile.md](npm-shrinkwrap-lockfile.md) (RT-001).
 
 Restart after pull: `ddev restart`
 
@@ -151,6 +151,11 @@ location = /cache/forms { return 404; }
 location = /cache/forms.php { return 404; }
 location = /cache/forms/ { return 404; }
 location = /auth/index.html { return 404; }
+
+# RT-001 — npm lockfile must not be public (keep file on disk for grunt).
+location = /npm-shrinkwrap.json { deny all; return 404; }
+location = /package-lock.json { deny all; return 404; }
+location = /package.json { deny all; return 404; }
 ```
 
 Prefer keeping `dataroot` **outside** the document root on production (`$CFG->dataroot`).
@@ -195,6 +200,8 @@ curl -sI https://staginglms.eci.gov.in/version.php
 curl -sI https://staginglms.eci.gov.in/auth/index.html
 curl -sI https://staginglms.eci.gov.in/cache/forms
 curl -sI https://staginglms.eci.gov.in/cache/forms.php
+curl -sI https://iiidemlms.eci.gov.in/npm-shrinkwrap.json
+curl -sI https://iiidemlms.eci.gov.in/package.json
 
 # Expect 403/404/3xx — not 200 with <title>Index of
 curl -s https://staginglms.eci.gov.in/backup/ | grep -iE 'Index of|Parent Directory|<a href="backup/' && echo FAIL || echo OK

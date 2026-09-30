@@ -1191,5 +1191,146 @@ function xmldb_theme_iiidem2_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2024101104, 'theme', 'iiidem2');
     }
 
+    if ($oldversion < 2024101105) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('theme_iiidem2_shared_reading');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('courseid_timecreated', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'timecreated']);
+            $table->add_index('userid_idx', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+            $dbman->create_table($table);
+        }
+        \theme_iiidem2\shared_readings::enable_eligible_courses();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101105, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101106) {
+        // Enrol user picker: do not apply profile IDOR to AJAX potential-user search.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101106, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101107) {
+        // Enrol users: keep sesskey on /enrol/manual/ajax.php GET (do not strip every URL).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101107, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101108) {
+        // Login: keep session cookie on HTTP DDEV so the first submit is not "invalid login".
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101108, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101109) {
+        // Shared readings: do not pin to local course id 8; enable empty non-EMB courses
+        // (production id may be 7) and hide placeholder "New section" topics from the accordion.
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('theme_iiidem2_shared_reading');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('courseid_timecreated', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'timecreated']);
+            $table->add_index('userid_idx', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+            $dbman->create_table($table);
+        }
+        \theme_iiidem2\shared_readings::enable_eligible_courses();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101109, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101110) {
+        // Course-detail page: show Program Governance professors (same as /course/view.php).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101110, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101111) {
+        // Meet your Professors: enrol EMB course teachers onto the IMW/shared-reading course
+        // (production id 7, local id 8 — ids are not the same).
+        \theme_iiidem2\shared_readings::enable_eligible_courses();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101111, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101112) {
+        // Meet your Professors: hide site admins (e.g. Jaindra) and match featured list from course 4.
+        \theme_iiidem2\shared_readings::enable_eligible_courses();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101112, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101113) {
+        // Admin Save: do not run register/contact XSS field-guard on /admin mform (first click was a no-op).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101113, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101114) {
+        // Notification X: load Bootstrap alert dismiss; drop unreadable logo files so the
+        // "Cannot read file 'iiidem_about_logo.PNG'" banner is not re-queued every load.
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+        theme_iiidem2_purge_unreadable_logo_files();
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101114, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101115) {
+        // Course-detail marketing page: hide Meet your Professors (still shown on /course/view.php).
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101115, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101116) {
+        // IMW / shared-reading courses: enable no-key self-enrol so students join without admin Enrol users.
+        require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+        if (class_exists(\theme_iiidem2\open_self_enrol::class, true)) {
+            foreach (\theme_iiidem2\shared_readings::enabled_courseids() as $courseid) {
+                \theme_iiidem2\open_self_enrol::ensure_instance((int) $courseid);
+            }
+            $imwcourses = $DB->get_records_select('course', 'id > 1 AND ' . $DB->sql_equal('shortname', ':sn', false), ['sn' => 'IMW']);
+            foreach ($imwcourses as $imw) {
+                \theme_iiidem2\open_self_enrol::ensure_instance((int) $imw->id);
+            }
+        }
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101116, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101117) {
+        // Guest /course/view.php must not fatal if open_self_enrol or local_coursefaq is missing.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101117, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101118) {
+        // Revert hiding Meet your Professors on course-detail; show it on both course pages again.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101118, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101119) {
+        // IMW course 7: logged-in students may upload reading materials without enrolment.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101119, 'theme', 'iiidem2');
+    }
+
+    if ($oldversion < 2024101120) {
+        // Course 4: show Meet your Professors on public /course/view.php.
+        // IMW (production 7 / local 8): do not show that section.
+        purge_all_caches();
+        upgrade_plugin_savepoint(true, 2024101120, 'theme', 'iiidem2');
+    }
+
     return true;
 }

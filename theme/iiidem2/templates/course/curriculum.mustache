@@ -1,4 +1,4 @@
-<section class="iiidem-course-section iiidem-course-curriculum">
+<section class="iiidem-course-section iiidem-course-curriculum" id="curriculum">
     <div class="container">
         <div class="row g-4 iiidem-course-content-layout">
             <div class="col-lg-{{#hascoursefee}}8{{/hascoursefee}}{{^hascoursefee}}12{{/hascoursefee}} iiidem-course-content-layout__main">
@@ -35,6 +35,9 @@
                 </div>
                 {{/hascoursesummary}}
 
+                {{> theme_iiidem2/course/shared_readings }}
+
+                 {{#totalsections}}
                  <div class="iiidem-curriculum">
                     <div class="accordion iiidem-accordion" id="courseAccordion">
                         {{#sections}}
@@ -143,6 +146,7 @@
                         {{/sections}}
                     </div>
                 </div>
+                {{/totalsections}}
                 
             </div>
 

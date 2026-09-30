@@ -23,6 +23,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
+    if (function_exists('theme_iiidem2_purge_unreadable_logo_files')) {
+        theme_iiidem2_purge_unreadable_logo_files();
+    }
     $settings = new theme_iiidem2_admin_settingspage_tabs('themesettingiiidem2', get_string('configtitle', 'theme_iiidem2'));
     $page = new admin_settingpage('theme_iiidem2_general', get_string('generalsettings', 'theme_iiidem2'));
 
@@ -138,6 +141,12 @@ if ($ADMIN->fulltree) {
     $title = get_string('registrationcourseids', 'theme_iiidem2');
     $description = get_string('registrationcourseids_desc', 'theme_iiidem2');
     $setting = new admin_setting_configtext($name, $title, $description, '4', PARAM_TEXT);
+    $page->add($setting);
+
+    $name = 'theme_iiidem2/sharedreadingcourses';
+    $title = get_string('sharedreadingcourses', 'theme_iiidem2');
+    $description = get_string('sharedreadingcourses_desc', 'theme_iiidem2');
+    $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
     $page->add($setting);
 
     // Must add the page after definiting all the settings!

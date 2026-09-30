@@ -14,9 +14,18 @@
     {{#hasinstructors}}
     {{> theme_iiidem2/course/instructors }}
     {{/hasinstructors}}
+
+    {{#hasadvisors}}
+    {{> theme_iiidem2/program_governance }}
+    {{/hasadvisors}}
+
     {{#hasfaqs}}
     {{> theme_iiidem2/course/faq }}
     {{/hasfaqs}}
+
+    {{#showstudentreviewsection}}
+    {{> theme_iiidem2/course/student_reviews }}
+    {{/showstudentreviewsection}}
 
 </main>
 

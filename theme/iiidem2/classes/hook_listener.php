@@ -1518,7 +1518,7 @@ class hook_listener {
         );
         $hook->add_html(
             '<script' . $nonceattr . ' src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/field_crypto.js', ['v' => '2024101092']))->out(false) .
+            (new \moodle_url('/theme/iiidem2/javascript/field_crypto.js', ['v' => '2024101108']))->out(false) .
             '"></script>'
         );
 
@@ -1531,7 +1531,7 @@ class hook_listener {
         // Early AJAX sesskey helper for /lib/ajax/service.php only (cache-busted).
         $hook->add_html(
             '<script' . $nonceattr . ' src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024101089']))->out(false) .
+            (new \moodle_url('/theme/iiidem2/javascript/ajax_sesskey_header.js', ['v' => '2024101107']))->out(false) .
             '"></script>'
         );
         $hook->add_html(
@@ -1541,7 +1541,7 @@ class hook_listener {
         );
         $hook->add_html(
             '<script' . $nonceattr . ' src="' .
-            (new \moodle_url('/theme/iiidem2/javascript/form_input_guard.js', ['v' => '2024101103']))->out(false) .
+            (new \moodle_url('/theme/iiidem2/javascript/form_input_guard.js', ['v' => '2024101118']))->out(false) .
             '"></script>'
         );
         $hook->add_html(

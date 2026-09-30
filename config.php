@@ -149,12 +149,13 @@ if ($env === 'dev') {
         // Development hostnames (must be mapped in each developer's hosts file).
         $devhostnames = ['iiidem.local'];
         $isdevhostname = in_array($hostonly, $devhostnames, true);
+        $isddev = str_ends_with(strtolower($hostonly), '.ddev.site');
 
         // Public IPs used for external development/testing.
         $devpublicips = ['164.100.26.245'];
         $isdevpublicip = in_array($hostonly, $devpublicips, true);
 
-        if ($isprivateip || $isdevhostname || $isdevpublicip) {
+        if ($isprivateip || $isdevhostname || $isdevpublicip || $isddev) {
             $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
                 ? 'https'
                 : 'http';

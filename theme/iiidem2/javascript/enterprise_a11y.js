@@ -82,9 +82,27 @@
         observer.observe(document.documentElement, {childList: true, subtree: true});
     }
 
+    function initAlertDismiss() {
+        document.addEventListener('click', function (e) {
+            var dismiss = e.target.closest
+                ? e.target.closest('[data-dismiss="alert"], [data-bs-dismiss="alert"], .alert.alert-dismissible > .btn-close, .alert.alert-dismissible > .close')
+                : null;
+            if (!dismiss) {
+                return;
+            }
+            var alertEl = dismiss.closest ? dismiss.closest('.alert') : null;
+            if (!alertEl) {
+                return;
+            }
+            e.preventDefault();
+            alertEl.parentNode.removeChild(alertEl);
+        });
+    }
+
     function boot() {
         resolveMain();
         initSkip();
+        initAlertDismiss();
         hardenBlankTargets(document);
         observeBlankTargets();
     }

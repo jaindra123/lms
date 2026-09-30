@@ -56,10 +56,9 @@ function theme_iiidem2_post_set_password_requests($data, $user): void {
 /**
  * Restrict /user/profile.php?id=N and /user/view.php (IDOR / broken access control).
  *
- * Deny by default. Object ownership: own profile only. RBAC: course teaching
- * role assignment (not capability — site admins have every cap). Site admins
- * must manage accounts via /admin/user.php and /user/editadvanced.php, not by
- * tampering with profile?id=.
+ * Deny by default on those pages only. Enrol / grade / message user pickers also
+ * call this callback via user_get_user_details(); blocking them returns an empty
+ * "No suggestions" list even when matching accounts exist.
  *
  * @param stdClass $user Profile being viewed
  * @param stdClass|null $course
@@ -75,6 +74,11 @@ function theme_iiidem2_control_view_profile($user, $course = null, $usercontext 
         return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
     }
 
+    // Enrol "Select users" is an AJAX web service, not a profile page.
+    if (!theme_iiidem2_is_user_profile_page()) {
+        return \core_user::VIEWPROFILE_DO_NOT_PREVENT;
+    }
+
     $targetid = (int) ($user->id ?? 0);
     $courseid = isset($course->id) ? (int) $course->id : 0;
 
@@ -83,6 +87,23 @@ function theme_iiidem2_control_view_profile($user, $course = null, $usercontext 
     }
 
     return \core_user::VIEWPROFILE_PREVENT;
+}
+
+/**
+ * True only for the public profile pages that the IDOR guard is meant to lock.
+ *
+ * @return bool
+ */
+function theme_iiidem2_is_user_profile_page(): bool {
+    if ((defined('CLI_SCRIPT') && CLI_SCRIPT)
+            || (defined('AJAX_SCRIPT') && AJAX_SCRIPT)
+            || (defined('WS_SERVER') && WS_SERVER)) {
+        return false;
+    }
+
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    return str_ends_with($script, '/user/profile.php')
+        || str_ends_with($script, '/user/view.php');
 }
 
 /**
@@ -319,6 +340,11 @@ function theme_iiidem2_get_extra_scss($theme) {
  * @return bool
  */
 function theme_iiidem2_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    if ($filearea === \theme_iiidem2\shared_readings::FILEAREA) {
+        \theme_iiidem2\shared_readings::pluginfile($course, $context, $args, $forcedownload, $options);
+        return;
+    }
+
     if ($context->contextlevel != CONTEXT_SYSTEM) {
         send_file_not_found();
     }
@@ -492,6 +518,60 @@ function theme_iiidem2_get_footer_logo_url(): string {
 
     $cached = (new moodle_url('/theme/iiidem2/pix/iiidem-white-logo-footer.png'))->out(false);
     return $cached;
+}
+
+/**
+ * Delete logo stored-file records whose pool binary is missing.
+ *
+ * Admin theme settings copy those files into a draft area. An unreadable pool
+ * file becomes "Cannot read file 'iiidem_about_logo.PNG'" on every page load.
+ *
+ * @return int Number of file records removed
+ */
+function theme_iiidem2_purge_unreadable_logo_files(): int {
+    global $DB, $CFG;
+
+    if (during_initial_install() || empty($CFG->version)) {
+        return 0;
+    }
+    if (!$DB->get_manager()->table_exists('files')) {
+        return 0;
+    }
+
+    $fs = get_file_storage();
+    $filesystem = $fs->get_file_system();
+    $removed = 0;
+    $select = "filename <> '.' AND filesize > 0 AND (
+            (component = :c1 AND filearea IN ('logo', 'logocompact'))
+            OR (component = :c2 AND filearea IN ('headerlogo', 'footerlogo'))
+        )";
+    $records = $DB->get_records_select('files', $select, [
+        'c1' => 'core_admin',
+        'c2' => 'theme_iiidem2',
+    ]);
+
+    foreach ($records as $record) {
+        $file = $fs->get_file_by_id((int) $record->id);
+        if (!$file || $file->is_directory()) {
+            continue;
+        }
+        if ($filesystem->is_file_readable_locally_by_storedfile($file, false)) {
+            continue;
+        }
+        $component = $file->get_component();
+        $filearea = $file->get_filearea();
+        $filename = $file->get_filename();
+        $file->delete();
+        $removed++;
+
+        $plugin = $component === 'core_admin' ? 'core_admin' : 'theme_iiidem2';
+        $current = (string) get_config($plugin, $filearea);
+        if ($current !== '' && str_contains($current, $filename)) {
+            unset_config($filearea, $plugin);
+        }
+    }
+
+    return $removed;
 }
 
 /**
@@ -4151,6 +4231,28 @@ function theme_iiidem2_echo_page_template(string $templatename, $context): void 
 }
 
 /**
+ * Self-enrol on IMW / shared-reading courses when the helper class is present.
+ *
+ * Missing class or enrolment errors must not take down the public course page.
+ *
+ * @param int $courseid
+ * @return bool
+ */
+function theme_iiidem2_maybe_open_self_enrol(int $courseid): bool {
+    if (!class_exists(\theme_iiidem2\open_self_enrol::class, true)) {
+        return false;
+    }
+    try {
+        return \theme_iiidem2\open_self_enrol::enrol_current_user($courseid);
+    } catch (Throwable $e) {
+        if (class_exists(\theme_iiidem2\safe_errors::class)) {
+            \theme_iiidem2\safe_errors::log($e, 'open_self_enrol');
+        }
+        return false;
+    }
+}
+
+/**
  * Render /course/view.php for visitors without enrolment (hero, curriculum, instructors).
  *
  * @param stdClass $course
@@ -4158,6 +4260,11 @@ function theme_iiidem2_echo_page_template(string $templatename, $context): void 
  */
 function theme_iiidem2_render_public_course_view(stdClass $course): void {
     global $OUTPUT, $PAGE, $SITE, $CFG;
+
+    // IMW / shared-reading: logged-in students join themselves (no admin Enrol users).
+    if (theme_iiidem2_maybe_open_self_enrol((int) $course->id)) {
+        redirect(new moodle_url('/course/view.php', ['id' => $course->id]));
+    }
 
     // CDAC: payment-success must not render on the anonymous marketing page.
     theme_iiidem2_require_login_for_payment_result();
@@ -4176,24 +4283,62 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
     // Register CSS/JS before the template renders &lt;head&gt; (public path skips header()).
     $PAGE->theme->init_page($PAGE);
     theme_iiidem2_apply_course_view_page_assets($PAGE);
-    theme_iiidem2_preload_course_layout_context($course);
+    try {
+        theme_iiidem2_preload_course_layout_context($course);
+    } catch (Throwable $e) {
+        if (class_exists(\theme_iiidem2\safe_errors::class)) {
+            \theme_iiidem2\safe_errors::log($e, 'public_course_view_preload');
+        }
+    }
 
     // This custom path bypasses $OUTPUT->header(), which normally loads the page
     // blocks. Load them here so blocklib doesn't warn on null block regions.
-    $PAGE->blocks->load_blocks();
+    try {
+        $PAGE->blocks->load_blocks();
+    } catch (Throwable $e) {
+        if (class_exists(\theme_iiidem2\safe_errors::class)) {
+            \theme_iiidem2\safe_errors::log($e, 'public_course_view_blocks');
+        }
+    }
 
     $primarymenu = theme_iiidem2_export_primary_menu($PAGE);
 
     // Reuse request-scoped preload (avoids rebuilding curriculum/quiz payloads twice).
     $preloaded = theme_iiidem2_get_preloaded_course_layout_context($course);
-    if ($preloaded) {
-        $coursedisplay = $preloaded['display'];
-        $curriculum = $preloaded['curriculum'];
-        $quizzes = $preloaded['quizzes'];
-    } else {
-        $coursedisplay = theme_iiidem2_get_course_display_context($course);
-        $curriculum = theme_iiidem2_get_course_curriculum_context($course);
-        $quizzes = theme_iiidem2_get_course_quizzes_context($course);
+    $emptydelivery = [
+        'coursename' => format_string($course->fullname),
+        'hasinstructors' => false,
+        'instructordata' => [],
+        'hasfaqs' => false,
+        'faqs' => [],
+        'hascoursesummary' => false,
+        'coursesummary' => '',
+        'courseimage' => '',
+    ];
+    $emptycurriculum = [
+        'sections' => [],
+        'totalsections' => 0,
+        'totalactivities' => 0,
+        'sharedreadingsenabled' => false,
+    ];
+    $emptyquizzes = ['quizzes' => [], 'hasquizzes' => false, 'quizcount' => 0];
+    try {
+        if ($preloaded) {
+            $coursedisplay = $preloaded['display'];
+            $curriculum = $preloaded['curriculum'];
+            $quizzes = $preloaded['quizzes'];
+        } else {
+            $coursedisplay = theme_iiidem2_get_course_display_context($course);
+            $curriculum = theme_iiidem2_get_course_curriculum_context($course);
+            $quizzes = theme_iiidem2_get_course_quizzes_context($course);
+        }
+    } catch (Throwable $e) {
+        if (class_exists(\theme_iiidem2\safe_errors::class)) {
+            \theme_iiidem2\safe_errors::log($e, 'public_course_view_context');
+        }
+        $coursedisplay = $emptydelivery;
+        $curriculum = $emptycurriculum;
+        $quizzes = $emptyquizzes;
     }
 
     $loginurl = new moodle_url('/login');
@@ -4203,54 +4348,61 @@ function theme_iiidem2_render_public_course_view(stdClass $course): void {
 
     $wantsurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
 
-    $templatecontext = theme_iiidem2_merge_footer_context(array_merge(
-        $coursedisplay,
-        $curriculum,
-        $quizzes,
-        theme_iiidem2_get_course_fee_payment_context($course),
-        theme_iiidem2_get_program_governance_context(),
-        theme_iiidem2_get_course_testimonials_context(),
-        theme_iiidem2_get_course_student_reviews_context($course),
-        theme_iiidem2_get_login_modal_context($wantsurl),
-        [
-            'coursepaymentsuccess' => false,
-            'pnbpaymentsuccess' => false,
-        ],
-        theme_iiidem2_get_register_success_context(),
-        [
-            'sitename' => format_string($SITE->shortname, true, [
-                'context' => context_course::instance(SITEID),
-                'escape' => false,
-            ]),
-            'output' => $OUTPUT,
-            'bodyattributes' => $bodyattributes,
-            'sidepreblocks' => '',
-            'hasblocks' => false,
-            'courseindexopen' => false,
-            'blockdraweropen' => false,
-            'courseindex' => false,
-            'primarymoremenu' => $primarymenu['moremenu'],
-            'secondarymoremenu' => false,
-            'mobileprimarynav' => $primarymenu['mobileprimarynav'],
-            'usermenu' => $primarymenu['user'],
-            'langmenu' => $primarymenu['lang'],
-            'forceblockdraweropen' => false,
-            'regionmainsettingsmenu' => false,
-            'hasregionmainsettingsmenu' => false,
-            'overflow' => false,
-            'headercontent' => false,
-            'addblockbutton' => '',
-            'hasenrollmodal' => false,
-            'maincontentplaceholder' => '',
-            'ispubliccourseview' => true,
-            'isloggedin' => isloggedin() && !isguestuser(),
-            'loginurl' => $loginurl->out(false),
-            'config' => ['wwwroot' => $CFG->wwwroot],
-        ]
-    ));
+    try {
+        $templatecontext = theme_iiidem2_merge_footer_context(array_merge(
+            $coursedisplay,
+            $curriculum,
+            $quizzes,
+            theme_iiidem2_get_course_fee_payment_context($course),
+            theme_iiidem2_get_program_governance_context(),
+            theme_iiidem2_get_course_testimonials_context(),
+            theme_iiidem2_get_course_student_reviews_context($course),
+            theme_iiidem2_get_login_modal_context($wantsurl),
+            [
+                'coursepaymentsuccess' => false,
+                'pnbpaymentsuccess' => false,
+            ],
+            theme_iiidem2_get_register_success_context(),
+            [
+                'sitename' => format_string($SITE->shortname, true, [
+                    'context' => context_course::instance(SITEID),
+                    'escape' => false,
+                ]),
+                'output' => $OUTPUT,
+                'bodyattributes' => $bodyattributes,
+                'sidepreblocks' => '',
+                'hasblocks' => false,
+                'courseindexopen' => false,
+                'blockdraweropen' => false,
+                'courseindex' => false,
+                'primarymoremenu' => $primarymenu['moremenu'],
+                'secondarymoremenu' => false,
+                'mobileprimarynav' => $primarymenu['mobileprimarynav'],
+                'usermenu' => $primarymenu['user'],
+                'langmenu' => $primarymenu['lang'],
+                'forceblockdraweropen' => false,
+                'regionmainsettingsmenu' => false,
+                'hasregionmainsettingsmenu' => false,
+                'overflow' => false,
+                'headercontent' => false,
+                'addblockbutton' => '',
+                'hasenrollmodal' => false,
+                'maincontentplaceholder' => '',
+                'ispubliccourseview' => true,
+                'isloggedin' => isloggedin() && !isguestuser(),
+                'loginurl' => $loginurl->out(false),
+                'config' => ['wwwroot' => $CFG->wwwroot],
+            ]
+        ));
 
-    // course_drawers is a full-page template (head, body, page_end) — finalize Moodle footer tokens.
-    theme_iiidem2_echo_page_template('theme_iiidem2/course_drawers', $templatecontext);
+        // course_drawers is a full-page template (head, body, page_end) — finalize Moodle footer tokens.
+        theme_iiidem2_echo_page_template('theme_iiidem2/course_drawers', $templatecontext);
+    } catch (Throwable $e) {
+        if (class_exists(\theme_iiidem2\safe_errors::class)) {
+            \theme_iiidem2\safe_errors::log($e, 'public_course_view_render');
+        }
+        theme_iiidem2_render_enrol_preview_page($course);
+    }
 }
 
 /**
@@ -4925,9 +5077,15 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
     $loginurl->param('wantsurl', (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false));
     $loginmodal = theme_iiidem2_get_login_modal_context($loginurl->out(false));
     $hasloginmodal = !empty($loginmodal['hasloginmodal']);
+    $sharedenabled = \theme_iiidem2\shared_readings::is_enabled((int) $course->id);
 
     foreach ($modinfo->get_section_info_all() as $section) {
         if ($section->section == 0) {
+            continue;
+        }
+
+        $sectionname = get_section_name($course, $section);
+        if ($sharedenabled && \theme_iiidem2\shared_readings::is_workshop_phase_section($sectionname)) {
             continue;
         }
 
@@ -4985,9 +5143,19 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
             $sectionsummary = shorten_text($sectionsummary, 90);
         }
 
+        $rawsectionname = trim((string) ($section->name ?? ''));
+        if (\theme_iiidem2\shared_readings::is_placeholder_curriculum_section(
+                $sectionname,
+                $rawsectionname,
+                $activities !== [],
+                $sectionsummary !== ''
+        )) {
+            continue;
+        }
+
         $sectionsdata[] = [
             'id' => $section->id,
-            'name' => get_section_name($course, $section),
+            'name' => $sectionname,
             'summary' => $sectionsummary,
             'hassummary' => $sectionsummary !== '',
             'activitycount' => count($activities),
@@ -5027,7 +5195,7 @@ function theme_iiidem2_get_course_curriculum_context(stdClass $course): array {
         ? get_string('coursestatdurationweeks', 'theme_iiidem2', count($sectionsdata))
         : '—';
 
-    $cache[$cachekey] = array_merge($loginmodal, $paymentmodal, [
+    $cache[$cachekey] = array_merge($loginmodal, $paymentmodal, \theme_iiidem2\shared_readings::curriculum_context($course), [
         'sections' => $sectionsdata,
         'totalsections' => count($sectionsdata),
         'totalactivities' => $totalactivities,
@@ -5531,6 +5699,38 @@ function theme_iiidem2_get_featured_instructor_ids(int $courseid): array {
 }
 
 /**
+ * Replace the featured-professor line for one course in theme setting featuredinstructors.
+ *
+ * @param int $courseid
+ * @param int[] $userids
+ */
+function theme_iiidem2_set_featured_instructor_ids(int $courseid, array $userids): void {
+    $raw = (string) get_config('theme_iiidem2', 'featuredinstructors');
+    $kept = [];
+    foreach (preg_split('/\R/', $raw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        if (preg_match('/^(\d+)\s*:/', $line, $m) && (int) $m[1] === $courseid) {
+            continue;
+        }
+        $kept[] = $line;
+    }
+    $ids = [];
+    foreach ($userids as $userid) {
+        $userid = (int) $userid;
+        if ($userid > 0 && !in_array($userid, $ids, true)) {
+            $ids[] = $userid;
+        }
+    }
+    if ($ids !== []) {
+        $kept[] = $courseid . ':' . implode(',', $ids);
+    }
+    set_config('featuredinstructors', implode("\n", $kept), 'theme_iiidem2');
+}
+
+/**
  * Limit / reorder instructor cards for “Meet your Professors”.
  *
  * @param int $courseid
@@ -5562,6 +5762,31 @@ function theme_iiidem2_filter_instructor_display(int $courseid, array $instructo
 }
 
 /**
+ * Meet your Professors belongs on the EMB/certificate course, not the IMW workshop.
+ *
+ * Production IMW is course 7; local IMW is usually 8.
+ *
+ * @param int $courseid
+ * @return bool
+ */
+function theme_iiidem2_course_shows_meet_professors(int $courseid): bool {
+    global $DB;
+
+    if ($courseid <= SITEID) {
+        return false;
+    }
+    if ($courseid === 7) {
+        return false;
+    }
+    if (class_exists(\theme_iiidem2\shared_readings::class, true)
+            && \theme_iiidem2\shared_readings::is_enabled($courseid)) {
+        return false;
+    }
+    $shortname = strtoupper(trim((string) $DB->get_field('course', 'shortname', ['id' => $courseid])));
+    return $shortname !== 'IMW';
+}
+
+/**
  * Instructors, FAQs, and hero fields for course detail / course layout.
  *
  * @param stdClass $course
@@ -5587,6 +5812,9 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
         $users = get_role_users($role->id, $context, false, $userfields . ', u.description, u.descriptionformat, u.department');
         foreach ($users as $teacher) {
             if (isset($instructordata[$teacher->id])) {
+                continue;
+            }
+            if (is_siteadmin((int) $teacher->id)) {
                 continue;
             }
             $userpicture = new user_picture($teacher);
@@ -5619,9 +5847,15 @@ function theme_iiidem2_get_course_display_context(stdClass $course): array {
     }
 
     $instructors = theme_iiidem2_filter_instructor_display($courseid, $instructordata);
+    if (!theme_iiidem2_course_shows_meet_professors($courseid)) {
+        $instructors = [];
+    }
 
     $faqs = [];
-    $faqsraw = $DB->get_records('local_coursefaq', ['courseid' => $course->id]);
+    $faqsraw = [];
+    if ($DB->get_manager()->table_exists('local_coursefaq')) {
+        $faqsraw = $DB->get_records('local_coursefaq', ['courseid' => $course->id]);
+    }
     foreach ($faqsraw as $faq) {
         $faqs[] = [
             'id' => $faq->id,
@@ -5915,6 +6149,9 @@ function theme_iiidem2_get_course_detail_context(stdClass $course): array {
         $display,
         $curriculum,
         $quizzes,
+        theme_iiidem2_get_program_governance_context(),
+        theme_iiidem2_get_course_testimonials_context(),
+        theme_iiidem2_get_course_student_reviews_context($course),
         theme_iiidem2_get_login_modal_context($wantsurl),
         [
             'courseid' => $course->id,
@@ -5987,6 +6224,8 @@ function theme_iiidem2_render_enrol_preview_page(stdClass $course): void {
 
 function theme_iiidem2_render_course_detail_page(stdClass $course): void {
     global $OUTPUT, $PAGE, $SITE;
+
+    theme_iiidem2_maybe_open_self_enrol((int) $course->id);
 
     $PAGE->set_cacheable(false);
     $PAGE->theme->init_page($PAGE);

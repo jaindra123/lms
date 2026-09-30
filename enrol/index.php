@@ -50,6 +50,11 @@ if (!isloggedin() || isguestuser()) {
 }
 
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
+require_once($CFG->dirroot . '/theme/iiidem2/lib.php');
+if (isloggedin() && !isguestuser() && function_exists('theme_iiidem2_maybe_open_self_enrol')
+        && theme_iiidem2_maybe_open_self_enrol((int) $course->id)) {
+    redirect("$CFG->wwwroot/course/view.php?id={$course->id}");
+}
 $context = context_course::instance($course->id, MUST_EXIST);
 
 // Everybody is enrolled on the frontpage

@@ -34,6 +34,7 @@ import './bootstrap/carousel';
 import './bootstrap/modal';
 import './bootstrap/dropdown';
 import './bootstrap/tooltip';
+import './bootstrap/alert';
 import Pending from 'core/pending';
 import {DefaultWhitelist} from './bootstrap/tools/sanitizer';
 import setupBootstrapPendingChecks from './pending';
@@ -170,6 +171,28 @@ const disableAdminIndexBootstrapTabs = () => {
     $(document).off('keydown.bs.tab.data-api', '[data-toggle="tab"]');
 };
 
+/**
+ * Moodle notifications use data-dismiss="alert". Some templates use data-bs-dismiss.
+ * Bootstrap alert is imported above; this fallback still removes the banner if that
+ * module is blocked or the markup uses the Bootstrap 5 attribute.
+ */
+const enableAlertDismiss = () => {
+    document.addEventListener('click', (e) => {
+        const dismiss = e.target.closest(
+            '[data-dismiss="alert"], [data-bs-dismiss="alert"], .alert.alert-dismissible > .btn-close, .alert.alert-dismissible > .close'
+        );
+        if (!dismiss) {
+            return;
+        }
+        const alertEl = dismiss.closest('.alert');
+        if (!alertEl) {
+            return;
+        }
+        e.preventDefault();
+        alertEl.remove();
+    });
+};
+
 setupBootstrapPendingChecks();
 disableAdminIndexBootstrapTabs();
 initAdminNavFix();
@@ -177,6 +200,7 @@ Aria.init();
 rememberTabs();
 enablePopovers();
 enableTooltips();
+enableAlertDismiss();
 
 $.fn.dropdown.Constructor.Default.popperConfig = {
     modifiers: {
